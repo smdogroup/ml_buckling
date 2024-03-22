@@ -734,7 +734,7 @@ class FlatPlateAnalysis:
         FEAAssembler = pyTACS(self.bdf_file, comm=self.comm)
 
         # Set up constitutive objects and elements
-        FEAAssembler.initialize(self._elemCallback)
+        FEAAssembler.initialize(self._elemCallback())
 
         # set complex step Gmatrix into all elements through assembler
         FEAAssembler.assembler.setComplexStepGmatrix(True)
@@ -772,7 +772,7 @@ class FlatPlateAnalysis:
         FEAAssembler = pyTACS(self.bdf_file, comm=self.comm)
 
         # Set up constitutive objects and elements
-        FEAAssembler.initialize(self._elemCallback)
+        FEAAssembler.initialize(self._elemCallback())
 
         # set complex step Gmatrix into all elements through assembler
         FEAAssembler.assembler.setComplexStepGmatrix(True)
