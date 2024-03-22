@@ -6,7 +6,7 @@ Goal is to rerun certain data points if the mesh wasn't converged
 gen_mc_data.py : generate monte carlo training data for each of the surrogate models
 """
 
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import numpy as np
 import pandas as pd
 import os
@@ -60,7 +60,7 @@ _ny = df["ny"].to_numpy()
 # exit()
 
 # run the nominal plate for mode tracking
-nominal_plate = buckling_surrogate.FlatPlateAnalysis.hexcelIM7(
+nominal_plate = mlb.FlatPlateAnalysis.hexcelIM7(
     comm=comm,
     bdf_file="plate.bdf",
     a=1.0,
@@ -93,7 +93,7 @@ for row in range(N):
     print(f"\n\n Re-Running row {row} with AR = {_AR[row]}")
 
     # randomly generate the material
-    material = buckling_surrogate.FlatPlateAnalysis.get_material_from_str(_materials[row])
+    material = mlb.FlatPlateAnalysis.get_material_from_str(_materials[row])
     ply_angle = _ply_angle[row]
 
     # random geometry, min thickness so that K,G matrices have good norm
@@ -108,7 +108,7 @@ for row in range(N):
     a = aspect_ratio * b
 
     # make the flat plate
-    new_plate: buckling_surrogate.FlatPlateAnalysis = material(
+    new_plate: mlb.FlatPlateAnalysis = material(
         comm,
         bdf_file="plate.bdf",
         a=a,
@@ -180,7 +180,7 @@ for row in range(N):
 
     if abs(error_0) < 1e-10 and reasonable_min and kmin:
         # perform the mode tracking
-        tracked_eigvals, _ = buckling_surrogate.FlatPlateAnalysis.mac_permutation(
+        tracked_eigvals, _ = mlb.FlatPlateAnalysis.mac_permutation(
             nominal_plate, new_plate, num_modes=20
         )
 

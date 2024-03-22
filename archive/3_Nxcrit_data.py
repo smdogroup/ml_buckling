@@ -5,7 +5,7 @@ Goal is to generate data for pure uniaxial compression failure in the x-directio
 For now just simply supported only..
 """
 
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import numpy as np
 import pandas as pd
 import os, niceplots
@@ -75,7 +75,7 @@ while accepted_ct < N:  # until has generated this many samples
     h = 10**log_h
 
     # make the flat plate
-    flat_plate = buckling_surrogate.FlatPlateAnalysis(
+    flat_plate = mlb.FlatPlateAnalysis(
         comm,
         bdf_file="plate.bdf",
         a=a,

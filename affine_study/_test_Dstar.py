@@ -1,4 +1,4 @@
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import numpy as np
 from mpi4py import MPI
 
@@ -8,7 +8,7 @@ comm = MPI.COMM_WORLD
 test the range of Dstar values I can get by rotating these plies
 """
 
-_materials = buckling_surrogate.FlatPlateAnalysis.get_materials()
+_materials = mlb.FlatPlateAnalysis.get_materials()
 print(f"materials = {_materials}")
 for material in _materials:
     for angle in np.linspace(0.0, 90.0, 10):

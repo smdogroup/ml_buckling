@@ -7,7 +7,7 @@ For now just simply supported only..
 gen_mc_data.py : generate monte carlo training data for each of the surrogate models
 """
 
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import numpy as np
 import pandas as pd
 import os
@@ -73,7 +73,7 @@ if _clear_data:
 inner_ct = 0
 
 # run the nominal plate for mode tracking
-nominal_plate = buckling_surrogate.FlatPlateAnalysis.hexcelIM7(
+nominal_plate = mlb.FlatPlateAnalysis.hexcelIM7(
     comm=comm,
     bdf_file="plate.bdf",
     a=1.0,
@@ -96,7 +96,7 @@ nom_eigvals, _ = nominal_plate.run_buckling_analysis(
 
 for foo in range(N):  # until has generated this many samples
     # randomly generate the material
-    materials = buckling_surrogate.FlatPlateAnalysis.get_materials()
+    materials = mlb.FlatPlateAnalysis.get_materials()
     material = np.random.choice(np.array(materials))
     ply_angle = np.random.uniform(0.0, 90.0)
 
@@ -120,7 +120,7 @@ for foo in range(N):  # until has generated this many samples
         # create the flat plate analysis
 
         # make the flat plate
-        new_plate: buckling_surrogate.FlatPlateAnalysis = material(
+        new_plate: mlb.FlatPlateAnalysis = material(
             comm,
             bdf_file="plate.bdf",
             a=a,
@@ -195,7 +195,7 @@ for foo in range(N):  # until has generated this many samples
 
         if abs(error_0) < 1e-10 and reasonable_min and kmin:
             # perform the mode tracking
-            tracked_eigvals, _ = buckling_surrogate.FlatPlateAnalysis.mac_permutation(
+            tracked_eigvals, _ = mlb.FlatPlateAnalysis.mac_permutation(
                 nominal_plate, new_plate, num_modes=20
             )
 

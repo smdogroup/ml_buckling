@@ -1,5 +1,5 @@
 import numpy as np
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import matplotlib.pyplot as plt
 import niceplots, pandas, os
 from mpi4py import MPI
@@ -32,7 +32,7 @@ for AR in [0.7, 1.0, 1.3]:
     b = 100.0  # 10.0
     for b in np.linspace(10.0, 100.0, 10):
 
-        flat_plate = buckling_surrogate.FlatPlateAnalysis(
+        flat_plate = mlb.FlatPlateAnalysis(
             comm=comm,
             bdf_file="plate.bdf",
             a=AR * b,

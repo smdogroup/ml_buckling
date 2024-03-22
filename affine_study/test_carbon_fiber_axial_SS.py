@@ -2,7 +2,7 @@
 Sean Engelstad, Feb 2024
 GT SMDO Lab
 """
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import numpy as np
 from mpi4py import MPI
 import matplotlib.pyplot as plt
@@ -34,7 +34,7 @@ for AR in np.linspace(0.5, 5, 40):
     b = 5.0  # try different b values and make sure curve still valid
     slenderness = 100.0  # 33.3
 
-    flat_plate = buckling_surrogate.FlatPlateAnalysis(
+    flat_plate = mlb.FlatPlateAnalysis(
         comm=comm,
         bdf_file="plate.bdf",
         a=AR * b,

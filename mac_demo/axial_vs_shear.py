@@ -1,5 +1,5 @@
 import numpy as np
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import matplotlib.pyplot as plt
 import niceplots, pandas, os
 from mpi4py import MPI
@@ -15,7 +15,7 @@ ny = 30
 
 # axial plate
 # --------------------------------------------------
-axial_plate = buckling_surrogate.FlatPlateAnalysis(
+axial_plate = mlb.FlatPlateAnalysis(
     comm=comm,
     bdf_file="plate.bdf",
     a=1.0,
@@ -43,7 +43,7 @@ tacs_eigvals, _ = axial_plate.run_buckling_analysis(
 
 # sheared plate
 # --------------------------------------------------
-shear_plate = buckling_surrogate.FlatPlateAnalysis(
+shear_plate = mlb.FlatPlateAnalysis(
     comm=comm,
     bdf_file="plate.bdf",
     a=1.0,
@@ -71,6 +71,6 @@ tacs_eigvals, _ = shear_plate.run_buckling_analysis(
 
 # perform modal assurance criterion between these two buckling analyses
 # ---------------------------------------------------------------------
-buckling_surrogate.FlatPlateAnalysis.mac_permutation(
+mlb.FlatPlateAnalysis.mac_permutation(
     axial_plate, shear_plate, num_modes=6
 )

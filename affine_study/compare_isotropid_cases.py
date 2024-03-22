@@ -1,5 +1,5 @@
 import numpy as np
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import matplotlib.pyplot as plt
 import niceplots, pandas, os
 from mpi4py import MPI
@@ -35,7 +35,7 @@ for i in range(160):  # 200 random smaples
     slenderness = 100.0
     b = 100.0  # 10.0
 
-    flat_plate = buckling_surrogate.FlatPlateAnalysis(
+    flat_plate = mlb.FlatPlateAnalysis(
         comm=comm,
         bdf_file="plate.bdf",
         a=AR * b,

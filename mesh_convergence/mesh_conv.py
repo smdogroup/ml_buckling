@@ -1,4 +1,4 @@
-from tacs import buckling_surrogate
+import ml_buckling as mlb
 import numpy as np, os, time
 from mpi4py import MPI
 import pandas as pd
@@ -29,7 +29,7 @@ for AR in [5.0]:  # [1.0, 3.0, 5.0]
         scale = 10**log10_scale
         _start_time = time.time()
 
-        flat_plate = buckling_surrogate.FlatPlateAnalysis(
+        flat_plate = mlb.FlatPlateAnalysis(
             comm=comm,
             bdf_file="plate.bdf",
             a=AR,
