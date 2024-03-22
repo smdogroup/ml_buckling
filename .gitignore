@@ -4,3 +4,6 @@ static/
 **/buckling/
 **/static/
 **/plate.bdf
+*.egg-info
+**/__pycache__
+build/
