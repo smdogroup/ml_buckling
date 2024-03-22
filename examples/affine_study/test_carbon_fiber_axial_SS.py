@@ -34,7 +34,7 @@ for AR in np.linspace(0.5, 5, 40):
     b = 5.0  # try different b values and make sure curve still valid
     slenderness = 100.0  # 33.3
 
-    flat_plate = mlb.FlatPlateAnalysis(
+    flat_plate = mlb.UnstiffenedPlateAnalysis(
         comm=comm,
         bdf_file="plate.bdf",
         a=AR * b,

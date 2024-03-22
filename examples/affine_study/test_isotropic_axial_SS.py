@@ -29,7 +29,7 @@ for AR in np.linspace(0.5, 5, 40):
     slenderness = 100.0
     b = 100.0  # 100.0 originally
 
-    flat_plate = mlb.FlatPlateAnalysis(
+    flat_plate = mlb.UnstiffenedPlateAnalysis(
         comm=comm,
         bdf_file="plate.bdf",
         a=AR * b,

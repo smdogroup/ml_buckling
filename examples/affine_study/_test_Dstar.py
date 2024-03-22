@@ -8,7 +8,7 @@ comm = MPI.COMM_WORLD
 test the range of Dstar values I can get by rotating these plies
 """
 
-_materials = mlb.FlatPlateAnalysis.get_materials()
+_materials = mlb.UnstiffenedPlateAnalysis.get_materials()
 print(f"materials = {_materials}")
 for material in _materials:
     for angle in np.linspace(0.0, 90.0, 10):

@@ -8,7 +8,7 @@ from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
 
-flat_plate = mlb.FlatPlateAnalysis(
+flat_plate = mlb.UnstiffenedPlateAnalysis(
     comm=comm,
     bdf_file="plate.bdf",
     a=2.44010,

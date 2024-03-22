@@ -1,4 +1,4 @@
-__all__ = ["FlatPlateAnalysis", "exp_kernel1"]
+__all__ = ["UnstiffenedPlateAnalysis", "exp_kernel1"]
 
 import numpy as np
 from tacs import pyTACS, constitutive, elements, utilities
@@ -15,7 +15,7 @@ def exp_kernel1(xp, xq, sigma_f, L):
     return sigma_f**2 * np.exp(-0.5 * (xp - xq).T @ (xp - xq) / L**2)
 
 
-class FlatPlateAnalysis:
+class UnstiffenedPlateAnalysis:
     def __init__(
         self,
         comm,

@@ -13,7 +13,7 @@ flat_plates = []
 
 # axial plate 1
 # --------------------------------------------------
-axial_plate1 = mlb.FlatPlateAnalysis(
+axial_plate1 = mlb.UnstiffenedPlateAnalysis(
     comm=comm,
     bdf_file="plate.bdf",
     a=1.0,
@@ -41,7 +41,7 @@ tacs_eigvals, _ = axial_plate1.run_buckling_analysis(
 
 # sheared plate
 # --------------------------------------------------
-axial_plate2 = mlb.FlatPlateAnalysis(
+axial_plate2 = mlb.UnstiffenedPlateAnalysis(
     comm=comm,
     bdf_file="plate.bdf",
     a=2.0,
@@ -69,6 +69,6 @@ tacs_eigvals, _ = axial_plate2.run_buckling_analysis(
 
 # perform modal assurance criterion between these two buckling analyses
 # ---------------------------------------------------------------------
-mlb.FlatPlateAnalysis.mac_permutation(
+mlb.UnstiffenedPlateAnalysis.mac_permutation(
     axial_plate1, axial_plate2, num_modes=6
 )

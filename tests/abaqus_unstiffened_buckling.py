@@ -17,7 +17,7 @@ run_static = False
 
 class TestPlateCases(unittest.TestCase):
     # use the same flat plate geometry and material through all three test cases
-    flat_plate = mlb.FlatPlateAnalysis(
+    flat_plate = mlb.UnstiffenedPlateAnalysis(
         comm=comm,
         bdf_file="plate.bdf",
         a=1.0,
@@ -130,7 +130,7 @@ class TestPlateCases(unittest.TestCase):
         assert np.max(np.abs(rel_error)) < 0.1
 
     def test_affine_simply_supported(self):
-        flat_plate = mlb.FlatPlateAnalysis(
+        flat_plate = mlb.UnstiffenedPlateAnalysis(
             comm=comm,
             bdf_file="plate.bdf",
             a=1.0,

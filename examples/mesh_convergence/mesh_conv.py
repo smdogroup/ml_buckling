@@ -29,7 +29,7 @@ for AR in [5.0]:  # [1.0, 3.0, 5.0]
         scale = 10**log10_scale
         _start_time = time.time()
 
-        flat_plate = mlb.FlatPlateAnalysis(
+        flat_plate = mlb.UnstiffenedPlateAnalysis(
             comm=comm,
             bdf_file="plate.bdf",
             a=AR,

@@ -32,7 +32,7 @@ for AR in [0.7, 1.0, 1.3]:
     b = 100.0  # 10.0
     for b in np.linspace(10.0, 100.0, 10):
 
-        flat_plate = mlb.FlatPlateAnalysis(
+        flat_plate = mlb.UnstiffenedPlateAnalysis(
             comm=comm,
             bdf_file="plate.bdf",
             a=AR * b,

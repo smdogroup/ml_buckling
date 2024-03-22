@@ -35,7 +35,7 @@ for i in range(160):  # 200 random smaples
     slenderness = 100.0
     b = 100.0  # 10.0
 
-    flat_plate = mlb.FlatPlateAnalysis(
+    flat_plate = mlb.UnstiffenedPlateAnalysis(
         comm=comm,
         bdf_file="plate.bdf",
         a=AR * b,

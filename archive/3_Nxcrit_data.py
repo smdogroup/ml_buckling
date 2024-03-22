@@ -75,7 +75,7 @@ while accepted_ct < N:  # until has generated this many samples
     h = 10**log_h
 
     # make the flat plate
-    flat_plate = mlb.FlatPlateAnalysis(
+    flat_plate = mlb.UnstiffenedPlateAnalysis(
         comm,
         bdf_file="plate.bdf",
         a=a,
