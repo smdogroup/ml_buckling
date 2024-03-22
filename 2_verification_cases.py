@@ -43,7 +43,7 @@ class TestPlateCases(unittest.TestCase):
 
         # flat_plate.run_static_analysis(write_soln=True)
 
-        tacs_eigvals = self.flat_plate.run_buckling_analysis(
+        tacs_eigvals,_ = self.flat_plate.run_buckling_analysis(
             sigma=30.0, num_eig=12, write_soln=True
         )
 
@@ -75,7 +75,7 @@ class TestPlateCases(unittest.TestCase):
 
         # flat_plate.run_static_analysis(write_soln=True)
 
-        tacs_eigvals = self.flat_plate.run_buckling_analysis(
+        tacs_eigvals,_ = self.flat_plate.run_buckling_analysis(
             sigma=30.0, num_eig=12, write_soln=True
         )
 
@@ -110,7 +110,7 @@ class TestPlateCases(unittest.TestCase):
 
         # flat_plate.run_static_analysis(write_soln=True)
 
-        tacs_eigvals = self.flat_plate.run_buckling_analysis(
+        tacs_eigvals,_ = self.flat_plate.run_buckling_analysis(
             sigma=30.0, num_eig=12, write_soln=True
         )
 
@@ -181,7 +181,7 @@ class TestPlateCases(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    test = 4
+    test = "all"
 
     # run all cases with this
     if test == "all":

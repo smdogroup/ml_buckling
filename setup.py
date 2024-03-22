@@ -17,6 +17,6 @@ setup(
     long_description_content_type="text/markdown",
     author="Sean P. Engelstad",
     author_email="sengeltad312@gatech.edu",
-    install_requires=["numpy", "tacs>3.7.0"],
+    install_requires=["numpy", "tacs>=3.6.0"],
     packages=find_packages(include=["ml_buckling*"]),
 )
