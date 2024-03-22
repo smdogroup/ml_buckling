@@ -1,0 +1,6 @@
+buckling/
+plate.bdf
+static/
+**/buckling/
+**/static/
+**/plate.bdf
