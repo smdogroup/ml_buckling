@@ -42,7 +42,14 @@ patbeg ilocal num_local+1
       # make the stiffener wall
       set y_mid y_start+w_b*0.5
       box 0 y_mid 0 a 0 -h_w
-      attribute capsGroup $stiff
+      select face
+       attribute capsGroup $stiff
+      select node 1
+      select add 2
+       attribute capsConstraint $stCorner #stiffener corners
+      select edge 2
+      select add 4
+       attribute capsConstraint $stCorner #stiffener corners
       union
    
    endif
@@ -53,4 +60,4 @@ select body
 attribute capsAIM $egadsTessAIM;tacsAIM   
 
 end
-||||||||
+||||||||||||
