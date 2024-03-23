@@ -31,6 +31,8 @@ geometry = mlb.StiffenedPlateGeometry(
     t_w=27*8e-2, # if the wall thickness is too low => stiffener crimping failure happens
 )
 
+# TODO : still getting funky results with stiffener crippled modes for the shear case
+
 material = mlb.CompositeMaterial.solvay5320(ply_angle=0)
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(

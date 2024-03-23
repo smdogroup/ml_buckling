@@ -154,9 +154,9 @@ class StiffenedPlateAnalysis:
         caps2tacs.ThicknessVariable(caps_group="base", value=self.geometry.h+self.geometry.t_b, material=null_mat).register_to(tacs_model)
         caps2tacs.ThicknessVariable(caps_group="stiff", value=self.geometry.t_w, material=null_mat).register_to(tacs_model)
 
-        # add v constraint to stiffener corner nodes - since they are tied off here to ribs
+        # add v,theta_z constraint to stiffener corner nodes - since they are tied off here to ribs
         # hope to produce more realistic shear modes
-        caps2tacs.PinConstraint(caps_constraint="stCorner", dof_constraint=2).register_to(tacs_model)
+        caps2tacs.PinConstraint(caps_constraint="stCorner", dof_constraint=26).register_to(tacs_model)
 
         # run the pre analysis to build tacs input files
         #tacs_aim._no_constr_override = True
