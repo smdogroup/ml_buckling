@@ -9,15 +9,18 @@ from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
 
+# I think what happens when h becomes very low for large a,b the norm of K is too small and that affects the soln
+# to prevent low thickness problems => just make overall plate size smaller
+
 geometry = mlb.StiffenedPlateGeometry(
-    a=1.0,
-    b=1.0,
-    h=0.005,
+    a=0.1, 
+    b=0.1,
+    h=5e-3,
     num_stiff=3,
-    w_b=0.02,
-    t_b=0.002,
-    h_w=0.1,
-    t_w=0.003,
+    w_b=6e-3,
+    t_b=2e-3,
+    h_w=3e-3,
+    t_w=1e-4,
 )
 
 material = mlb.CompositeMaterial.solvay5320(ply_angle=0)
@@ -37,5 +40,5 @@ stiff_analysis.pre_analysis(
     edge_pt_min=5,
     edge_pt_max=40,
 )
-stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=5, write_soln=True)
+stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
 stiff_analysis.post_analysis()

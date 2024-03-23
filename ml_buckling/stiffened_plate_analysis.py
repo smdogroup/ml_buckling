@@ -306,7 +306,7 @@ class StiffenedPlateAnalysis:
                 thickness = self.geometry.h + self.geometry.t_b
             elif "stiff" in compDescript:
                 material = self.stiffener_material
-                thickness = self.geometry.h + self.geometry.t_b
+                thickness = self.geometry.t_w
             else:
                 raise AssertionError("elem does not belong to oneof the main components")
 
