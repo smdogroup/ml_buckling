@@ -1,12 +1,11 @@
 __all__ = ["StiffenedPlateAnalysis"]
 
 import numpy as np
-from tacs import pyTACS, constitutive, elements, utilities
+from tacs import pyTACS, constitutive, elements, utilities, caps2tacs
 import os
 from pprint import pprint
 from .stiffened_plate_geometry import StiffenedPlateGeometry
 from .composite_material import CompositeMaterial
-from typing_extensions import Self
 
 dtype = utilities.BaseUI.dtype
 
@@ -14,11 +13,10 @@ class StiffenedPlateAnalysis:
     def __init__(
         self,
         comm,
-        bdf_file,
         geometry:StiffenedPlateGeometry,
         plate_material:CompositeMaterial,
         stiffener_material:CompositeMaterial,
-        plate_name=None,  # use the plate name to differentiate plate folder names
+        name=None,  # use the plate name to differentiate plate folder names
     ):
         self.comm = comm
         self.geometry = geometry
@@ -26,19 +24,13 @@ class StiffenedPlateAnalysis:
         self.stiffener_material = stiffener_material
 
         # geometry properties
-        self._plate_name = plate_name
-        self._bdf_file = bdf_file
-
-        # temp
-        self._nx = None
-        self._ny = None
-        self._M = None
-        self._N = None
+        self._name = name
+        self._tacs_aim = None
 
     @property
     def buckling_folder_name(self) -> str:
-        if self._plate_name:
-            return "buckling-" + self._plate_name
+        if self._name:
+            return "buckling-" + self._name
         else:
             return "buckling"
 
@@ -51,153 +43,207 @@ class StiffenedPlateAnalysis:
         self._bdf_file = new_file
 
     @property
-    def num_elements(self) -> int:
-        return self._nx * self._ny
-
+    def csm_file(self):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        return os.path.join(dir_path, "stiffened_panel.csm")
+    
     @property
-    def num_nodes(self) -> int:
-        return self._N * self._M
-
+    def caps_lock(self):
+        if self._tacs_aim is not None:
+            tacs_dir = self._tacs_aim.root_analysis_dir
+            scratch_dir = os.path.dirname(tacs_dir)
+            #caps_dir = os.path.dirname(scratch_dir)
+            return os.path.join(scratch_dir, "capsLock")
+        
     @property
-    def num_modes(self) -> int:
-        """number of eigenvalues or modes that were recorded"""
-        return self._num_modes
+    def dat_file(self):
+        return self._tacs_aim.root_dat_file
+    
+    @property
+    def bdf_file(self):
+        tacs_dir = self._tacs_aim.root_analysis_dir
+        return os.path.join(tacs_dir, "tacs.bdf")
 
-    def generate_bdf(self, nx=30, ny=30, exx=0.0, eyy=0.0, exy=0.0, clamped=True):
+    def pre_analysis(
+            self, 
+            global_mesh_size=0.1,
+            exx=0.0, 
+            eyy=0.0,
+            exy=0.0, 
+            clamped=False,
+            edge_pt_min=5,
+            edge_pt_max=40,
+        ):
         """
-        # Generate a plate mesh with CQUAD4 elements
-        create pure axial, pure shear, or combined loading displacement control
-        of a flat plate
+        Generate a stiffened plate mesh with CQUAD4 elements
+        create pure axial, pure shear, or combined loading displacement
         """
 
-        nodes = np.arange(1, (nx + 1) * (ny + 1) + 1, dtype=np.int32).reshape(
-            nx + 1, ny + 1
+        # use caps2tacs to generate a stiffened panel
+        tacs_model = caps2tacs.TacsModel.build(
+            csm_file=self.csm_file, 
+            comm=self.comm, 
+            active_procs=[0]
         )
+        tacs_aim = tacs_model.tacs_aim
+        self._tacs_aim = tacs_aim
 
-        self._nx = nx
-        self._ny = ny
+        tacs_model.mesh_aim.set_mesh(
+            edge_pt_min=edge_pt_min,
+            edge_pt_max=edge_pt_max,
+            global_mesh_size=global_mesh_size,
+            max_surf_offset=0.01,
+            max_dihedral_angle=15,
+        ).register_to(tacs_model)
 
-        # num nodes in each direction
-        self._M = self._nx + 1
-        self._N = self._ny + 1
+        null_mat = caps2tacs.Isotropic.null().register_to(tacs_model)
 
-        x = self.a * np.linspace(0.0, 1.0, nx + 1)
-        y = self.b * np.linspace(0.0, 1.0, ny + 1)
+        # set Stiffened plate geometry class into the CSM geometry
+        tacs_aim.set_design_parameter("a", self.geometry.a)
+        tacs_aim.set_design_parameter("b", self.geometry.b)
+        tacs_aim.set_design_parameter("num_stiff", self.geometry.num_stiff)
+        tacs_aim.set_design_parameter("w_b", self.geometry.w_b)
+        tacs_aim.set_design_parameter("h_w", self.geometry.h_w)
 
-        # copy coordinates for use later in the modal assurance criterion
-        self._x = x
-        self._y = y
-        # nodes count across the x-axis first then loop over y-axis from bot-left corner
-        self._xi = [
-            self._x[i % self._M] / self.a for i in range(self.num_nodes)
-        ]  # non-dim coordinates
-        self._eta = [self._y[int(i / self._M)] / self.b for i in range(self.num_nodes)]
+        # set shell properties with CompDescripts
+        # auto makes shell properties (need thickDVs so that the compDescripts get written out from tacsAIM)
+        caps2tacs.ThicknessVariable(caps_group="panel", value=self.geometry.h, material=null_mat).register_to(tacs_model)
+        caps2tacs.ThicknessVariable(caps_group="base", value=self.geometry.h+self.geometry.t_b, material=null_mat).register_to(tacs_model)
+        caps2tacs.ThicknessVariable(caps_group="stiff", value=self.geometry.t_w, material=null_mat).register_to(tacs_model)
 
+        # run the pre analysis to build tacs input files
+        tacs_aim._no_constr_override = True
+        tacs_model.setup(include_aim=True)
+        tacs_model.pre_analysis()
+
+
+        # read the bdf file to get the boundary nodes
+        # and then add custom BCs for axial or shear
         if self.comm.rank == 0:
-            fp = open(self.bdf_file, "w")
-            fp.write("$ Input file for a square axial/shear-disp BC plate\n")
-            fp.write("SOL 103\nCEND\nBEGIN BULK\n")
 
-            # Write the grid points to a file
-            for j in range(ny + 1):
-                for i in range(nx + 1):
-                    # Write the nodal data
-                    spc = " "
-                    coord_disp = 0
-                    coord_id = 0
-                    seid = 0
+            # read the BDF file
+            hdl = open(self.bdf_file, "r")
+            lines = hdl.readlines()
+            hdl.close()
 
+            next_line = False
+            nodes = []
+
+            for line in lines:
+                chunks = line.split(" ")
+                non_null_chunks = [_ for _ in chunks if not(_ == '' or _ == '\n')]
+                if next_line:
+                    next_line = False
+                    z_chunk = non_null_chunks[1].strip('\n')
+                    node_dict["z"] = float(z_chunk)
+                    nodes += [node_dict]
+                    continue
+
+                if "GRID*" in line:
+                    next_line = True
+                    y_chunk = non_null_chunks[3].strip("*")
+
+                    node_dict = {
+                        "id" : int(non_null_chunks[1]),
+                        "x" : float(non_null_chunks[2]),
+                        "y" : float(y_chunk),
+                        "z" : None,
+                    }
+
+            # make nodes dict for nodes on the boundary
+            boundary_nodes = []
+            def in_tol(val1,val2):
+                return abs(val1-val2) < 1e-5
+            for node_dict in nodes:
+                x_left = in_tol(node_dict["x"], 0.0)
+                x_right = in_tol(node_dict["x"], self.geometry.b)
+                y_bot = in_tol(node_dict["y"], 0.0)
+                y_top = in_tol(node_dict["y"], self.geometry.a)
+                xy_plane = in_tol(node_dict["z"], 0.0)
+
+                on_bndry = x_left or x_right or y_bot or y_top
+                on_bndry = on_bndry and xy_plane
+
+                if on_bndry:
+                    node_dict["xleft"] = x_left
+                    node_dict["xright"] = x_right
+                    node_dict["ybot"] = y_bot
+                    node_dict["ytop"] = y_top
+
+                    #print(f"boundary node dict = {node_dict}")
+
+                    boundary_nodes += [node_dict]
+
+            # need to read in the ESP/CAPS dat file
+            # then append write the SPC cards to it
+                # Set up the plate BCs so that it has u = uhat, for shear disp control
+                # u = eps * y, v = eps * x, w = 0
+            fp = open(self.dat_file, "r")
+            dat_lines = fp.readlines()
+            fp.close()
+
+            post = False
+            pre_lines = []
+            post_lines = []
+            for line in dat_lines:
+                if "MAT" in line:
+                    post = True
+                if post:
+                    post_lines += [line]
+                else:
+                    pre_lines += [line]
+
+            fp = open(self.dat_file, "w")
+            for line in pre_lines:
+                fp.write(line)
+
+            for node_dict in boundary_nodes:
+                x = node_dict["x"]
+                y = node_dict["y"]
+                nid = node_dict["id"]
+                u = exy * y
+                v = exy * x
+
+                if node_dict["xright"] or exy != 0:
+                    u -= exx * x
+                elif node_dict["ytop"]:
+                    v -= eyy * y
+                elif node_dict["xleft"] or node_dict["ybot"]:
+                    pass
+
+                # check on boundary
+                if clamped or (node_dict["xleft"] and node_dict["ybot"]):
                     fp.write(
-                        "%-8s%16d%16d%16.9e%16.9e*       \n"
-                        % ("GRID*", nodes[i, j], coord_id, x[i], y[j])
-                    )
+                        "%-8s%8d%8d%8s%8.6f\n"
+                        % ("SPC", 1, nid, "3456", 0.0)
+                    )  # w = theta_x = theta_y
+                else:
                     fp.write(
-                        "*       %16.9e%16d%16s%16d        \n"
-                        % (0.0, coord_disp, spc, seid)
-                    )
-
-            # Output 2nd order elements
-            elem = 1
-            part_id = 1
-            for j in range(ny):
-                for i in range(nx):
-                    # Write the connectivity data
-                    # CQUAD4 elem id n1 n2 n3 n4
+                        "%-8s%8d%8d%8s%8.6f\n"
+                        % ("SPC", 1, nid, "36", 0.0)
+                    )  # w = theta_x = theta_y
+                if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
                     fp.write(
-                        "%-8s%8d%8d%8d%8d%8d%8d\n"
-                        % (
-                            "CQUAD4",
-                            elem,
-                            part_id,
-                            nodes[i, j],
-                            nodes[i + 1, j],
-                            nodes[i + 1, j + 1],
-                            nodes[i, j + 1],
-                        )
-                    )
-                    elem += 1
+                        "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "1", u)
+                    )  # u = eps_xy * y
+                if exy != 0.0 or node_dict["ybot"]:
+                    fp.write(
+                        "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "2", v)
+                    )  # v = eps_xy * x
 
-            # Set up the plate BCs so that it has u = uhat, for shear disp control
-            # u = eps * y, v = eps * x, w = 0
-            for j in range(ny + 1):
-                for i in range(nx + 1):
-                    u = exy * y[j]
-                    v = exy * x[i]
-
-                    if i == nx or exy != 0:
-                        u -= exx * x[i]
-                    elif j == ny:
-                        v -= eyy * y[j]
-                    elif i == 0 or j == 0:
-                        pass
-
-                    # check on boundary
-                    if i == 0 or j == 0 or i == nx or j == ny:
-                        if clamped or (i == 0 and j == 0):
-                            fp.write(
-                                "%-8s%8d%8d%8s%8.6f\n"
-                                % ("SPC", 1, nodes[i, j], "3456", 0.0)
-                            )  # w = theta_x = theta_y
-                        else:
-                            fp.write(
-                                "%-8s%8d%8d%8s%8.6f\n"
-                                % ("SPC", 1, nodes[i, j], "36", 0.0)
-                            )  # w = theta_x = theta_y
-                        if exy != 0 or i == 0 or i == nx:
-                            fp.write(
-                                "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nodes[i, j], "1", u)
-                            )  # u = eps_xy * y
-                        if exy != 0.0 or j == 0:
-                            fp.write(
-                                "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nodes[i, j], "2", v)
-                            )  # v = eps_xy * x
-
-            # # plot the mesh to make sure it makes sense
-            # X, Y = np.meshgrid(x, y)
-            # W = X * 0.0
-            # for j in range(ny + 1):
-            #     for i in range(nx + 1):
-            #         if i == 0 or i == nx or j == 0 or j == ny:
-            #             W[i, j] = 1.0
-
-            # plt.scatter(X,Y)
-            # plt.contour(X,Y,W, corner_mask=True, antialiased=True)
-            # plt.show()
-
-            fp.write("ENDDATA")
+            for line in post_lines:
+                fp.write(line)
             fp.close()
 
         self.comm.Barrier()
 
-    def run_static_analysis(self, base_path=None, write_soln=False):
-        """
-        run a linear static analysis on the flat plate with either isotropic or composite materials
-        return the average stresses in the plate => to compute in-plane loads Nx, Ny, Nxy
-        """
+    def post_analysis(self):
+        """no derivatives here so just clear capsLock file"""
+        # remove the capsLock file after done with analysis
+        os.remove(self.caps_lock)
 
-        # Instantiate FEAAssembler
-        FEAAssembler = pyTACS(self.bdf_file, comm=self.comm)
-
+    def _elemCallback(self):
+        """element callback to set the stiffener, base, panel material properties"""
         def elemCallBack(
             dvNum, compID, compDescript, elemDescripts, globalDVs, **kwargs
         ):
@@ -209,35 +255,48 @@ class StiffenedPlateAnalysis:
             # kappa = 6.89
             # specific_heat = 463.0
 
+            if "panel" in compDescript:
+                material = self.plate_material
+                thickness = self.geometry.h
+            elif "base" in compDescript:
+                material = self.stiffener_material
+                thickness = self.geometry.h + self.geometry.t_b
+            elif "stiff" in compDescript:
+                material = self.stiffener_material
+                thickness = self.geometry.h + self.geometry.t_b
+            else:
+                raise AssertionError("elem does not belong to oneof the main components")
+
+
             # if E22 not provided, isotropic
-            isotropic = self._E22 is None
+            isotropic = material._E22 is None
 
             # Setup property and constitutive objects
             if isotropic:
-                mat = constitutive.MaterialProperties(E=self.E11, nu=self.nu12)
+                mat = constitutive.MaterialProperties(E=material.E11, nu=material.nu12)
 
                 # Set one thickness dv for every component
-                con = constitutive.IsoShellConstitutive(mat, t=self.h)
+                con = constitutive.IsoShellConstitutive(mat, t=thickness)
 
             else:  # orthotropic
                 # assume G23, G13 = G12
-                G23 = self.G12 if self._G23 is None else self._G23
-                G13 = self.G12 if self._G13 is None else self._G13
+                G23 = material.G12 if material._G23 is None else material._G23
+                G13 = material.G12 if material._G13 is None else material._G13
                 ortho_prop = constitutive.MaterialProperties(
-                    E1=self.E11,
-                    E2=self.E22,
-                    nu12=self.nu12,
-                    G12=self.G12,
+                    E1=material.E11,
+                    E2=material.E22,
+                    nu12=material.nu12,
+                    G12=material.G12,
                     G23=G23,
                     G13=G13,
                 )
 
-                ortho_ply = constitutive.OrthotropicPly(self.h, ortho_prop)
+                ortho_ply = constitutive.OrthotropicPly(thickness, ortho_prop)
 
                 # one play composite constitutive model
                 con = constitutive.CompositeShellConstitutive(
                     [ortho_ply],
-                    np.array([self.h], dtype=dtype),
+                    np.array([thickness], dtype=dtype),
                     np.array([0], dtype=dtype),
                     tOffset=0.0,
                 )
@@ -258,9 +317,22 @@ class StiffenedPlateAnalysis:
             # Add scale for thickness dv
             scale = [100.0]
             return elemList, scale
+        return elemCallBack
+    
+    def run_static_analysis(self, base_path=None, write_soln=False):
+        """
+        run a linear static analysis on the flat plate with either isotropic or composite materials
+        return the average stresses in the plate => to compute in-plane loads Nx, Ny, Nxy
+        """
+
+        # Instantiate FEAAssembler
+        FEAAssembler = pyTACS(self.dat_file, comm=self.comm)
 
         # Set up constitutive objects and elements
-        FEAAssembler.initialize(elemCallBack)
+        FEAAssembler.initialize(self._elemCallback())
+
+        # set complex step Gmatrix into all elements through assembler
+        FEAAssembler.assembler.setComplexStepGmatrix(True)
 
         # debug the static problem first
         SP = FEAAssembler.createStaticProblem(name="static")
@@ -292,72 +364,13 @@ class StiffenedPlateAnalysis:
         """
 
         # Instantiate FEAAssembler
-        FEAAssembler = pyTACS(self.bdf_file, comm=self.comm)
-
-        def elemCallBack(
-            dvNum, compID, compDescript, elemDescripts, globalDVs, **kwargs
-        ):
-            # Set constitutive properties
-            # rho = 4540.0  # density, kg/m^3
-            # # E = 70e9  # elastic modulus, Pa 118e9
-            # # nu = 0.33  # poisson's ratio
-            # ys = 1050e6  # yield stress, Pa
-            # kappa = 6.89
-            # specific_heat = 463.0
-
-            # if E22 not provided, isotropic
-            isotropic = self._E22 is None
-
-            # Setup property and constitutive objects
-            if isotropic:
-                mat = constitutive.MaterialProperties(E=self.E11, nu=self.nu12)
-
-                # Set one thickness dv for every component
-                con = constitutive.IsoShellConstitutive(mat, t=self.h)
-
-            else:  # orthotropic
-                # assume G23, G13 = G12
-                G23 = self.G12 if self._G23 is None else self._G23
-                G13 = self.G12 if self._G13 is None else self._G13
-                ortho_prop = constitutive.MaterialProperties(
-                    E1=self.E11,
-                    E2=self.E22,
-                    nu12=self.nu12,
-                    G12=self.G12,
-                    G23=G23,
-                    G13=G13,
-                )
-
-                ortho_ply = constitutive.OrthotropicPly(self.h, ortho_prop)
-
-                # one play composite constitutive model
-                con = constitutive.CompositeShellConstitutive(
-                    [ortho_ply],
-                    np.array([self.h], dtype=dtype),
-                    np.array([0], dtype=dtype),
-                    tOffset=0.0,
-                )
-
-            # For each element type in this component,
-            # pass back the appropriate tacs element object
-            elemList = []
-            for descript in elemDescripts:
-                transform = None
-                if descript in ["CQUAD4", "CQUADR"]:
-                    elem = elements.Quad4Shell(transform, con)
-                elif descript in ["CQUAD9", "CQUAD"]:
-                    elem = elements.Quad9Shell(transform, con)
-                else:
-                    raise AssertionError("Non CQUAD4 Elements in this plate?")
-
-                elemList.append(elem)
-
-            # Add scale for thickness dv
-            scale = [100.0]
-            return elemList, scale
+        FEAAssembler = pyTACS(self.dat_file, comm=self.comm)
 
         # Set up constitutive objects and elements
-        FEAAssembler.initialize(elemCallBack)
+        FEAAssembler.initialize(self._elemCallback())
+
+        # set complex step Gmatrix into all elements through assembler
+        FEAAssembler.assembler.setComplexStepGmatrix(True)
 
         # Setup buckling problem
         bucklingProb = FEAAssembler.createBucklingProblem(
