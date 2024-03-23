@@ -27,8 +27,8 @@ geometry = mlb.StiffenedPlateGeometry(
     num_stiff=3,
     w_b=6e-3,
     t_b=3e-3,
-    h_w=3e-2,
-    t_w=8e-2, # if the wall thickness is too low => stiffener crimping failure happens
+    h_w=1e-2,
+    t_w=27*8e-2, # if the wall thickness is too low => stiffener crimping failure happens
 )
 
 material = mlb.CompositeMaterial.solvay5320(ply_angle=0)

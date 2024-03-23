@@ -19,7 +19,7 @@ geometry = mlb.StiffenedPlateGeometry(
     num_stiff=3,
     w_b=6e-3,
     t_b=2e-3,
-    h_w=3e-3,
+    h_w=1e-2,
     t_w=1e-3, # if the wall thickness is too low => stiffener crimping failure happens
 )
 
