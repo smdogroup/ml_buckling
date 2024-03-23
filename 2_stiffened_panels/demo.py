@@ -13,7 +13,7 @@ geometry = mlb.StiffenedPlateGeometry(
     a=1.0,
     b=1.0,
     h=0.005,
-    num_stiff=5,
+    num_stiff=3,
     w_b=0.02,
     t_b=0.002,
     h_w=0.1,
@@ -30,7 +30,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 )
 
 stiff_analysis.pre_analysis(
-    global_mesh_size=0.1,
+    global_mesh_size=0.03,
     exx=1.0,
     exy=0.0,
     clamped=False,

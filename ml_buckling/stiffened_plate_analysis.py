@@ -45,7 +45,7 @@ class StiffenedPlateAnalysis:
     @property
     def csm_file(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        return os.path.join(dir_path, "stiffened_panel.csm")
+        return os.path.join(dir_path, "_stiffened_panel.csm")
     
     @property
     def caps_lock(self):
