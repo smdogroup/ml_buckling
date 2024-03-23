@@ -7,15 +7,15 @@ despmtr w_b 0.02
 despmtr h_w 0.1
 
 set num_local num_stiff
-set s_p a/num_stiff
+set s_p b/num_stiff
 
 set y_start 0
 patbeg ilocal num_local+1
-   set a_local (a-num_local*w_b)/num_local
+   set b_local (b-num_local*w_b)/num_local
    ifthen ilocal EQ 1
-      set a_local a_local*0.5
+      set b_local b_local*0.5
    elseif ilocal EQ num_local+1
-      set a_local a_local*0.5
+      set b_local b_local*0.5
    endif
    
    ifthen ilocal GT 1
@@ -23,7 +23,7 @@ patbeg ilocal num_local+1
    endif
    
    # make the local panel section
-   box 0 y_start 0 b a_local 0
+   box 0 y_start 0 a b_local 0
    select face
     attribute capsGroup $panel
    ifthen ilocal GT 1
@@ -33,15 +33,15 @@ patbeg ilocal num_local+1
    ifthen ilocal LT num_local+1
       
       # make the local stiffener base section
-      set y_start y_start+a_local
-      box 0 y_start 0 b w_b 0
+      set y_start y_start+b_local
+      box 0 y_start 0 a w_b 0
       select face
       attribute capsGroup $base
       union
    
       # make the stiffener wall
       set y_mid y_start+w_b*0.5
-      box 0 y_mid 0 b 0 -h_w
+      box 0 y_mid 0 a 0 -h_w
       attribute capsGroup $stiff
       union
    

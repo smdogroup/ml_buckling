@@ -199,9 +199,9 @@ class StiffenedPlateAnalysis:
                 return abs(val1-val2) < 1e-5
             for node_dict in nodes:
                 x_left = in_tol(node_dict["x"], 0.0)
-                x_right = in_tol(node_dict["x"], self.geometry.b)
+                x_right = in_tol(node_dict["x"], self.geometry.a)
                 y_bot = in_tol(node_dict["y"], 0.0)
-                y_top = in_tol(node_dict["y"], self.geometry.a)
+                y_top = in_tol(node_dict["y"], self.geometry.b)
                 xy_plane = in_tol(node_dict["z"], 0.0)
 
                 on_bndry = x_left or x_right or y_bot or y_top
