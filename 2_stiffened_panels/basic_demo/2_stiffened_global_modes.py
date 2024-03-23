@@ -40,5 +40,8 @@ stiff_analysis.pre_analysis(
     edge_pt_min=5,
     edge_pt_max=40,
 )
-stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
 stiff_analysis.post_analysis()
+
+print(f"tacs eigvals = {tacs_eigvals}")
+print(f"errors = {errors}")

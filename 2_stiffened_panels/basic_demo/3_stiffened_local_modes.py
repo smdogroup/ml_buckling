@@ -17,19 +17,18 @@ Need to make the stiffener stronger w.r.t. the plate
 To exaggarate: have really thick stiffener (non-physically thick)
 """
 
-# maybe I'm not correctly modeling the base of the blade stiffener
-# I just increase the thickness in this region.. (but maybe it should act like an extra ply or mated there)
-# maybe I need a lower aspect ratio plate to get local modes ??
+# the first couple modes are beam-column buckling along the y-direction
+# then the 4th and 5th modes are local buckling!
 
 geometry = mlb.StiffenedPlateGeometry(
     a=0.1, 
-    b=0.3,
+    b=0.1,
     h=3e-3,
-    num_stiff=10,
+    num_stiff=3,
     w_b=6e-3,
     t_b=3e-3,
-    h_w=5e-3,
-    t_w=1e-2, # if the wall thickness is too low => stiffener crimping failure happens
+    h_w=3e-2,
+    t_w=8e-2, # if the wall thickness is too low => stiffener crimping failure happens
 )
 
 material = mlb.CompositeMaterial.solvay5320(ply_angle=0)
@@ -49,5 +48,8 @@ stiff_analysis.pre_analysis(
     edge_pt_min=5,
     edge_pt_max=40,
 )
-stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
 stiff_analysis.post_analysis()
+
+print(f"tacs eigvals = {tacs_eigvals}")
+print(f"errors = {errors}")
