@@ -31,7 +31,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 
 stiff_analysis.pre_analysis(
     global_mesh_size=0.03,
-    exx=1.0,
+    exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
     edge_pt_min=5,

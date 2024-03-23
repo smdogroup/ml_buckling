@@ -63,6 +63,49 @@ class StiffenedPlateAnalysis:
     def bdf_file(self):
         tacs_dir = self._tacs_aim.root_analysis_dir
         return os.path.join(tacs_dir, "tacs.bdf")
+    
+    @property
+    def affine_exx(self):
+        """
+        Solve exx such that lambda = lambda_min*
+        Just estimate the overall buckling mode and require the user to adjust for local modes case
+            when the stiffeners are stronger
+        TODO : could estimate based on local mode too?
+        """
+        material = self.plate_material
+        nu21 = material.nu12 * material.E22 / material.E11
+        denom = 1.0 - material.nu12 * nu21
+        D11 = material.E11 * self.geometry.h**3 / 12.0 / denom
+        D22 = material.E22 * self.geometry.h**3 / 12.0 / denom
+        exx_T = (
+            np.pi**2 * np.sqrt(D11 * D22) / self.geometry.b**2 / self.geometry.h / material.E11
+        )
+        return exx_T
+    
+    @property
+    def affine_eyy(self):
+        """TODO : write this eqn out"""
+        return None
+
+    @property
+    def affine_exy(self):
+        """
+        get the exy so that lambda = kx_0y_0 the affine buckling coefficient for pure shear load
+        out of the buckling analysis!
+        """
+        material = self.plate_material
+        nu21 = material.nu12 * material.E22 / material.E11
+        denom = 1.0 - material.nu12 * nu21
+        D11 = material.E11 * self.geometry.h**3 / 12.0 / denom
+        D22 = material.E22 * self.geometry.h**3 / 12.0 / denom
+        exy_T = (
+            np.pi**2
+            * (D11 * D22**3) ** 0.25
+            / self.geometry.b**2
+            / self.geometry.h
+            / material.G12
+        )
+        return exy_T
 
     def pre_analysis(
             self, 
