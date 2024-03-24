@@ -17,11 +17,14 @@ class StiffenedPlateAnalysis:
         plate_material:CompositeMaterial,
         stiffener_material:CompositeMaterial,
         name=None,  # use the plate name to differentiate plate folder names
+        compress_stiff=False, # whether to compress stiffeners to in axial case (TODO : figure this out => need to study static analysis)
     ):
         self.comm = comm
         self.geometry = geometry
         self.plate_material = plate_material
         self.stiffener_material = stiffener_material
+
+        self._compress_stiff_override = compress_stiff
 
         # geometry properties
         self._name = name
@@ -210,7 +213,8 @@ class StiffenedPlateAnalysis:
 
                 # no longer enforce xy-plane since also want to constraint stringers like plate perimeter too!
                 # otherwise the stringers buckle strangely in shear. They need to be fixed to the rib/spar like the plate perimeter
-                #xy_plane = in_tol(node_dict["z"], 0.0)
+                # Update: changed this so that the stiffeners don't receive in-plane compressive disp BCs, but do receive shear perimeter disps
+                xy_plane = in_tol(node_dict["z"], 0.0)
 
                 on_bndry = x_left or x_right or y_bot or y_top
                 #on_bndry = on_bndry and xy_plane
@@ -220,6 +224,7 @@ class StiffenedPlateAnalysis:
                     node_dict["xright"] = x_right
                     node_dict["ybot"] = y_bot
                     node_dict["ytop"] = y_top
+                    node_dict["xy_plane"] = xy_plane or self._compress_stiff_override
 
                     #print(f"boundary node dict = {node_dict}")
 
@@ -255,12 +260,15 @@ class StiffenedPlateAnalysis:
                 u = exy * y
                 v = exy * x
 
-                if node_dict["xright"] or exy != 0:
-                    u -= exx * x
-                elif node_dict["ytop"]:
-                    v -= eyy * y
-                elif node_dict["xleft"] or node_dict["ybot"]:
-                    pass
+                # only enforce compressive displacements to plate, not stiffeners
+                # TODO : maybe I need to do this for the stiffener too, but unclear
+                if node_dict["xy_plane"]: 
+                    if node_dict["xright"] or exy != 0:
+                        u -= exx * x
+                    elif node_dict["ytop"]:
+                        v -= eyy * y
+                    elif node_dict["xleft"] or node_dict["ybot"]:
+                        pass
 
                 # check on boundary
                 if clamped or (node_dict["xleft"] and node_dict["ybot"]):
@@ -273,14 +281,16 @@ class StiffenedPlateAnalysis:
                         "%-8s%8d%8d%8s%8.6f\n"
                         % ("SPC", 1, nid, "36", 0.0)
                     )  # w = theta_x = theta_y
-                if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
-                    fp.write(
-                        "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "1", u)
-                    )  # u = eps_xy * y
-                if exy != 0.0 or node_dict["ybot"]:
-                    fp.write(
-                        "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "2", v)
-                    )  # v = eps_xy * x
+                # TODO : maybe I need to do this for the stiffener too for exx case, but unclear
+                if node_dict["xy_plane"] or exy != 0: 
+                    if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
+                        fp.write(
+                            "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "1", u)
+                        )  # u = eps_xy * y
+                    if exy != 0.0 or node_dict["ybot"]:
+                        fp.write(
+                            "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "2", v)
+                        )  # v = eps_xy * x
 
             for line in post_lines:
                 fp.write(line)

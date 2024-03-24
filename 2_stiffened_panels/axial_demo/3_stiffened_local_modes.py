@@ -2,6 +2,7 @@
 Sean Engelstad
 : 
 Demo analysis of a stiffened panel
+NOTE : copy u*iHat+v*jHat+w*kHat for paraview
 """
 
 import ml_buckling as mlb
@@ -38,6 +39,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
+    compress_stiff=False, # need to figure this out with linear static analysis
 )
 
 stiff_analysis.pre_analysis(

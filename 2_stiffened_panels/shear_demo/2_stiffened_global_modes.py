@@ -2,6 +2,7 @@
 Sean Engelstad
 : 
 Demo analysis of a stiffened panel
+NOTE : copy u*iHat+v*jHat+w*kHat for paraview
 """
 
 import ml_buckling as mlb

@@ -15,6 +15,7 @@ comm = MPI.COMM_WORLD
 """
 Need to make the stiffener stronger w.r.t. the plate
 To exaggarate: have really thick stiffener (non-physically thick)
+NOTE : copy u*iHat+v*jHat+w*kHat for viewing
 """
 
 # the first couple modes are beam-column buckling along the y-direction

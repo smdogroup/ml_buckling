@@ -1,6 +1,7 @@
 """
 Sean Engelstad, Feb 2024
 GT SMDO Lab
+NOTE : copy u*iHat+v*jHat+w*kHat for paraview
 """
 import ml_buckling as mlb
 import numpy as np
