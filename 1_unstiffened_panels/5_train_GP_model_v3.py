@@ -33,7 +33,7 @@ BC = args.BC
 load_prefix = "Nxcrit" if load == "Nx" else "Nxycrit"
 csv_filename = f"{load_prefix}_{BC}"
 print(f"csv filename = {csv_filename}")
-df = pd.read_csv("data/" + csv_filename + ".csv")
+df = pd.read_csv("_data/" + csv_filename + ".csv")
 
 # extract only the model columns
 # TODO : if need more inputs => could maybe try adding log(E11/E22) in as a parameter?
@@ -65,16 +65,18 @@ aff_AR_bins = (
 
 # make a folder for the model fitting
 data_folder = os.path.join(os.getcwd(), "data")
-sub_data_folder = os.path.join(data_folder, csv_filename)
-wo_outliers_folder = os.path.join(sub_data_folder, "model-no-outliers")
-w_outliers_folder = os.path.join(sub_data_folder, "model-w-outliers")
-GP_folder = os.path.join(sub_data_folder, "GP_v2")
+plots_folder = os.path.join(os.getcwd(), "plots")
+sub_plots_folder = os.path.join(plots_folder, csv_filename)
+wo_outliers_folder = os.path.join(sub_plots_folder, "model-no-outliers")
+w_outliers_folder = os.path.join(sub_plots_folder, "model-w-outliers")
+GP_folder = os.path.join(sub_plots_folder, "GP_v2")
 for ifolder,folder in enumerate([
     data_folder,
-    sub_data_folder,
+    sub_plots_folder,
     wo_outliers_folder,
     w_outliers_folder,
     GP_folder,
+    plots_folder
 ]):
     if ifolder >= 2 and os.path.exists(folder):
         shutil.rmtree(folder)
@@ -243,7 +245,7 @@ X = X[keep_mask, :]
 Y = Y[keep_mask, :]
 
 # convert xi, a0/b0, b/h and kmin to log space
-X[:, 1:] = np.log(X[:, :])
+X[:, :] = np.log(X[:, :])
 Y[:, 0:] = np.log(Y[:, 0:])
 
 # split into training and test datasets

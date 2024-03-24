@@ -33,7 +33,7 @@ BC = args.BC
 load_prefix = "Nxcrit" if load == "Nx" else "Nxycrit"
 csv_filename = f"{load_prefix}_{BC}"
 print(f"csv filename = {csv_filename}")
-df = pd.read_csv("data/" + csv_filename + ".csv")
+df = pd.read_csv("_data/" + csv_filename + ".csv")
 
 # extract only the model columns
 # TODO : if need more inputs => could maybe try adding log(E11/E22) in as a parameter?
@@ -64,7 +64,7 @@ aff_AR_bins = (
 )
 
 # make a folder for the model fitting
-data_folder = os.path.join(os.getcwd(), "data")
+data_folder = os.path.join(os.getcwd(), "plots")
 sub_data_folder = os.path.join(data_folder, csv_filename)
 wo_outliers_folder = os.path.join(sub_data_folder, "model-no-outliers")
 w_outliers_folder = os.path.join(sub_data_folder, "model-w-outliers")
