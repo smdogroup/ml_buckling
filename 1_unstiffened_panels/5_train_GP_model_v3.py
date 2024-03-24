@@ -64,6 +64,12 @@ aff_AR_bins = (
 )
 
 _plot_outliers = False
+_plot = True
+_plot_Dstar_2d = False
+_plot_slender_2d = False
+_plot_3d = True
+_plot_model_fit = False
+_plot_model_fit_xi = False
 
 # make a folder for the model fitting
 plots_folder = os.path.join(os.getcwd(), "plots")
@@ -162,12 +168,6 @@ alpha = np.linalg.solve(K_y, y)
 
 # plot the model and some of the data near the model range in D*=1, AR from 0.5 to 5.0, b/h=100
 # ---------------------------------------------------------------------------------------------
-_plot = True
-_plot_Dstar_2d = True
-_plot_slender_2d = True
-_plot_3d = True
-_plot_model_fit = True
-_plot_model_fit_xi = True
 
 if _plot:
     # get the available colors
@@ -239,7 +239,6 @@ if _plot:
             # exit()
 
             # plot data in certain range of the training set
-            mask = np.logical_and(mask1, mask2)
             X_in_range = X[mask, :]
             Y_in_range = Y[mask, :]
 

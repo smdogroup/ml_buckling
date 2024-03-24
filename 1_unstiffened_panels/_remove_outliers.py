@@ -72,7 +72,6 @@ plots_folder = os.path.join(os.getcwd(), "plots")
 sub_plots_folder = os.path.join(plots_folder, csv_filename)
 wo_outliers_folder = os.path.join(sub_plots_folder, "model-no-outliers")
 w_outliers_folder = os.path.join(sub_plots_folder, "model-w-outliers")
-GP_folder = os.path.join(sub_plots_folder, "GP_v2")
 for ifolder,folder in enumerate([
     plots_folder,
     sub_plots_folder,
