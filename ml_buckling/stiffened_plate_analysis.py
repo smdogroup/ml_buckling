@@ -36,6 +36,13 @@ class StiffenedPlateAnalysis:
             return "buckling-" + self._name
         else:
             return "buckling"
+        
+    @property
+    def static_folder_name(self) -> str:
+        if self._name:
+            return "static-" + self._name
+        else:
+            return "static"
 
     @property
     def bdf_file(self) -> str:
