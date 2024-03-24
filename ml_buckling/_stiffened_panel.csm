@@ -6,17 +6,12 @@ despmtr num_stiff 5
 despmtr w_b 0.02
 despmtr h_w 0.1
 
-set num_local num_stiff
-set s_p b/num_stiff
+set num_local num_stiff+1
+set s_p b/num_local
 
 set y_start 0
-patbeg ilocal num_local+1
-   set b_local (b-num_local*w_b)/num_local
-   ifthen ilocal EQ 1
-      set b_local b_local*0.5
-   elseif ilocal EQ num_local+1
-      set b_local b_local*0.5
-   endif
+patbeg ilocal num_local
+   set b_local (b-num_stiff*w_b)/num_local
    
    ifthen ilocal GT 1
       set y_start y_start+w_b
@@ -30,7 +25,7 @@ patbeg ilocal num_local+1
       union
    endif
    
-   ifthen ilocal LT num_local+1
+   ifthen ilocal LT num_local
       
       # make the local stiffener base section
       set y_start y_start+b_local
@@ -60,4 +55,4 @@ select body
 attribute capsAIM $egadsTessAIM;tacsAIM   
 
 end
-||||||||||||
+|||||||||||||

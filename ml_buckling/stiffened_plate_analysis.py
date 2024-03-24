@@ -155,11 +155,12 @@ class StiffenedPlateAnalysis:
         caps2tacs.ThicknessVariable(caps_group="stiff", value=self.geometry.t_w, material=null_mat).register_to(tacs_model)
 
         # add v,theta_z constraint to stiffener corner nodes - since they are tied off here to ribs
-        # hope to produce more realistic shear modes
-        caps2tacs.PinConstraint(caps_constraint="stCorner", dof_constraint=26).register_to(tacs_model)
+        # hope to produce more realistic shear modes, TODO : figure out whether this should be here
+        # this isn't compatible with BCs for the 
+        #caps2tacs.PinConstraint(caps_constraint="stCorner", dof_constraint=26).register_to(tacs_model)
 
         # run the pre analysis to build tacs input files
-        #tacs_aim._no_constr_override = True
+        tacs_aim._no_constr_override = True
         tacs_model.setup(include_aim=True)
         tacs_model.pre_analysis()
 
@@ -206,10 +207,13 @@ class StiffenedPlateAnalysis:
                 x_right = in_tol(node_dict["x"], self.geometry.a)
                 y_bot = in_tol(node_dict["y"], 0.0)
                 y_top = in_tol(node_dict["y"], self.geometry.b)
-                xy_plane = in_tol(node_dict["z"], 0.0)
+
+                # no longer enforce xy-plane since also want to constraint stringers like plate perimeter too!
+                # otherwise the stringers buckle strangely in shear. They need to be fixed to the rib/spar like the plate perimeter
+                #xy_plane = in_tol(node_dict["z"], 0.0)
 
                 on_bndry = x_left or x_right or y_bot or y_top
-                on_bndry = on_bndry and xy_plane
+                #on_bndry = on_bndry and xy_plane
 
                 if on_bndry:
                     node_dict["xleft"] = x_left
