@@ -38,8 +38,8 @@ df = pd.read_csv("_data/" + csv_filename + ".csv")
 # extract only the model columns
 # TODO : if need more inputs => could maybe try adding log(E11/E22) in as a parameter?
 # or also log(E11/G12)
-X = df[["Dstar", "a0/b0", "b/h"]].to_numpy()
-Y = df["kmin"].to_numpy()
+X = df[["x0", "x1", "x2"]].to_numpy()
+Y = df["y"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
 print(f"Monte Carlo #data = {X.shape[0]}")
@@ -63,24 +63,28 @@ aff_AR_bins = (
     + [[2.0, 10.0]]
 )
 
+_plot_outliers = False
+
 # make a folder for the model fitting
-data_folder = os.path.join(os.getcwd(), "data")
 plots_folder = os.path.join(os.getcwd(), "plots")
 sub_plots_folder = os.path.join(plots_folder, csv_filename)
 wo_outliers_folder = os.path.join(sub_plots_folder, "model-no-outliers")
 w_outliers_folder = os.path.join(sub_plots_folder, "model-w-outliers")
 GP_folder = os.path.join(sub_plots_folder, "GP_v2")
 for ifolder,folder in enumerate([
-    data_folder,
+    plots_folder,
     sub_plots_folder,
     wo_outliers_folder,
     w_outliers_folder,
     GP_folder,
-    plots_folder
 ]):
-    if ifolder >= 2 and os.path.exists(folder):
+    if ifolder > 0 and os.path.exists(folder):
         shutil.rmtree(folder)
-    if not os.path.exists(folder):
+    if ifolder in [2,3]:
+        _mk_folder = _plot_outliers
+    else:
+        _mk_folder = True
+    if not os.path.exists(folder) and _mk_folder:
         os.mkdir(folder)
 
 plt.style.use(niceplots.get_style())
@@ -90,163 +94,6 @@ slenderness = X[:, 2]
 kx0 = Y[:, 0]
 
 n_data = Dstar.shape[0]
-# print(f"n data = {n_data}")
-global_outlier_mask = np.full((n_data,), False, dtype=bool)
-
-plt_ct = 0
-
-for ibin, bin in enumerate(slender_bins):
-    if ibin < len(slender_bins) - 1:
-        mask1 = np.logical_and(bin[0] <= slenderness, slenderness < bin[1])
-    else:
-        mask1 = np.logical_and(bin[0] <= slenderness, slenderness <= bin[1])
-    if np.sum(mask1) == 0:
-        continue
-
-    for iDstar, Dstar_bin in enumerate(Dstar_bins):
-        if iDstar < len(Dstar_bins) - 1:
-            mask2 = np.logical_and(Dstar_bin[0] <= Dstar, Dstar < Dstar_bin[1])
-        else:
-            mask2 = np.logical_and(Dstar_bin[0] <= Dstar, Dstar <= Dstar_bin[1])
-
-        # limit to local regions in D*, slenderness
-        layer2_mask = np.logical_and(mask1, mask2)
-
-        for iAR, AR_bin in enumerate(aff_AR_bins):
-            if iAR < len(aff_AR_bins) - 1:
-                mask3 = np.logical_and(AR_bin[0] <= affine_AR, affine_AR < AR_bin[1])
-            else:
-                mask3 = np.logical_and(AR_bin[0] <= affine_AR, affine_AR <= AR_bin[1])
-
-            mask = np.logical_and(layer2_mask, mask3)
-            # and also now in affine_AR
-            N = np.sum(mask)
-
-            # print(f"aspect ratio bin = {AR_bin}, N = {N}")
-
-            if N < 5:
-                continue
-
-            local_indices = np.where(mask)[0]
-
-            # compute a local polynomial fit - mean and covariance
-            # eliminate local outliers
-            X_local = X[mask, :]
-            t_local = Y[mask, :]
-
-            loc_AR = X_local[:, 1:2]
-            X_fit = np.concatenate([np.ones((N, 1)), loc_AR, loc_AR**2], axis=1)
-            # print(f"X_fit shape = {X_fit.shape}")
-            # print(f"t_local shape = {t_local.shape}")
-            w_hat = np.linalg.solve(X_fit.T @ X_fit, X_fit.T @ t_local)
-            # print(f"w_hat shape = {w_hat.shape}")
-
-            # compute the local noise
-            t_pred = X_fit @ w_hat
-            resids = t_local - t_pred
-            variance = float(1 / N * resids.T @ resids)
-            sigma = np.sqrt(variance)
-
-            _plot_outliers = False
-
-            # compute plotted model
-            if _plot_outliers:
-                plot_AR = np.linspace(AR_bin[0], AR_bin[1], 20).reshape((20, 1))
-                X_plot = np.concatenate(
-                    [np.ones((20, 1)), plot_AR, plot_AR**2], axis=1
-                )
-                t_plot = X_plot @ w_hat
-
-                # plot the local polynomial model and its variance range
-                plt.figure("temp")
-                ax = plt.subplot(111)
-                plt.margins(x=0.05, y=0.05)
-                plt.title(
-                    f"b/h - [{bin[0]},{bin[1]}], D* - [{Dstar_bin[0]},{Dstar_bin[1]}]"
-                )
-                plt.plot(loc_AR, t_local, "ko")
-                plt.plot(plot_AR, t_plot - 2 * sigma, "r--", label=r"$\mu-2 \sigma$")
-                plt.plot(plot_AR, t_plot, "b-", label=r"$\mu$")
-                plt.plot(plot_AR, t_plot + 2 * sigma, "b--", label=r"$\mu+2 \sigma$")
-                plt.legend()
-                plt.xlabel(r"$a_0/b_0$")
-                plt.ylabel(r"$k_{x_0}$")
-                plt.savefig(
-                    os.path.join(
-                        wo_outliers_folder, f"slender{ibin}_Dstar{iDstar}_AR{iAR}.png"
-                    ),
-                    dpi=400,
-                )
-                plt_ct += 1
-                plt.close("temp")
-
-            # get all of the datapoints that lie outside the +- 2 sigma bounds
-            z_scores = abs(resids[:, 0]) / sigma
-            # print(f"zscores = {z_scores}")
-            outlier_mask = z_scores >= 2.0
-            if np.sum(outlier_mask) == 0:
-                continue  # no outliers found so exit
-            X_outliers = X_local[outlier_mask, :]
-
-            # now show plot with outliers indicated for sanity check
-            if _plot_outliers:
-                loc_AR_noout = loc_AR[np.logical_not(outlier_mask), :]
-                t_local_noout = t_local[np.logical_not(outlier_mask), :]
-                loc_AR_out = loc_AR[outlier_mask, :]
-                t_local_out = t_local[outlier_mask, :]
-                plt.figure("temp", figsize=(8, 6))
-                ax = plt.subplot(111)
-                plt.margins(x=0.05, y=0.05)
-                plt.title(
-                    f"b/h - [{bin[0]},{bin[1]}], D* - [{Dstar_bin[0]},{Dstar_bin[1]}]"
-                )
-                ax.fill_between(
-                    plot_AR[:, 0],
-                    t_plot[:, 0] - 2 * sigma,
-                    t_plot[:, 0] + 2 * sigma,
-                    color="g",
-                )
-                ax.plot(plot_AR, t_plot + 2 * sigma, "b--", label=r"$\mu+2 \sigma$")
-                ax.plot(plot_AR, t_plot, "b-", label=r"$\mu$")
-                ax.plot(plot_AR, t_plot - 2 * sigma, "r--", label=r"$\mu-2 \sigma$")
-                ax.plot(loc_AR_noout, t_local_noout, "ko", label="data")
-                ax.plot(loc_AR_out, t_local_out, "ro", label="outlier")
-                plt.legend()
-                plt.xlabel(r"$a_0/b_0$")
-                plt.ylabel(r"$k_{x_0}$")
-                box = ax.get_position()
-                ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-                # Put a legend to the right of the current axis
-                ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
-                plt.savefig(
-                    os.path.join(
-                        w_outliers_folder, f"slender{ibin}_Dstar{iDstar}_AR{iAR}.png"
-                    ),
-                    dpi=400,
-                )
-                plt_ct += 1
-                plt.close("temp")
-
-            # now record the outliers to the global outlier indices and remove them
-            n_outliers = np.sum(outlier_mask)
-            # print(f"local indices = {local_indices[:3]} type {type(local_indices)}")
-            # print(f"outlier mask = {outlier_mask} type {type(outlier_mask)} shape = {outlier_mask.shape}")
-            _outlier_indices = local_indices[outlier_mask]
-            # print(f"local outlier indices = {_outlier_indices} shape = {_outlier_indices.shape}")
-            for _outlier in _outlier_indices:
-                global_outlier_mask[_outlier] = True
-
-# print(f"global outlier mask = {global_outlier_mask}")
-print(f"num outliers = {np.sum(global_outlier_mask)}")
-# exit()
-# remove the outliers from the dataset
-keep_mask = np.logical_not(global_outlier_mask)
-X = X[keep_mask, :]
-Y = Y[keep_mask, :]
-
-# convert xi, a0/b0, b/h and kmin to log space
-X[:, :] = np.log(X[:, :])
-Y[:, 0:] = np.log(Y[:, 0:])
 
 # split into training and test datasets
 n_total = X.shape[0]
@@ -328,6 +175,109 @@ if _plot:
     colors = prop_cycle.by_key()["color"]
 
     plt.style.use(niceplots.get_style())
+
+    if _plot_model_fit_xi: #
+        # iterate over the different slender,D* bins
+        for ibin, bin in enumerate(slender_bins):
+            slender_bin = [np.log(bin[0]), np.log(bin[1])]
+            avg_log_slender = 0.5 * (slender_bin[0] + slender_bin[1])
+            mask1 = np.logical_and(slender_bin[0] <= X[:, 2], X[:, 2] <= slender_bin[1])
+            if np.sum(mask1) == 0:
+                continue
+
+            plt.figure("check model", figsize=(8, 6))
+            plt.margins(x=0.05, y=0.05)
+            plt.title(f"b/h in [{bin[0]},{bin[1]}]")
+            ax = plt.subplot(111)
+
+            # pick high aspect ratio for xi fit
+            AR_fit = np.log(3.0) <= X[:,1]
+            mask = np.logical_and(mask1, AR_fit)
+            if np.sum(mask) == 0:
+                continue
+
+            # predict the GP curve
+            n_plot = 100
+            X_plot = np.zeros((n_plot, 3))
+            X_plot[:, 0] = np.log(np.linspace(0.4, 1.5,n_plot))
+            X_plot[:, 1] = np.log(4.0) # np.log(np.linspace(0.1, 10.0, n_plot))
+            X_plot[:, 2] = avg_log_slender
+
+            Kplot_train = np.array(
+                [
+                    [kernel(X_train[i, :], X_plot[j, :],theta0) for i in range(n_train)]
+                    for j in range(n_plot)
+                ]
+            )
+            f_plot = Kplot_train @ alpha
+
+            Kpp = np.array(
+                [
+                    [kernel(X_plot[i, :], X_plot[j, :],theta0) for i in range(n_plot)]
+                    for j in range(n_plot)
+                ]
+            )
+            Kpp += sigma_n**2 * np.eye(n_plot)
+
+            # cholesky decomp to find the covariance and standard deviations of the model
+            L = np.linalg.cholesky(K_y) # decomposes K_train into L * L^T
+
+            # now also get the covariance of the plot dataset
+            # solve (L L^T) A = K_cross^T by first solving L A1 = Kcross^T
+            A1 = scipy.linalg.solve_triangular(L, Kplot_train.T, lower=True)
+            # solve L^T A = A1
+            A = scipy.linalg.solve_triangular(L.T, A1, lower=False)
+
+            cov_Y_plot = Kpp - Kplot_train @ A # + sigma_n**2 * np.eye(n_plot)
+            #cov_Y_plot = Kpp - Kplot_train @ A + sigma_n**2 * np.eye(n_plot)
+            var_Y_plot = np.diag(cov_Y_plot).reshape((n_plot, 1))
+            std_dev = np.sqrt(var_Y_plot)
+
+            print(f"f_plot = {f_plot[:10,0]}")
+            print(f"var plot = {var_Y_plot[:10,0]}")
+            print(f"std_dev = {std_dev[:10,0]}", flush=True)
+            # exit()
+
+            # plot data in certain range of the training set
+            mask = np.logical_and(mask1, mask2)
+            X_in_range = X[mask, :]
+            Y_in_range = Y[mask, :]
+
+            log_xi_in_range = X_in_range[:, 0]
+
+            # plot the raw data and the model in this range
+            # plot ax fill between
+            ax.fill_between(
+                x=X_plot[:,0],
+                y1=f_plot[:,0] - 3 * std_dev[:,0],
+                y2=f_plot[:,0] + 3 * std_dev[:,0],
+                label='3-sigma'
+            )
+            ax.fill_between(
+                x=X_plot[:,0],
+                y1=f_plot[:,0] - std_dev[:,0],
+                y2=f_plot[:,0] + std_dev[:,0],
+                label='1-sigma'
+            )
+            ax.plot(
+                X_plot[:,0], f_plot[:,0], "k", label="mean"
+            )  # , label=f"D*-[{Dstar_bin[0]},{Dstar_bin[1]}]""
+            ax.plot(
+                log_xi_in_range, Y_in_range, "o", markersize=4, label="train-data"
+            )  # , label=f"D*-[{Dstar_bin[0]},{Dstar_bin[1]}]""
+
+            # outside of for loop save the plot
+            plt.xlabel(r"$log(\xi)$")
+            plt.ylabel(r"$log(\lambda_{min}^*)$")
+            plt.legend()
+            plt.xlim(np.log(0.4), np.log(1.5))
+            plt.ylim(0.0, np.log(20.0))
+            # box = ax.get_position()
+            # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+            # # Put a legend to the right of the current axis
+            # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            plt.savefig(os.path.join(GP_folder, f"xi{ibin}-model-fit.png"), dpi=400)
+            plt.close("check model")
 
     if _plot_model_fit:
         # iterate over the different slender,D* bins
@@ -434,107 +384,6 @@ if _plot:
             # # Put a legend to the right of the current axis
             # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
             plt.savefig(os.path.join(GP_folder, f"slender{ibin}-model-fit.png"), dpi=400)
-            plt.close("check model")
-
-    if _plot_model_fit_xi: #
-        # iterate over the different slender,D* bins
-        for ibin, bin in enumerate(slender_bins):
-            slender_bin = [np.log(bin[0]), np.log(bin[1])]
-            avg_log_slender = 0.5 * (slender_bin[0] + slender_bin[1])
-            mask1 = np.logical_and(slender_bin[0] <= X[:, 2], X[:, 2] <= slender_bin[1])
-            if np.sum(mask1) == 0:
-                continue
-
-            plt.figure("check model", figsize=(8, 6))
-            plt.margins(x=0.05, y=0.05)
-            plt.title(f"b/h in [{bin[0]},{bin[1]}]")
-            ax = plt.subplot(111)
-
-            # pick high aspect ratio for xi fit
-            AR_fit = np.log(3.0) <= X[:,1]
-            mask = np.logical_and(mask1, AR_fit)
-
-            # predict the GP curve
-            n_plot = 100
-            X_plot = np.zeros((n_plot, 3))
-            X_plot[:, 0] = np.log(np.linspace(0.4, 1.5),n_plot)
-            X_plot[:, 1] = np.log(4.0) # np.log(np.linspace(0.1, 10.0, n_plot))
-            X_plot[:, 2] = avg_log_slender
-
-            Kplot_train = np.array(
-                [
-                    [kernel(X_train[i, :], X_plot[j, :],theta0) for i in range(n_train)]
-                    for j in range(n_plot)
-                ]
-            )
-            f_plot = Kplot_train @ alpha
-
-            Kpp = np.array(
-                [
-                    [kernel(X_plot[i, :], X_plot[j, :],theta0) for i in range(n_plot)]
-                    for j in range(n_plot)
-                ]
-            )
-            Kpp += sigma_n**2 * np.eye(n_plot)
-
-            # cholesky decomp to find the covariance and standard deviations of the model
-            L = np.linalg.cholesky(K_y) # decomposes K_train into L * L^T
-
-            # now also get the covariance of the plot dataset
-            # solve (L L^T) A = K_cross^T by first solving L A1 = Kcross^T
-            A1 = scipy.linalg.solve_triangular(L, Kplot_train.T, lower=True)
-            # solve L^T A = A1
-            A = scipy.linalg.solve_triangular(L.T, A1, lower=False)
-
-            cov_Y_plot = Kpp - Kplot_train @ A # + sigma_n**2 * np.eye(n_plot)
-            #cov_Y_plot = Kpp - Kplot_train @ A + sigma_n**2 * np.eye(n_plot)
-            var_Y_plot = np.diag(cov_Y_plot).reshape((n_plot, 1))
-            std_dev = np.sqrt(var_Y_plot)
-
-            print(f"f_plot = {f_plot[:10,0]}")
-            print(f"var plot = {var_Y_plot[:10,0]}")
-            print(f"std_dev = {std_dev[:10,0]}", flush=True)
-            # exit()
-
-            # plot data in certain range of the training set
-            mask = np.logical_and(mask1, mask2)
-            X_in_range = X[mask, :]
-            Y_in_range = Y[mask, :]
-
-            log_xi_in_range = X_in_range[:, 0]
-
-            # plot the raw data and the model in this range
-            # plot ax fill between
-            ax.fill_between(
-                x=X_plot[:,0],
-                y1=f_plot[:,0] - 3 * std_dev[:,0],
-                y2=f_plot[:,0] + 3 * std_dev[:,0],
-                label='3-sigma'
-            )
-            ax.fill_between(
-                x=X_plot[:,0],
-                y1=f_plot[:,0] - std_dev[:,0],
-                y2=f_plot[:,0] + std_dev[:,0],
-                label='1-sigma'
-            )
-            ax.plot(
-                X_plot[:,0], f_plot[:,0], "k", label="mean"
-            )  # , label=f"D*-[{Dstar_bin[0]},{Dstar_bin[1]}]""
-            ax.plot(
-                log_xi_in_range, Y_in_range, "o", markersize=4, label="train-data"
-            )  # , label=f"D*-[{Dstar_bin[0]},{Dstar_bin[1]}]""
-
-            # outside of for loop save the plot
-            plt.xlabel(r"$log(\xi)$")
-            plt.ylabel(r"$log(\lambda_{min}^*)$")
-            plt.legend()
-            plt.xlim(np.log(0.4), np.log(1.5))
-            plt.ylim(0.0, np.log(20.0))
-            # box = ax.get_position()
-            # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-            # # Put a legend to the right of the current axis
-            # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-            plt.savefig(os.path.join(GP_folder, f"xi{ibin}-model-fit.png"), dpi=400)
             plt.close("check model")
 
     if _plot_3d:
