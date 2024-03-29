@@ -11,22 +11,20 @@ comm = MPI.COMM_WORLD
 flat_plate = mlb.UnstiffenedPlateAnalysis(
     comm=comm,
     bdf_file="plate.bdf",
-    a=2.44010,
-    b=0.329,
-    h=0.00533,
+    a=1.0,
+    b=1.0,
+    h=0.01,
     E11=82.14e9,
     nu12=0.1487,
-    E22=16.656e9,  # set to None if isotropic
-    G12=3.189e9,  # set to None if isotropic
 )
 
 flat_plate.generate_bdf(
     nx=30,
     ny=30,
-    exx=0.0,
+    exx=flat_plate.affine_exx,
     eyy=0.0,
-    exy=flat_plate.affine_exy,
-    clamped=False,
+    exy=0.0,
+    clamped=True,
 )
 
 # avg_stresses = flat_plate.run_static_analysis(write_soln=True)

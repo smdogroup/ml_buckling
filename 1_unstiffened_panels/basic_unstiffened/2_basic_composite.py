@@ -14,16 +14,16 @@ flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
     a=1.0,
     b=1.0,
     h=0.005,
-    ply_angle=0,
+    ply_angle=45,
 )
 
 flat_plate.generate_bdf(
     nx=30,
     ny=30,
-    exx=0.0,
+    exx=flat_plate.affine_exx,
     eyy=0.0,
-    exy=flat_plate.affine_exy,
-    clamped=False,
+    exy=0.0, # flat_plate.affine_exy,
+    clamped=True,
 )
 
 # avg_stresses = flat_plate.run_static_analysis(write_soln=True)
