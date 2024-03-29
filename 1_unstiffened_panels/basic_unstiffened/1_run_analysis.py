@@ -11,7 +11,7 @@ comm = MPI.COMM_WORLD
 flat_plate = mlb.UnstiffenedPlateAnalysis(
     comm=comm,
     bdf_file="plate.bdf",
-    a=1.0,
+    a=3.0,
     b=1.0,
     h=0.01,
     E11=82.14e9,
@@ -24,7 +24,7 @@ flat_plate.generate_bdf(
     exx=flat_plate.affine_exx,
     eyy=0.0,
     exy=0.0,
-    clamped=True,
+    clamped=False,
 )
 
 # avg_stresses = flat_plate.run_static_analysis(write_soln=True)
