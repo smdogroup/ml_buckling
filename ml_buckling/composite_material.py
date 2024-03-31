@@ -11,8 +11,9 @@ class CompositeMaterial:
         G12=None,
         _G23=None,
         _G13=None,
-        ply_angle=None,
+        ply_angles=None,
         material_name=None,
+        ply_fractions=None,
     ):
         self.E11 = E11
         self.nu12 = nu12
@@ -20,8 +21,18 @@ class CompositeMaterial:
         self._G12 = G12
         self._G23 = _G23
         self._G13 = _G13
-        self.ply_angle = ply_angle
+        self.ply_angles = ply_angles
+        self.ply_fractions = ply_fractions
         self.material_name = material_name
+
+    @property
+    def num_plies(self) -> int:
+        assert len(self.ply_angles) == len(self.ply_fractions)
+        assert sum(self.ply_fractions) == 1.0
+        return len(self.ply_angles)
+    
+    def get_ply_thicknesses(self, thickness):
+        return [thickness*frac for frac in self.ply_fractions]
 
     @property
     def nu21(self) -> float:
@@ -69,108 +80,93 @@ class CompositeMaterial:
     # NIAR composite materials
 
     @classmethod
-    def solvay5320(cls, ply_angle=0.0):
+    def solvay5320(cls, ply_angles=[0], ply_fractions=[1]):
         """
         NIAR dataset - Solvay 5320-1 material (thermoset)
         Fiber: T650 unitape, Resin: Cycom 5320-1
         Room Temperature Dry (RTD) mean properties shown below
         units in Pa, ND
         """
-        comp_utility = CompositeMaterialUtility(
-            E11=138.461e9, E22=9.177e9, nu12=0.326, G12=4.957e9
-        )
-        comp_utility.rotate_ply(ply_angle)
 
         return cls(
             material_name="solvay5320",
-            ply_angle=ply_angle,
-            E11=comp_utility.E11,
-            E22=comp_utility.E22,
-            nu12=comp_utility.nu12,
-            G12=comp_utility.G12,
+            ply_angles=ply_angles,
+            ply_fractions=ply_fractions,
+            E11=138.461e9,
+            E22=9.177e9,
+            nu12=0.326,
+            G12=4.957e9
         )
-
+    
     @classmethod
-    def solvayMTM45(cls, ply_angle=0.0):
+    def solvayMTM45(cls, ply_angles=[0], ply_fractions=[1]):
         """
         NIAR dataset - Solvay MTM45 material (thermoset)
         Style: 12K AS4 Unidirectional
         Room Temperature Dry (RTD) mean properties shown below
         units in Pa, ND
         """
-        comp_utility = CompositeMaterialUtility(
-            E11=129.5e9, E22=7.936e9, nu12=0.313, G12=4.764e9
-        )
-        comp_utility.rotate_ply(ply_angle)
 
         return cls(
             material_name="solvayMTM45",
-            ply_angle=ply_angle,
-            E11=comp_utility.E11,
-            E22=comp_utility.E22,
-            nu12=comp_utility.nu12,
-            G12=comp_utility.G12,
+            ply_angles=ply_angles,
+            ply_fractions=ply_fractions,
+            E11=129.5e9, 
+            E22=7.936e9, 
+            nu12=0.313, 
+            G12=4.764e9
         )
-
+    
     @classmethod
-    def torayBT250E(cls, ply_angle=0.0):
+    def torayBT250E(cls, ply_angles=[0], ply_fractions=[1]):
         """
         NIAR dataset - Toray (formerly Tencate) BT250E-6 S2 Unitape Gr 284 material (thermoset)
         Room Temperature Dry (RTD) mean properties shown below
-        units in Pa, ND
+        units in Pa, NDs
         """
-        comp_utility = CompositeMaterialUtility(
-            E11=44.74e9, E22=11.36e9, nu12=0.278, G12=3.77e9
-        )
-        comp_utility.rotate_ply(ply_angle)
 
         return cls(
             material_name="torayBT250E",
-            ply_angle=ply_angle,
-            E11=comp_utility.E11,
-            E22=comp_utility.E22,
-            nu12=comp_utility.nu12,
-            G12=comp_utility.G12,
+            ply_angles=ply_angles,
+            ply_fractions=ply_fractions,
+            E11=44.74e9, 
+            E22=11.36e9, 
+            nu12=0.278, 
+            G12=3.77e9
         )
-
+    
     @classmethod
-    def victrexAE(cls, ply_angle=0.0):
+    def victrexAE(cls, ply_angles=[0], ply_fractions=[1]):
         """
         NIAR dataset - Victrex AE 250 LMPAEK (thermoplastic)
         Room Temperature Dry (RTD) mean properties shown below
         units in Pa, ND
         """
-        comp_utility = CompositeMaterialUtility(
-            E11=131.69e9, E22=9.694e9, nu12=0.3192, G12=4.524e9
-        )
-        comp_utility.rotate_ply(ply_angle)
 
         return cls(
             material_name="victrexAE",
-            ply_angle=ply_angle,
-            E11=comp_utility.E11,
-            E22=comp_utility.E22,
-            nu12=comp_utility.nu12,
-            G12=comp_utility.G12,
+            ply_angles=ply_angles,
+            ply_fractions=ply_fractions,
+            E11=131.69e9, 
+            E22=9.694e9, 
+            nu12=0.3192, 
+            G12=4.524e9
         )
 
     @classmethod
-    def hexcelIM7(cls, ply_angle=0.0):
+    def hexcelIM7(cls, ply_angles=[0], ply_fractions=[1]):
         """
         NIAR dataset - Hexcel 8552 IM7 Unidirectional Prepreg (thermoset)
         Room Temperature Dry (RTD) mean properties shown below
         units in Pa, ND
         """
-        comp_utility = CompositeMaterialUtility(
-            E11=158.51e9, nu12=0.316, E22=8.96e9, G12=4.688e9
-        )
-        comp_utility.rotate_ply(ply_angle)
 
         return cls(
-            material_name="hexcelIM7",
-            ply_angle=ply_angle,
-            E11=comp_utility.E11,
-            E22=comp_utility.E22,
-            nu12=comp_utility.nu12,
-            G12=comp_utility.G12,
+            material_name="torayBT250E",
+            ply_angles=ply_angles,
+            ply_fractions=ply_fractions,
+            E11=158.51e9, 
+            nu12=0.316, 
+            E22=8.96e9, 
+            G12=4.688e9
         )

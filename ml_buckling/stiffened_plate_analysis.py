@@ -361,13 +361,14 @@ class StiffenedPlateAnalysis:
 
                 ortho_ply = constitutive.OrthotropicPly(thickness, ortho_prop)
 
-                # one play composite constitutive model
+                # how to make sure it is a symmetric laminate?
                 con = constitutive.CompositeShellConstitutive(
-                    [ortho_ply],
-                    np.array([thickness], dtype=dtype),
-                    np.array([0], dtype=dtype),
+                    [ortho_ply]*material.num_plies,
+                    np.array(material.get_ply_thicknesses(thickness), dtype=dtype),
+                    np.array(material.ply_angles, dtype=dtype),
                     tOffset=0.0,
                 )
+
             # For each element type in this component,
             # pass back the appropriate tacs element object
             elemList = []
