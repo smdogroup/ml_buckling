@@ -381,6 +381,8 @@ class StiffenedPlateAnalysis:
                 else:
                     raise AssertionError("Non CQUAD4 Elements in this plate?")
 
+                elem.setComplexStepGmatrix(True)
+
                 elemList.append(elem)
 
             # Add scale for thickness dv
@@ -401,7 +403,7 @@ class StiffenedPlateAnalysis:
         FEAAssembler.initialize(self._elemCallback())
 
         # set complex step Gmatrix into all elements through assembler
-        FEAAssembler.assembler.setComplexStepGmatrix(True)
+        #FEAAssembler.assembler.setComplexStepGmatrix(True)
 
         # debug the static problem first
         SP = FEAAssembler.createStaticProblem(name="static")
@@ -439,7 +441,7 @@ class StiffenedPlateAnalysis:
         FEAAssembler.initialize(self._elemCallback())
 
         # set complex step Gmatrix into all elements through assembler
-        FEAAssembler.assembler.setComplexStepGmatrix(True)
+        #FEAAssembler.assembler.setComplexStepGmatrix(True)
 
         # Setup buckling problem
         bucklingProb = FEAAssembler.createBucklingProblem(
