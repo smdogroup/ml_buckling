@@ -28,6 +28,30 @@ class StiffenedPlateGeometry:
     def s_p(self) -> float:
         """stiffener pitch"""
         return self.a / self.num_stiff
+    
+    @property
+    def area_w(self) -> float:
+        return self.t_w * self.h_w
+    
+    @property
+    def area_b(self) -> float:
+        return self.w_b * self.t_b
+    
+    @property
+    def area_S(self) -> float:
+        return self.area_w + self.area_b
+    
+    @property
+    def area_P(self) -> float:
+        return self.b * self.h
+    
+    @property
+    def I_S(self) -> float:
+        return self.h_w**3 / 12.0
+    
+    @property
+    def I_P(self) -> float:
+        return self.h**3 / 12.0
 
     @property
     def num_local(self): 

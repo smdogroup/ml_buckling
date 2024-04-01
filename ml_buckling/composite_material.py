@@ -1,6 +1,7 @@
 __all__ = ["CompositeMaterial"]
 
 from .composite_material_utility import CompositeMaterialUtility
+import numpy as np
 
 class CompositeMaterial:
     def __init__(
@@ -54,6 +55,46 @@ class CompositeMaterial:
             return self.E11 / 2.0 / (1 + self.nu12)
         else:
             return self._G12
+
+    @property
+    def Q_array(self):
+        _array = np.zeros((4,))
+        for iply, ply_angle in enumerate(self.ply_angles):
+            ply_frac = self.ply_fractions[iply]
+            util = CompositeMaterialUtility(
+                E11=self.E11,
+                E22=self.E22,
+                nu12=self.nu12,
+                G12=self.G12
+            ).rotate_ply(ply_angle)
+
+            nu_denom = (1 - util.nu12 * util.nu21)
+            _array[0] += util.E11 / nu_denom * ply_frac #Q11
+            _array[1] += util.E22 * util.nu12 / nu_denom * ply_frac #Q12
+            _array[2] += util.E22 / nu_denom * ply_frac #Q22
+            _array[3] += util.G12 * util.nu12 / nu_denom * ply_frac #Q66
+        return _array
+    
+    @property
+    def Q11(self) -> float:
+        return self.Q_array[0]
+    
+    @property
+    def Q12(self) -> float:
+        return self.Q_array[1]
+    
+    @property
+    def Q22(self) -> float:
+        return self.Q_array[2]
+    
+    @property
+    def Q66(self) -> float:
+        return self.Q_array[3]
+    
+    @property
+    def E_eff(self) -> float:
+        """effective modulus"""
+        return self.Q11 - self.Q12**2 / self.Q66
 
     @classmethod
     def get_materials(cls):

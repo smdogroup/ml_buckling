@@ -31,6 +31,7 @@ class StiffenedPlateAnalysis:
         # geometry properties
         self._name = name
         self._tacs_aim = None
+        self._index = 0
 
     @property
     def buckling_folder_name(self) -> str:
@@ -45,14 +46,6 @@ class StiffenedPlateAnalysis:
             return "static-" + self._name
         else:
             return "static"
-
-    @property
-    def bdf_file(self) -> str:
-        return self._bdf_file
-
-    @bdf_file.setter
-    def bdf_file(self, new_file: str):
-        self._bdf_file = new_file
 
     @property
     def csm_file(self):
@@ -75,6 +68,7 @@ class StiffenedPlateAnalysis:
     def bdf_file(self):
         tacs_dir = self._tacs_aim.root_analysis_dir
         return os.path.join(tacs_dir, "tacs.bdf")
+
     
     @property
     def affine_exx(self):
@@ -118,6 +112,15 @@ class StiffenedPlateAnalysis:
             / material.G12
         )
         return exy_T
+    
+    def _test_broadcast(self):
+        return
+        # test bcast
+        my_var = 0
+        print(f"pre myvar{self._index} = {my_var} on rank {self.comm.rank}")
+        my_var = self.comm.bcast(my_var, root=0)
+        print(f"post myvar{self._index} = {my_var} on rank {self.comm.rank}")
+        self._index += 1
 
     def pre_analysis(
             self, 
@@ -133,6 +136,8 @@ class StiffenedPlateAnalysis:
         Generate a stiffened plate mesh with CQUAD4 elements
         create pure axial, pure shear, or combined loading displacement
         """
+
+        self._test_broadcast()
 
         # use caps2tacs to generate a stiffened panel
         tacs_model = caps2tacs.TacsModel.build(
@@ -171,10 +176,14 @@ class StiffenedPlateAnalysis:
         # this isn't compatible with BCs for the 
         #caps2tacs.PinConstraint(caps_constraint="stCorner", dof_constraint=26).register_to(tacs_model)
 
+        self._test_broadcast()
+
         # run the pre analysis to build tacs input files
         tacs_aim._no_constr_override = True
         tacs_model.setup(include_aim=True)
         tacs_model.pre_analysis()
+
+        self._test_broadcast()
 
 
         # read the bdf file to get the boundary nodes
@@ -188,6 +197,8 @@ class StiffenedPlateAnalysis:
 
             next_line = False
             nodes = []
+
+        if self.comm.rank == 0:
 
             for line in lines:
                 chunks = line.split(" ")
@@ -247,6 +258,10 @@ class StiffenedPlateAnalysis:
             dat_lines = fp.readlines()
             fp.close()
 
+        self._test_broadcast()
+
+        if self.comm.rank == 0:
+
             post = False
             pre_lines = []
             post_lines = []
@@ -293,7 +308,8 @@ class StiffenedPlateAnalysis:
 
                         # write the RBE element
                         eid += 1
-                        fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 12))
+                        # also could do 123456 or 123 (but I don't really want no rotation here I don't think)
+                        fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 123456))
                         for rbe_node in rbe_nodes:
                             fp1.write("%8d" % (rbe_node))
                         fp1.write("\n")
@@ -306,7 +322,7 @@ class StiffenedPlateAnalysis:
             # add displacement control boundary conditions
             for node_dict in boundary_nodes:
                 # still only apply BCs to xy plane, use RBEs to ensure this now
-                if not node_dict["xy_plane"]: continue
+                #if not node_dict["xy_plane"]: continue
                 x = node_dict["x"]
                 y = node_dict["y"]
                 nid = node_dict["id"]
@@ -315,13 +331,13 @@ class StiffenedPlateAnalysis:
 
                 # only enforce compressive displacements to plate, not stiffeners
                 # TODO : maybe I need to do this for the stiffener too, but unclear
-                if node_dict["xy_plane"]: 
-                    if node_dict["xright"] or exy != 0:
-                        u -= exx * x
-                    elif node_dict["ytop"]:
-                        v -= eyy * y
-                    elif node_dict["xleft"] or node_dict["ybot"]:
-                        pass
+                #if node_dict["xy_plane"]: 
+                if node_dict["xright"] or exy != 0:
+                    u -= exx * x
+                elif node_dict["ytop"]:
+                    v -= eyy * y
+                elif node_dict["xleft"] or node_dict["ybot"]:
+                    pass
 
                 # check on boundary
                 if clamped or (node_dict["xleft"] and node_dict["ybot"]):
@@ -356,7 +372,8 @@ class StiffenedPlateAnalysis:
     def post_analysis(self):
         """no derivatives here so just clear capsLock file"""
         # remove the capsLock file after done with analysis
-        os.remove(self.caps_lock)
+        if self.comm.rank == 0:
+            os.remove(self.caps_lock)
 
     def _elemCallback(self):
         """element callback to set the stiffener, base, panel material properties"""
@@ -448,7 +465,9 @@ class StiffenedPlateAnalysis:
         """
 
         # Instantiate FEAAssembler
+        #os.chdir(self._tacs_aim.root_analysis_dir)
         FEAAssembler = pyTACS(self.dat_file, comm=self.comm)
+        self.comm.Barrier()
 
         # Set up constitutive objects and elements
         FEAAssembler.initialize(self._elemCallback())
@@ -485,6 +504,11 @@ class StiffenedPlateAnalysis:
         run a linear buckling analysis on the flat plate with either isotropic or composite materials
         return the sorted eigenvalues of the plate => would like to include M
         """
+
+        # test bcast
+        self._test_broadcast()
+
+        #os.chdir(self._tacs_aim.root_analysis_dir)
 
         # Instantiate FEAAssembler
         FEAAssembler = pyTACS(self.dat_file, comm=self.comm)
@@ -539,3 +563,48 @@ class StiffenedPlateAnalysis:
 
         # return the eigenvalues here
         return np.array([funcs[key] for key in funcs]), np.array(errors)
+    
+    def predict_crit_load(self, exx=0, exy=0, eyy=0):
+        assert exy == 0 and eyy == 0 #haven't written these yet
+        assert self.geometry.num_stiff == 1 # hasn't been implemented for >1 stiffeners yet
+
+        # axial mode case
+        # -----------------------------
+        # get the stiffener bending stiffeness EI about modulus weighted centroid
+        E_S = self.stiffener_material.E_eff
+        A_W = self.geometry.area_w
+        A_B = self.geometry.area_b
+        wb = self.geometry.w_b
+        tb = self.geometry.t_b
+        tw = self.geometry.t_w
+        hw = self.geometry.h_w
+        a = self.geometry.a
+        b = self.geometry.b
+        A_S = self.geometry.area_S
+        E_P = self.plate_material.E_eff
+        A_P = self.geometry.area_P
+        I_P = self.geometry.h**3 / 12.0
+
+        # modulus weighted centroid zcen
+        z_cen = E_S * (A_B * tb/2.0 + A_W * hw/2.0) / (E_S * A_S + E_P * A_P)
+        z_s = E_S * (A_B * tb/2.0 + A_W * hw/2.0) / (E_S * A_S)
+        I_S = (wb**3 * tb + tw*hw**3) / 12.0
+        EI_s = E_S * I_S + E_S * A_S * (z_s - z_cen)**2
+
+        D11 = self.plate_material.Q11 * I_P
+        D22 = self.plate_material.Q22 * I_P
+        D12 = self.plate_material.Q12 * I_P
+        D66 = self.plate_material.Q66 * I_P
+
+        delta = A_S / A_P
+
+        m1_star = a/b * (D22 / (D11 + 2*EI_s / b))**0.25
+        N11_crit = 2 * a * np.pi**2 / m1_star**2 / b / (0.5 + delta) * (0.25 * (D11 * m1_star**4 * b / a**3 + D22 * a/ b**3) + m1_star**2 / a * (1.0/b * (D12/2.0 + D66) + m1_star**2 / 2.0 / a**2 * EI_s))
+
+        # compute current N11, should it be effective E11 here?
+        N11 = exx * self.plate_material.E11 * self.geometry.h
+
+        _lambda = N11_crit / N11
+        return _lambda
+
+

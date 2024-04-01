@@ -54,6 +54,10 @@ class CompositeMaterialUtility:
         self.G12 = (_temp1 - (_temp1 - 1.0 / G12) * C2**2) ** (-1)
         self.nu12 = self.E11 * (nu12 / E11 - 0.25 * (_temp1 - 1.0 / G12) * S2**2)
         return self
+    
+    @property
+    def nu21(self):
+        return self.nu12 * self.E22 / self.E11
 
     def __str__(self):
         return (

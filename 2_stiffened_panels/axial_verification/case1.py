@@ -15,14 +15,14 @@ comm = MPI.COMM_WORLD
 # to prevent low thickness problems => just make overall plate size smaller
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=0.1, 
+    a=0.3, 
     b=0.1,
     h=5e-3,
     num_stiff=1,
     w_b=6e-3,
     t_b=0.0,
-    h_w=5e-3,
-    t_w=5e-3, # if the wall thickness is too low => stiffener crimping failure happens
+    h_w=50e-3,
+    t_w=20e-3, # if the wall thickness is too low => stiffener crimping failure happens
 )
 
 material = mlb.CompositeMaterial(
@@ -40,7 +40,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    _make_rbe=False
+    _make_rbe=True #True
 )
 
 stiff_analysis.pre_analysis(
@@ -51,9 +51,20 @@ stiff_analysis.pre_analysis(
     edge_pt_min=5,
     edge_pt_max=40,
 )
-_ = stiff_analysis.run_static_analysis(write_soln=True)
-#tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+
+comm.Barrier()
+
+#_ = stiff_analysis.run_static_analysis(write_soln=True)
+tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
 stiff_analysis.post_analysis()
 
-# print(f"tacs eigvals = {tacs_eigvals}")
-# print(f"errors = {errors}")
+print(f"tacs eigvals = {tacs_eigvals}")
+print(f"errors = {errors}")
+
+# predict the actual eigenvalue
+pred_lambda = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+min_eigval = tacs_eigvals[0]
+rel_err = (pred_lambda - min_eigval) / pred_lambda
+print(f"pred min lambda = {pred_lambda}")
+print(f"act min lambda = {min_eigval}")
+print(f"rel err = {abs(rel_err)}")
