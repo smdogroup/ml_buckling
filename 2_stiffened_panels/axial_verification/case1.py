@@ -8,6 +8,9 @@ NOTE : copy u*iHat+v*jHat+w*kHat for paraview
 import ml_buckling as mlb
 from mpi4py import MPI
 import numpy as np
+from tacs import TACS
+
+dtype = TACS.dtype
 
 comm = MPI.COMM_WORLD
 
@@ -18,13 +21,21 @@ geometry = mlb.StiffenedPlateGeometry(
     a=0.1, 
     b=0.1,
     h=5e-3,
-    num_stiff=3,
+    num_stiff=1,
     w_b=6e-3,
-    t_b=2e-3,
-    h_w=1e-2,
-    t_w=1e-3, # if the wall thickness is too low => stiffener crimping failure happens
+    t_b=0.0,
+    h_w=5e-3,
+    t_w=5e-3, # if the wall thickness is too low => stiffener crimping failure happens
 )
 
+material = mlb.CompositeMaterial(
+    E11=138e9, #Pa
+    E22=8.96e9,
+    G12=7.1e9,
+    nu12=0.30,
+    ply_angles=np.deg2rad([0,90,0,90]).astype(dtype),
+    ply_fractions=np.array([0.25, 0.25, 0.25, 0.25]).astype(dtype),
+)
 material = mlb.CompositeMaterial.solvay5320(ref_axis=np.array([1,0,0]))
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
@@ -32,7 +43,6 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    compress_stiff=False, # need to figure this out with linear static analysis
 )
 
 stiff_analysis.pre_analysis(
@@ -43,8 +53,9 @@ stiff_analysis.pre_analysis(
     edge_pt_min=5,
     edge_pt_max=40,
 )
-tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+_ = stiff_analysis.run_static_analysis(write_soln=True)
+#tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
 stiff_analysis.post_analysis()
 
-print(f"tacs eigvals = {tacs_eigvals}")
-print(f"errors = {errors}")
+# print(f"tacs eigvals = {tacs_eigvals}")
+# print(f"errors = {errors}")

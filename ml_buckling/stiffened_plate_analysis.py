@@ -256,11 +256,57 @@ class StiffenedPlateAnalysis:
                 else:
                     pre_lines += [line]
 
+            # open the bdf file to get the max # CQUAD4 elements
+            fp1 = open(self.bdf_file, "r")
+            lines_bdf = fp1.readlines()
+            fp1.close()
+            eid = 0
+            for line in lines_bdf:
+                if "CQUAD4" in line:
+                    chunks = line.split(" ")
+                    no_empty_chunks = [_ for _ in chunks if not(_ == '')]
+                    #print(no_empty_chunks)
+                    _eid = float(no_empty_chunks[1])
+                    if _eid > eid:
+                        eid = _eid
+
+            # make RBE2 elements
+            fp1 = open(self.bdf_file, "a")
+            N = self.geometry.num_stiff + 1
+            for iy in range(1,self.geometry.num_stiff+1):
+                yval = iy * self.geometry.b / N
+                for xval in [0, self.geometry.a]:
+                    rbe_nodes = []
+                    rbe_control_node = None
+
+                    for node_dict in boundary_nodes:                        
+                        if in_tol(node_dict["x"],xval) and in_tol(node_dict["y"], yval):
+                            zval = node_dict["z"]
+                            xy_plane = node_dict["xy_plane"]
+                            print(f"node dict z = {zval}, xy plane = {xy_plane}")
+                            if node_dict["xy_plane"]:
+                                rbe_control_node = node_dict["id"]
+                            else:
+                                rbe_nodes += [node_dict["id"]]
+                    print(f"rbe control node = {rbe_control_node}")
+                    print(f"rbe nodes = {rbe_nodes}")
+
+                    # write the RBE element
+                    eid += 1
+                    fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 12))
+                    for rbe_node in rbe_nodes:
+                        fp1.write("%8d" % (rbe_node))
+                    fp1.write("\n")
+            fp1.close()
+
             fp = open(self.dat_file, "w")
             for line in pre_lines:
                 fp.write(line)
-
+      
+            # add displacement control boundary conditions
             for node_dict in boundary_nodes:
+                # still only apply BCs to xy plane, use RBEs to ensure this now
+                if not node_dict["xy_plane"]: continue
                 x = node_dict["x"]
                 y = node_dict["y"]
                 nid = node_dict["id"]
