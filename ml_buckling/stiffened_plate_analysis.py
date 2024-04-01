@@ -17,14 +17,16 @@ class StiffenedPlateAnalysis:
         plate_material:CompositeMaterial,
         stiffener_material:CompositeMaterial,
         name=None,  # use the plate name to differentiate plate folder names
-        compress_stiff=False, # whether to compress stiffeners to in axial case (TODO : figure this out => need to study static analysis)
+        _compress_stiff=False, # whether to compress stiffeners to in axial case (TODO : figure this out => need to study static analysis)
+        _make_rbe=True
     ):
         self.comm = comm
         self.geometry = geometry
         self.plate_material = plate_material
         self.stiffener_material = stiffener_material
 
-        self._compress_stiff_override = compress_stiff
+        self._compress_stiff_override = _compress_stiff
+        self._make_rbe = _make_rbe
 
         # geometry properties
         self._name = name
@@ -256,48 +258,46 @@ class StiffenedPlateAnalysis:
                 else:
                     pre_lines += [line]
 
-            # open the bdf file to get the max # CQUAD4 elements
-            fp1 = open(self.bdf_file, "r")
-            lines_bdf = fp1.readlines()
-            fp1.close()
-            eid = 0
-            for line in lines_bdf:
-                if "CQUAD4" in line:
-                    chunks = line.split(" ")
-                    no_empty_chunks = [_ for _ in chunks if not(_ == '')]
-                    #print(no_empty_chunks)
-                    _eid = float(no_empty_chunks[1])
-                    if _eid > eid:
-                        eid = _eid
-
             # make RBE2 elements
-            fp1 = open(self.bdf_file, "a")
-            N = self.geometry.num_stiff + 1
-            for iy in range(1,self.geometry.num_stiff+1):
-                yval = iy * self.geometry.b / N
-                for xval in [0, self.geometry.a]:
-                    rbe_nodes = []
-                    rbe_control_node = None
+            if self._make_rbe:
+                # open the bdf file to get the max # CQUAD4 elements
+                fp1 = open(self.bdf_file, "r")
+                lines_bdf = fp1.readlines()
+                fp1.close()
+                eid = 0
+                for line in lines_bdf:
+                    if "CQUAD4" in line:
+                        chunks = line.split(" ")
+                        no_empty_chunks = [_ for _ in chunks if not(_ == '')]
+                        #print(no_empty_chunks)
+                        _eid = float(no_empty_chunks[1])
+                        if _eid > eid:
+                            eid = _eid
 
-                    for node_dict in boundary_nodes:                        
-                        if in_tol(node_dict["x"],xval) and in_tol(node_dict["y"], yval):
-                            zval = node_dict["z"]
-                            xy_plane = node_dict["xy_plane"]
-                            print(f"node dict z = {zval}, xy plane = {xy_plane}")
-                            if node_dict["xy_plane"]:
-                                rbe_control_node = node_dict["id"]
-                            else:
-                                rbe_nodes += [node_dict["id"]]
-                    print(f"rbe control node = {rbe_control_node}")
-                    print(f"rbe nodes = {rbe_nodes}")
+                fp1 = open(self.bdf_file, "a")
+                N = self.geometry.num_stiff + 1
+                for iy in range(1,self.geometry.num_stiff+1):
+                    yval = iy * self.geometry.b / N
+                    for xval in [0, self.geometry.a]:
+                        rbe_nodes = []
+                        rbe_control_node = None
 
-                    # write the RBE element
-                    eid += 1
-                    fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 12))
-                    for rbe_node in rbe_nodes:
-                        fp1.write("%8d" % (rbe_node))
-                    fp1.write("\n")
-            fp1.close()
+                        for node_dict in boundary_nodes:                        
+                            if in_tol(node_dict["x"],xval) and in_tol(node_dict["y"], yval):
+                                zval = node_dict["z"]
+                                xy_plane = node_dict["xy_plane"]
+                                if node_dict["xy_plane"]:
+                                    rbe_control_node = node_dict["id"]
+                                else:
+                                    rbe_nodes += [node_dict["id"]]
+
+                        # write the RBE element
+                        eid += 1
+                        fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 12))
+                        for rbe_node in rbe_nodes:
+                            fp1.write("%8d" % (rbe_node))
+                        fp1.write("\n")
+                fp1.close()
 
             fp = open(self.dat_file, "w")
             for line in pre_lines:
@@ -335,15 +335,17 @@ class StiffenedPlateAnalysis:
                         % ("SPC", 1, nid, "36", 0.0)
                     )  # w = theta_x = theta_y
                 # TODO : maybe I need to do this for the stiffener too for exx case, but unclear
-                if node_dict["xy_plane"] or exy != 0: 
-                    if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
-                        fp.write(
-                            "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "1", u)
-                        )  # u = eps_xy * y
-                    if exy != 0.0 or node_dict["ybot"]:
-                        fp.write(
-                            "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "2", v)
-                        )  # v = eps_xy * x
+                #if node_dict["xy_plane"] or exy != 0: 
+                if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
+                    fp.write(
+                        "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "1", u)
+                    )  # u = eps_xy * y
+                # add to boundary nodes left and right of plate on the bottom of plate for v=0 axial case or all edges 
+                # also all sides of exy case
+                if exy != 0.0 or node_dict["ybot"] or (node_dict["xy_plane"] and not node_dict["ytop"]): 
+                    fp.write(
+                        "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "2", v)
+                    )  # v = eps_xy * x
 
             for line in post_lines:
                 fp.write(line)
@@ -460,8 +462,9 @@ class StiffenedPlateAnalysis:
         if write_soln:
             if base_path is None:
                 base_path = os.getcwd()
+                print(f"base path = {base_path}")
             static_folder = os.path.join(base_path, self.static_folder_name)
-            if not os.path.exists(static_folder):
+            if not os.path.exists(static_folder) and self.comm.rank == 0:
                 os.mkdir(static_folder)
             SP.writeSolution(outputDir=static_folder)
 
@@ -511,7 +514,7 @@ class StiffenedPlateAnalysis:
             if base_path is None:
                 base_path = os.getcwd()
             buckling_folder = os.path.join(base_path, self.buckling_folder_name)
-            if not os.path.exists(buckling_folder):
+            if not os.path.exists(buckling_folder) and self.comm.rank == 0:
                 os.mkdir(buckling_folder)
             bucklingProb.writeSolution(outputDir=buckling_folder)
 

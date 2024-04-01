@@ -40,7 +40,6 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    compress_stiff=False, # need to figure this out with linear static analysis
 )
 
 stiff_analysis.pre_analysis(
