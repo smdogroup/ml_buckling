@@ -630,9 +630,14 @@ class StiffenedPlateAnalysis:
         else:
             N11_crit = N11_crit_local
 
+        s11_app = exx * E_P
+        print(f"E_P = {E_P:.4e}")
+        print(f"s11 applied = {s11_app}, exx = {exx}")
+
         # compute current N11, should it be effective E11 here?
-        N11 = exx * self.plate_material.E11 * self.geometry.h
-        # print(f"N11 = {N11}")
+        # N11 = exx * self.plate_material.E11 * self.geometry.h
+        N11 = exx * E_P * self.geometry.h
+        print(f"N11 = {N11}")
 
         _lambda = N11_crit / N11
         return _lambda

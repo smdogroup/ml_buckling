@@ -66,7 +66,7 @@ class CompositeMaterial:
                 E22=self.E22,
                 nu12=self.nu12,
                 G12=self.G12
-            ).rotate_ply(ply_angle)
+            ).rotate_ply(np.rad2deg(ply_angle))
 
             nu_denom = (1 - util.nu12 * util.nu21)
             _array[0] += util.E11 / nu_denom * ply_frac #Q11

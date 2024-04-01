@@ -21,8 +21,8 @@ geometry = mlb.StiffenedPlateGeometry(
     num_stiff=1,
     w_b=6e-3,
     t_b=0.0,
-    h_w=10e-3,
-    t_w=5e-3, # if the wall thickness is too low => stiffener crimping failure happens
+    h_w=15e-3,
+    t_w=8e-3, # if the wall thickness is too low => stiffener crimping failure happens
 )
 
 material = mlb.CompositeMaterial(
@@ -54,15 +54,18 @@ stiff_analysis.pre_analysis(
 
 comm.Barrier()
 
-#_ = stiff_analysis.run_static_analysis(write_soln=True)
+# predict the actual eigenvalue
+pred_lambda = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+# exit()
+
+avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
 stiff_analysis.post_analysis()
 
+print(f"avg stresses = {avg_stresses}")
 print(f"tacs eigvals = {tacs_eigvals}")
 print(f"errors = {errors}")
 
-# predict the actual eigenvalue
-pred_lambda = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 min_eigval = tacs_eigvals[0]
 rel_err = (pred_lambda - min_eigval) / pred_lambda
 print(f"pred min lambda = {pred_lambda}")
