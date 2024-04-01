@@ -7,6 +7,7 @@ NOTE : copy u*iHat+v*jHat+w*kHat for paraview
 
 import ml_buckling as mlb
 from mpi4py import MPI
+import numpy as np
 
 comm = MPI.COMM_WORLD
 
@@ -32,7 +33,7 @@ geometry = mlb.StiffenedPlateGeometry(
     t_w=27*8e-2, # if the wall thickness is too low => stiffener crimping failure happens
 )
 
-material = mlb.CompositeMaterial.solvay5320()
+material = mlb.CompositeMaterial.solvay5320(ref_axis=np.array([1,0,0]))
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
     comm=comm,

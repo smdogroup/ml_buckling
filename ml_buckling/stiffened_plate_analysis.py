@@ -373,7 +373,10 @@ class StiffenedPlateAnalysis:
             # pass back the appropriate tacs element object
             elemList = []
             for descript in elemDescripts:
-                transform = None
+                if material.ref_axis is None:
+                    transform = None
+                else:
+                    transform = elements.ShellRefAxisTransform(material.ref_axis)
                 if descript in ["CQUAD4", "CQUADR"]:
                     elem = elements.Quad4Shell(transform, con)
                 elif descript in ["CQUAD9", "CQUAD"]:
