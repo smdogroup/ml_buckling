@@ -564,7 +564,7 @@ class StiffenedPlateAnalysis:
         # return the eigenvalues here
         return np.array([funcs[key] for key in funcs]), np.array(errors)
     
-    def predict_crit_load(self, exx=0, exy=0, eyy=0):
+    def predict_crit_load(self, exx=0, exy=0, eyy=0, mode_loop=True):
         assert exy == 0 and eyy == 0 #haven't written these yet
         assert self.geometry.num_stiff == 1 # hasn't been implemented for >1 stiffeners yet
 
@@ -576,6 +576,7 @@ class StiffenedPlateAnalysis:
         A_B = self.geometry.area_b
         wb = self.geometry.w_b
         tb = self.geometry.t_b
+        #print(f"tb = {tb}")
         tw = self.geometry.t_w
         hw = self.geometry.h_w
         a = self.geometry.a
@@ -595,14 +596,43 @@ class StiffenedPlateAnalysis:
         D22 = self.plate_material.Q22 * I_P
         D12 = self.plate_material.Q12 * I_P
         D66 = self.plate_material.Q66 * I_P
+        # print(f"D11 = {D11}, D22 = {D22}, D12 = {D12}")
 
         delta = A_S / A_P
 
-        m1_star = a/b * (D22 / (D11 + 2*EI_s / b))**0.25
-        N11_crit = 2 * a * np.pi**2 / m1_star**2 / b / (0.5 + delta) * (0.25 * (D11 * m1_star**4 * b / a**3 + D22 * a/ b**3) + m1_star**2 / a * (1.0/b * (D12/2.0 + D66) + m1_star**2 / 2.0 / a**2 * EI_s))
+        # global mode
+        if mode_loop:
+            N11_crit_global = 1e10
+            for m1_star in range(1,51):
+                _N11_crit_global = 2 * a * np.pi**2 / m1_star**2 / b / (0.5 + delta) * (0.25 * (D11 * m1_star**4 * b / a**3 + D22 * a/ b**3) + m1_star**2 / a * (1.0/b * (D12/2.0 + D66) + m1_star**2 / 2.0 / a**2 * EI_s))
+                if _N11_crit_global < N11_crit_global:
+                    N11_crit_global = _N11_crit_global
+        else:
+            m1_star = a/b * (D22 / (D11 + 2*EI_s / b))**0.25
+            N11_crit_global = 2 * a * np.pi**2 / m1_star**2 / b / (0.5 + delta) * (0.25 * (D11 * m1_star**4 * b / a**3 + D22 * a/ b**3) + m1_star**2 / a * (1.0/b * (D12/2.0 + D66) + m1_star**2 / 2.0 / a**2 * EI_s))
+
+        # print(f"N11 crit global = {N11_crit_global}")
+
+        # local mode
+        if mode_loop:
+            N11_crit_local = 1e10
+            for m2_star in range(1,51):
+                _N11_crit_local = (m2_star**2 / a**2 * D11 + 16.0 * a**2 / m2_star**2 / b**4 * D22 + 8.0/b**2 * (D12 + 2.0 * D66)) * np.pi**2
+                if _N11_crit_local < N11_crit_local:
+                    N11_crit_local = _N11_crit_local
+        else:
+            m2_star = 2.0 * a / b * (D22 / D11) ** 0.25
+            N11_crit_local = (m2_star**2 / a**2 * D11 + 16.0 * a**2 / m2_star**2 / b**4 * D22 + 8.0/b**2 * (D12 + 2.0 * D66)) * np.pi**2
+
+        
+        if N11_crit_global < N11_crit_local:
+            N11_crit = N11_crit_global
+        else:
+            N11_crit = N11_crit_local
 
         # compute current N11, should it be effective E11 here?
         N11 = exx * self.plate_material.E11 * self.geometry.h
+        # print(f"N11 = {N11}")
 
         _lambda = N11_crit / N11
         return _lambda
