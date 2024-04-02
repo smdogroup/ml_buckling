@@ -372,7 +372,7 @@ class StiffenedPlateAnalysis:
     def post_analysis(self):
         """no derivatives here so just clear capsLock file"""
         # remove the capsLock file after done with analysis
-        if self.comm.rank == 0:
+        if self.comm.rank == 0 and os.path.exists(self.caps_lock):
             os.remove(self.caps_lock)
 
     def _elemCallback(self):
@@ -481,7 +481,6 @@ class StiffenedPlateAnalysis:
         if write_soln:
             if base_path is None:
                 base_path = os.getcwd()
-                print(f"base path = {base_path}")
             static_folder = os.path.join(base_path, self.static_folder_name)
             if not os.path.exists(static_folder) and self.comm.rank == 0:
                 os.mkdir(static_folder)
@@ -489,7 +488,6 @@ class StiffenedPlateAnalysis:
 
         # test the average stresses routine
         avgStresses = FEAAssembler.assembler.getAverageStresses()
-        print(f"avg Stresses = {avgStresses}")
         return avgStresses
 
     def run_buckling_analysis(
@@ -631,13 +629,10 @@ class StiffenedPlateAnalysis:
             N11_crit = N11_crit_local
 
         s11_app = exx * E_P
-        print(f"E_P = {E_P:.4e}")
-        print(f"s11 applied = {s11_app}, exx = {exx}")
 
         # compute current N11, should it be effective E11 here?
         # N11 = exx * self.plate_material.E11 * self.geometry.h
         N11 = exx * E_P * self.geometry.h
-        print(f"N11 = {N11}")
 
         _lambda = N11_crit / N11
         return _lambda
