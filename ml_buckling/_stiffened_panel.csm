@@ -51,8 +51,19 @@ patbeg ilocal num_local
    
 patend
 
+# ribs on each end
+box 0 0 0 0 b -h_w
+select face
+attribute capsGroup $rib
+union
+
+box a 0 0 0 b -h_w
+select face
+attribute capsGroup $rib
+union
+
 select body
 attribute capsAIM $egadsTessAIM;tacsAIM   
 
 end
-|||||||||||||
+|||||||||||||||

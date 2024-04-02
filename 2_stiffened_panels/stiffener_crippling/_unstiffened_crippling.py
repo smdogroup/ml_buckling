@@ -11,15 +11,15 @@ comm = MPI.COMM_WORLD
 flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
     comm=comm,
     bdf_file="plate.bdf",
-    a=10.0,
+    a=15.0,
     b=1.0,
     h=0.01,
     ply_angle=0,
 )
 
 flat_plate.generate_tripping_bdf(
-    nx=30,
-    ny=30,
+    nx=60,
+    ny=20,
     exx=flat_plate.affine_exx,
     eyy=0.0,
     exy=0.0, # flat_plate.affine_exy,

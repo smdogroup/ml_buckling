@@ -1,7 +1,7 @@
 __all__ = ["StiffenedPlateAnalysis"]
 
 import numpy as np
-from tacs import pyTACS, constitutive, elements, utilities, caps2tacs
+from tacs import pyTACS, constitutive, elements, utilities, caps2tacs, TACS
 import os
 from pprint import pprint
 from .stiffened_plate_geometry import StiffenedPlateGeometry
@@ -168,6 +168,7 @@ class StiffenedPlateAnalysis:
         # set shell properties with CompDescripts
         # auto makes shell properties (need thickDVs so that the compDescripts get written out from tacsAIM)
         caps2tacs.ThicknessVariable(caps_group="panel", value=self.geometry.h, material=null_mat).register_to(tacs_model)
+        caps2tacs.ThicknessVariable(caps_group="rib", value=self.geometry.rib_h, material=null_mat).register_to(tacs_model)
         caps2tacs.ThicknessVariable(caps_group="base", value=self.geometry.h+self.geometry.t_b, material=null_mat).register_to(tacs_model)
         caps2tacs.ThicknessVariable(caps_group="stiff", value=self.geometry.t_w, material=null_mat).register_to(tacs_model)
 
@@ -388,6 +389,7 @@ class StiffenedPlateAnalysis:
             # kappa = 6.89
             # specific_heat = 463.0
 
+            ref_axis = None
             if "panel" in compDescript:
                 material = self.plate_material
                 thickness = self.geometry.h
@@ -397,8 +399,15 @@ class StiffenedPlateAnalysis:
             elif "stiff" in compDescript:
                 material = self.stiffener_material
                 thickness = self.geometry.t_w
+            elif "rib" in compDescript:
+                material = self.plate_material
+                thickness = self.geometry.rib_h
+                ref_axis = np.array([0, 1, 0], dtype=TACS.dtype)
             else:
                 raise AssertionError("elem does not belong to oneof the main components")
+            
+            if ref_axis is None:
+                ref_axis = material.ref_axis
 
 
             # if E22 not provided, isotropic
@@ -438,10 +447,10 @@ class StiffenedPlateAnalysis:
             # pass back the appropriate tacs element object
             elemList = []
             for descript in elemDescripts:
-                if material.ref_axis is None:
+                if ref_axis is None:
                     transform = None
                 else:
-                    transform = elements.ShellRefAxisTransform(material.ref_axis)
+                    transform = elements.ShellRefAxisTransform(ref_axis)
                 if descript in ["CQUAD4", "CQUADR"]:
                     elem = elements.Quad4Shell(transform, con)
                 elif descript in ["CQUAD9", "CQUAD"]:

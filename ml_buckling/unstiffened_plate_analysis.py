@@ -765,7 +765,7 @@ class UnstiffenedPlateAnalysis:
                                 "%-8s%8d%8d%8s%8.6f\n"
                                 % ("SPC", 1, nodes[i, j], "3456", 0.0)
                             )  # w = theta_x = theta_y = theta_z = 0
-                        elif j == 0:
+                        elif j == 0 or i == 0 or i == nx: #SSSF BCs
                             fp.write(
                                 "%-8s%8d%8d%8s%8.6f\n"
                                 % ("SPC", 1, nodes[i, j], "36", 0.0)

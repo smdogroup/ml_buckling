@@ -13,6 +13,7 @@ class StiffenedPlateGeometry:
         t_b, # thickness of base
         h_w, # height of stiffener wall
         t_w, # thickness of stiffener wall
+        rib_h=2e-3, # thickness of rib
     ):
         self.a = a
         self.b = b
@@ -23,6 +24,8 @@ class StiffenedPlateGeometry:
         self.t_b = t_b
         self.h_w = h_w
         self.t_w = t_w
+
+        self.rib_h = rib_h
 
     @property
     def s_p(self) -> float:
