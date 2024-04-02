@@ -20,7 +20,7 @@ comm = MPI.COMM_WORLD
 # --------------------------------------------
 
 # number of random samples (traverse all AR for each of them)
-N = 100
+N = 4000
 
 # END OF MODEL INPUTS SECTION
 # --------------------------------------------
@@ -145,8 +145,10 @@ for foo in range(N):  # until has generated this many samples
             )
 
             new_eigvals, errors = new_plate.run_buckling_analysis(
-                sigma=5.0, num_eig=40, write_soln=False
+                sigma=10.0, num_eig=40, write_soln=True
             )
+
+            #exit()
 
             # min eigenvalue
             kmin = new_eigvals[0]

@@ -638,7 +638,7 @@ class UnstiffenedPlateAnalysis:
                                 % ("SPC", 1, nodes[i, j], "3456", 0.0)
                             )  # w = theta_x = theta_y = theta_z = 0
                         else:
-                            write_SS_BC = (j == 0 and one_free) or (not one_free)
+                            write_SS_BC = (one_free and not(j == ny)) or (not one_free)
                             if write_SS_BC:
                                 fp.write(
                                     "%-8s%8d%8d%8s%8.6f\n"
