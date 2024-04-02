@@ -401,6 +401,13 @@ class UnstiffenedPlateAnalysis:
         TODO : may need to add isotropic case to this with Dstar = 1.0
         """
         return (self.D12 + 2 * self.D66) / np.sqrt(self.D11 * self.D22)
+    
+    @property
+    def generalized_poisson(self):
+        """
+        epsilon generalized poisson's ratio
+        """
+        return 1.0 / self.Dstar * self.D12 / np.sqrt(self.D11 * self.D22)
 
     @property
     def slenderness(self):
@@ -535,7 +542,7 @@ class UnstiffenedPlateAnalysis:
         """number of eigenvalues or modes that were recorded"""
         return self._num_modes
 
-    def generate_bdf(self, nx=30, ny=30, exx=0.0, eyy=0.0, exy=0.0, clamped=True):
+    def generate_bdf(self, nx=30, ny=30, exx=0.0, eyy=0.0, exy=0.0, clamped=True, one_free=False):
         """
         # Generate a plate mesh with CQUAD4 elements
         create pure axial, pure shear, or combined loading displacement control
@@ -629,12 +636,14 @@ class UnstiffenedPlateAnalysis:
                             fp.write(
                                 "%-8s%8d%8d%8s%8.6f\n"
                                 % ("SPC", 1, nodes[i, j], "3456", 0.0)
-                            )  # w = theta_x = theta_y
+                            )  # w = theta_x = theta_y = theta_z = 0
                         else:
-                            fp.write(
-                                "%-8s%8d%8d%8s%8.6f\n"
-                                % ("SPC", 1, nodes[i, j], "36", 0.0)
-                            )  # w = theta_x = theta_y
+                            write_SS_BC = (j == 0 and one_free) or (not one_free)
+                            if write_SS_BC:
+                                fp.write(
+                                    "%-8s%8d%8d%8s%8.6f\n"
+                                    % ("SPC", 1, nodes[i, j], "36", 0.0)
+                                )  # w = theta_z = 0
                         if exy != 0 or i == 0 or i == nx:
                             fp.write(
                                 "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nodes[i, j], "1", u)

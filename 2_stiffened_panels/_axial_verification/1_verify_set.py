@@ -55,7 +55,9 @@ data_folder = os.path.join(os.getcwd(), "data")
 if not os.path.exists(data_folder):
     os.mkdir(data_folder)
 
-for i,h_w in enumerate(np.linspace(1e-3, 20e-3, 50)):
+log10_hw = np.linspace(-3, -1, 50)
+hw_vec = np.power(10, log10_hw)
+for i,h_w in enumerate(hw_vec):
     b_w = h_w / stiff_AR
     stiff_analysis.geometry.h_w = h_w
     stiff_analysis.geometry.b_w = b_w
