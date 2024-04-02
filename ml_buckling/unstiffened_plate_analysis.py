@@ -670,6 +670,150 @@ class UnstiffenedPlateAnalysis:
 
         self.comm.Barrier()
 
+    def generate_tripping_bdf(self, nx=30, ny=30, exx=0.0, eyy=0.0, exy=0.0):
+        """
+        # Generate a plate mesh with CQUAD4 elements
+        create pure axial, pure shear, or combined loading displacement control
+        of a flat plate
+        """
+
+        nodes = np.arange(1, (nx + 1) * (ny + 1) + 1, dtype=np.int32).reshape(
+            nx + 1, ny + 1
+        )
+
+        self._nx = nx
+        self._ny = ny
+
+        # num nodes in each direction
+        self._M = self._nx + 1
+        self._N = self._ny + 1
+
+        x = self.a * np.linspace(0.0, 1.0, nx + 1)
+        y = self.b * np.linspace(0.0, 1.0, ny + 1)
+
+        # copy coordinates for use later in the modal assurance criterion
+        self._x = x
+        self._y = y
+        # nodes count across the x-axis first then loop over y-axis from bot-left corner
+        self._xi = [
+            self._x[i % self._M] / self.a for i in range(self.num_nodes)
+        ]  # non-dim coordinates
+        self._eta = [self._y[int(i / self._M)] / self.b for i in range(self.num_nodes)]
+
+        if self.comm.rank == 0:
+            fp = open(self.bdf_file, "w")
+            fp.write("$ Input file for a square axial/shear-disp BC plate\n")
+            fp.write("SOL 103\nCEND\nBEGIN BULK\n")
+
+            # Write the grid points to a file
+            for j in range(ny + 1):
+                for i in range(nx + 1):
+                    # Write the nodal data
+                    spc = " "
+                    coord_disp = 0
+                    coord_id = 0
+                    seid = 0
+
+                    fp.write(
+                        "%-8s%16d%16d%16.9e%16.9e*       \n"
+                        % ("GRID*", nodes[i, j], coord_id, x[i], y[j])
+                    )
+                    fp.write(
+                        "*       %16.9e%16d%16s%16d        \n"
+                        % (0.0, coord_disp, spc, seid)
+                    )
+
+            # Output 2nd order elements
+            elem = 1
+            part_id = 1
+            for j in range(ny):
+                for i in range(nx):
+                    # Write the connectivity data
+                    # CQUAD4 elem id n1 n2 n3 n4
+                    fp.write(
+                        "%-8s%8d%8d%8d%8d%8d%8d\n"
+                        % (
+                            "CQUAD4",
+                            elem,
+                            part_id,
+                            nodes[i, j],
+                            nodes[i + 1, j],
+                            nodes[i + 1, j + 1],
+                            nodes[i, j + 1],
+                        )
+                    )
+                    elem += 1
+
+            # Set up the plate BCs so that it has u = uhat, for shear disp control
+            # u = eps * y, v = eps * x, w = 0
+            for j in range(ny + 1):
+                for i in range(nx + 1):
+                    u = exy * y[j]
+                    v = exy * x[i]
+
+                    if i == nx or exy != 0:
+                        u -= exx * x[i]
+                    elif j == ny:
+                        v -= eyy * y[j]
+                    elif i == 0 or j == 0:
+                        pass
+
+                    # check on boundary
+                    if i == 0 or j == 0 or i == nx or j == ny:
+                        if (i == 0 and j == 0):
+                            fp.write(
+                                "%-8s%8d%8d%8s%8.6f\n"
+                                % ("SPC", 1, nodes[i, j], "3456", 0.0)
+                            )  # w = theta_x = theta_y = theta_z = 0
+                        elif j == 0:
+                            fp.write(
+                                "%-8s%8d%8d%8s%8.6f\n"
+                                % ("SPC", 1, nodes[i, j], "36", 0.0)
+                            )  # w = theta_z = 0
+                        if exy != 0 or i == 0 or i == nx:
+                            fp.write(
+                                "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nodes[i, j], "1", u)
+                            )  # u = eps_xy * y
+                        if exy != 0.0 or j == 0:
+                            fp.write(
+                                "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nodes[i, j], "2", v)
+                            )  # v = eps_xy * x
+
+            # write RBE2 elements
+            left_control_node = None
+            left_nodes = []
+            right_control_node = None
+            right_nodes = []
+            for j in range(ny + 1):
+                for i in range(nx + 1):
+                    if i == 0 and j == 0:
+                        left_control_node = nodes[i,j]
+                    elif i == nx and j == 0:
+                        right_control_node = nodes[i,j]
+                    elif i == 0:
+                        left_nodes += [nodes[i,j]]
+                    elif i == nx:
+                        right_nodes += [nodes[i,j]]
+
+            # also could do 123456 or 123 (but I don't really want no rotation here I don't think)
+            print(f"writing RBE elements")
+            fp.write("%-8s%8d%8d%8d" % ("RBE2", elem, left_control_node, 123456))
+            for rbe_node in left_nodes:
+                fp.write("%8d" % (rbe_node))
+            fp.write("\n")
+            elem += 1
+
+            fp.write("%-8s%8d%8d%8d" % ("RBE2", elem, right_control_node, 123456))
+            for rbe_node in right_nodes:
+                fp.write("%8d" % (rbe_node))
+            fp.write("\n")
+            elem += 1
+
+            fp.write("ENDDATA")
+            fp.close()
+
+        self.comm.Barrier()
+
     def _elemCallback(self):
         def elemCallBack(
             dvNum, compID, compDescript, elemDescripts, globalDVs, **kwargs
