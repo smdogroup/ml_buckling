@@ -52,6 +52,8 @@ stiff_analysis.pre_analysis(
     edge_pt_max=40,
 )
 
+print(f"exx = {stiff_analysis.affine_exx}")
+
 comm.Barrier()
 
 # predict the actual eigenvalue

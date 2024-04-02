@@ -403,6 +403,11 @@ class UnstiffenedPlateAnalysis:
         return (self.D12 + 2 * self.D66) / np.sqrt(self.D11 * self.D22)
     
     @property
+    def xi(self):
+        """equivalent to Dstar (just different variable name)"""
+        return self.Dstar
+
+    @property
     def generalized_poisson(self):
         """
         epsilon generalized poisson's ratio
