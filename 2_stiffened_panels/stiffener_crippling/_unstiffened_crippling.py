@@ -11,9 +11,9 @@ comm = MPI.COMM_WORLD
 flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
     comm=comm,
     bdf_file="plate.bdf",
-    a=1.0,
+    a=10.0,
     b=1.0,
-    h=0.005,
+    h=0.01,
     ply_angle=0,
 )
 
@@ -26,6 +26,7 @@ flat_plate.generate_tripping_bdf(
 )
 
 # avg_stresses = flat_plate.run_static_analysis(write_soln=True)
+# exit()
 
 tacs_eigvals, errors = flat_plate.run_buckling_analysis(
     sigma=10.0, num_eig=12, write_soln=True
