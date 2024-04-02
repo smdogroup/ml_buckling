@@ -134,18 +134,16 @@ for foo in range(N):  # until has generated this many samples
 
         if _run_buckling:
 
-            new_plate.generate_bdf(
+            new_plate.generate_tripping_bdf(
                 nx=nx,  # my earlier mistake was the #elements was not copied from above!!
                 ny=ny,
                 exx=new_plate.affine_exx,
                 eyy=0.0,
                 exy=0.0,
-                clamped=False,
-                one_free=True,
             )
 
             new_eigvals, errors = new_plate.run_buckling_analysis(
-                sigma=10.0, num_eig=40, write_soln=True
+                sigma=5.0, num_eig=40, write_soln=True
             )
 
             #exit()
