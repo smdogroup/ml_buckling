@@ -15,6 +15,7 @@ class CompositeMaterial:
         ply_angles=None,
         material_name=None,
         ply_fractions=None,
+        symmetric=True,
         ref_axis=None,
     ):
         self.E11 = E11
@@ -23,9 +24,10 @@ class CompositeMaterial:
         self._G12 = G12
         self._G23 = _G23
         self._G13 = _G13
-        self.ply_angles = ply_angles
-        self.ply_fractions = ply_fractions
+        self._ply_angles = ply_angles
+        self._ply_fractions = ply_fractions
         self.material_name = material_name
+        self.symmetric = symmetric
         self.ref_axis = ref_axis
 
     @property
@@ -34,6 +36,25 @@ class CompositeMaterial:
         assert sum(self.ply_fractions) == 1.0
         return len(self.ply_angles)
     
+    @property
+    def ply_angles(self) -> list:
+        if self.symmetric:
+            return self._ply_angles + self._ply_angles[::-1]
+        else:
+            return self._ply_angles
+        
+    @property
+    def rad_ply_angles(self) -> list:
+        return np.deg2rad(self.ply_angles)
+        
+    @property
+    def ply_fractions(self) -> list:
+        if self.symmetric:
+            half_fractions = [_*0.5 for _ in self._ply_fractions]
+            return half_fractions + half_fractions[::-1]
+        else:
+            return self._ply_fractions
+
     def get_ply_thicknesses(self, thickness):
         return [thickness*frac for frac in self.ply_fractions]
 
@@ -66,13 +87,13 @@ class CompositeMaterial:
                 E22=self.E22,
                 nu12=self.nu12,
                 G12=self.G12
-            ).rotate_ply(np.rad2deg(ply_angle))
+            ).rotate_ply(ply_angle)
 
             nu_denom = (1 - util.nu12 * util.nu21)
             _array[0] += util.E11 / nu_denom * ply_frac #Q11
             _array[1] += util.E22 * util.nu12 / nu_denom * ply_frac #Q12
             _array[2] += util.E22 / nu_denom * ply_frac #Q22
-            _array[3] += util.G12 * util.nu12 / nu_denom * ply_frac #Q66
+            _array[3] += util.G12 * util.nu12 * ply_frac #Q66
         return _array
     
     @property

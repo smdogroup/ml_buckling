@@ -30,9 +30,9 @@ material = mlb.CompositeMaterial(
     E22=8.96e9,
     G12=7.1e9,
     nu12=0.30,
-    ply_angles=np.deg2rad([0,90,0,90]),
-    ply_fractions=np.array([0.25, 0.25, 0.25, 0.25]),
-    ref_axis=np.array([1,0,0]),
+    ply_angles=[0,90,0,90],
+    ply_fractions=[0.25]*4,#*4), #[0.4, 0.1, 0.4, 0.1]
+    ref_axis=[1,0,0],
 )
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
@@ -42,6 +42,23 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     plate_material=material,
     _make_rbe=True
 )
+
+D11s = material.Q11 * geometry.t_w**3 / 12.0
+D12s = material.Q12 * geometry.t_w**3 / 12.0
+D22s = material.Q22 * geometry.t_w**3 / 12.0
+D66s = material.Q66 * geometry.t_w**3 / 12.0
+xi = (D12s + 2 * D66s) / np.sqrt(D11s * D22s)
+gen_poisson = 1/xi * (D12s) / np.sqrt(D11s * D22s)
+
+print(f"Q11 = {material.Q11:.4e}, Q12 = {material.Q12:.4e}, Q22 = {material.Q22:.4e}")
+
+print(f"D11s = {D11s}")
+print(f"D12s = {D12s}")
+print(f"D22s = {D22s}")
+print(f"D66s = {D66s}")
+print(f"xi = {xi}")
+print(f"gen poisson = {gen_poisson}")
+# exit()
 
 stiff_analysis.pre_analysis(
     global_mesh_size=0.03,

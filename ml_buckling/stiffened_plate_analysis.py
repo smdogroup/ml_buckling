@@ -312,7 +312,7 @@ class StiffenedPlateAnalysis:
                         # write the RBE element
                         eid += 1
                         # also could do 123456 or 123 (but I don't really want no rotation here I don't think)
-                        fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 123456))
+                        fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 23)) #123456
                         for rbe_node in rbe_nodes:
                             fp1.write("%8d" % (rbe_node))
                         fp1.write("\n")
@@ -443,11 +443,19 @@ class StiffenedPlateAnalysis:
 
                 ortho_ply = constitutive.OrthotropicPly(thickness, ortho_prop)
 
+                # make sure it is a symmetric laminate by doing the symmetric number of plies
+                # right now assume it is symmetric
+
+                # print(f"num plies = {material.num_plies}")
+                # print(f"ply thicknesses = {material.get_ply_thicknesses(thickness)}")
+                # print(f"ply angles = {material.rad_ply_angles}")
+                # exit()
+
                 # how to make sure it is a symmetric laminate?
                 con = constitutive.CompositeShellConstitutive(
                     [ortho_ply]*material.num_plies,
                     np.array(material.get_ply_thicknesses(thickness), dtype=dtype),
-                    np.array(material.ply_angles, dtype=dtype),
+                    np.array(material.rad_ply_angles, dtype=dtype),
                     tOffset=0.0,
                 )
 
