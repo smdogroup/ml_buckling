@@ -43,21 +43,9 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     _make_rbe=True
 )
 
-D11s = material.Q11 * geometry.t_w**3 / 12.0
-D12s = material.Q12 * geometry.t_w**3 / 12.0
-D22s = material.Q22 * geometry.t_w**3 / 12.0
-D66s = material.Q66 * geometry.t_w**3 / 12.0
-xi = (D12s + 2 * D66s) / np.sqrt(D11s * D22s)
-gen_poisson = 1/xi * (D12s) / np.sqrt(D11s * D22s)
-
-print(f"Q11 = {material.Q11:.4e}, Q12 = {material.Q12:.4e}, Q22 = {material.Q22:.4e}")
-
-print(f"D11s = {D11s}")
-print(f"D12s = {D12s}")
-print(f"D22s = {D22s}")
-print(f"D66s = {D66s}")
-print(f"xi = {xi}")
-print(f"gen poisson = {gen_poisson}")
+print(f"Darray stiff = {stiff_analysis.Darray_stiff}")
+print(f"xi stiff = {stiff_analysis.xi_stiff}")
+print(f"gen poisson stiffener = {stiff_analysis.gen_poisson_stiff}")
 # exit()
 
 stiff_analysis.pre_analysis(
@@ -85,8 +73,17 @@ print(f"avg stresses = {avg_stresses}")
 print(f"tacs eigvals = {tacs_eigvals}")
 print(f"errors = {errors}")
 
-min_eigval = tacs_eigvals[0]
-# rel_err = (pred_lambda - min_eigval) / pred_lambda
-# print(f"pred min lambda = {pred_lambda}")
-print(f"min lambda = {min_eigval}")
-# print(f"rel err = {abs(rel_err)}")
+# predicted stiffener crippling eigenvalue
+Nx_stiff = 3.7e4 # from linear static analysis (need to change average stresses routine to extract by component now since we don't have the stresses, just in-plane loads)
+lambda_norm = 0.47 * stiff_analysis.xi_stiff # since stiff_analysis.gen_poisson_stiff approx 0.2
+Darray = stiff_analysis.Darray_stiff
+D11 = Darray[0]; D12 = Darray[1]; D22 = Darray[2]; D66 = Darray[3]
+Nxcrit_stiff = np.pi**2 * np.sqrt(D11 * D22) / geometry.h_w**2 * lambda_norm
+pred_eigval = Nxcrit_stiff / Nx_stiff
+act_eigval = tacs_eigvals[0]
+rel_err = (act_eigval - pred_eigval) / pred_eigval
+
+print(f"prediction of stiffener crippling eigenvalues")
+print(f"pred eigval = {pred_eigval}")
+print(f"act eigval = {act_eigval}")
+print(f"rel err = {rel_err}")

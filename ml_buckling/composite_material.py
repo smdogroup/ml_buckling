@@ -93,7 +93,7 @@ class CompositeMaterial:
             _array[0] += util.E11 / nu_denom * ply_frac #Q11
             _array[1] += util.E22 * util.nu12 / nu_denom * ply_frac #Q12
             _array[2] += util.E22 / nu_denom * ply_frac #Q22
-            _array[3] += util.G12 * util.nu12 * ply_frac #Q66
+            _array[3] += util.G12 * ply_frac #Q66
         return _array
     
     @property

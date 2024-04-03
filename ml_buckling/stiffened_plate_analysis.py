@@ -6,6 +6,7 @@ import os
 from pprint import pprint
 from .stiffened_plate_geometry import StiffenedPlateGeometry
 from .composite_material import CompositeMaterial
+from .composite_material_utility import CompositeMaterialUtility
 
 dtype = utilities.BaseUI.dtype
 
@@ -68,7 +69,48 @@ class StiffenedPlateAnalysis:
     def bdf_file(self):
         tacs_dir = self._tacs_aim.root_analysis_dir
         return os.path.join(tacs_dir, "tacs.bdf")
+    
+    @property
+    def Darray_stiff(self) -> float:
+        """array [D11,D12,D22,D66] for the stiffener"""
+        zL = 0
+        _Darray = np.zeros((4,))
+        ply_thicknesses = self.stiffener_material.get_ply_thicknesses(self.geometry.t_w)
+        for iply,ply_angle in enumerate(self.stiffener_material.ply_angles):
+            ply_thick = ply_thicknesses[iply]
+            zU = zL + ply_thick
+            util = CompositeMaterialUtility(
+                E11=self.stiffener_material.E11,
+                E22=self.stiffener_material.E22,
+                nu12=self.stiffener_material.nu12,
+                G12=self.stiffener_material.G12
+            ).rotate_ply(ply_angle)
 
+            nu_denom = (1 - util.nu12 * util.nu21)
+            Q11 = util.E11 / nu_denom
+            Q22 = util.E22 / nu_denom
+            Q12 = util.nu12 * Q22
+            Q66 = util.G12
+
+            _Darray[0] += 1.0/3 * Q11 * (zU**3 - zL**3)
+            _Darray[1] += 1.0/3 * Q12 * (zU**3 - zL**3)
+            _Darray[2] += 1.0/3 * Q22 * (zU**3 - zL**3)
+            _Darray[3] += 1.0/3 * Q66 * (zU**3 - zL**3)
+
+            zL = zU * 1.0
+        return _Darray
+    
+    @property
+    def xi_stiff(self):
+        _Darray = self.Darray_stiff
+        D11 = _Darray[0]; D12 = _Darray[1]; D22 = _Darray[2]; D66 = _Darray[3]
+        return (D12 + 2 * D66) / np.sqrt(D11 * D22)
+    
+    @property
+    def gen_poisson_stiff(self):
+        _Darray = self.Darray_stiff
+        D11 = _Darray[0]; D12 = _Darray[1]; D22 = _Darray[2]
+        return 1/self.xi_stiff * D12/np.sqrt(D11 * D22)
     
     @property
     def affine_exx(self):
