@@ -1,5 +1,7 @@
 # make a stiffened panel geometry, Sean P. Engelstad
 
+cfgpmtr end_rib 0
+
 despmtr a 1.0
 despmtr b 1.0
 despmtr num_stiff 5
@@ -51,16 +53,18 @@ patbeg ilocal num_local
    
 patend
 
-# ribs on each end
-box 0 0 0 0 b -h_w
-select face
-attribute capsGroup $rib
-union
+ifthen end_rib EQ 1
+   # ribs on each end
+   box 0 0 0 0 b -h_w
+   select face
+   attribute capsGroup $rib
+   union
 
-box a 0 0 0 b -h_w
-select face
-attribute capsGroup $rib
-union
+   box a 0 0 0 b -h_w
+   select face
+   attribute capsGroup $rib
+   union
+endif
 
 select body
 attribute capsAIM $egadsTessAIM;tacsAIM   

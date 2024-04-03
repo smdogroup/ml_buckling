@@ -40,7 +40,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    _make_rbe=False #True
+    _make_rbe=True
 )
 
 stiff_analysis.pre_analysis(
@@ -69,7 +69,7 @@ print(f"tacs eigvals = {tacs_eigvals}")
 print(f"errors = {errors}")
 
 min_eigval = tacs_eigvals[0]
-rel_err = (pred_lambda - min_eigval) / pred_lambda
-print(f"pred min lambda = {pred_lambda}")
-print(f"act min lambda = {min_eigval}")
-print(f"rel err = {abs(rel_err)}")
+# rel_err = (pred_lambda - min_eigval) / pred_lambda
+# print(f"pred min lambda = {pred_lambda}")
+print(f"min lambda = {min_eigval}")
+# print(f"rel err = {abs(rel_err)}")

@@ -168,7 +168,7 @@ class StiffenedPlateAnalysis:
         # set shell properties with CompDescripts
         # auto makes shell properties (need thickDVs so that the compDescripts get written out from tacsAIM)
         caps2tacs.ThicknessVariable(caps_group="panel", value=self.geometry.h, material=null_mat).register_to(tacs_model)
-        caps2tacs.ThicknessVariable(caps_group="rib", value=self.geometry.rib_h, material=null_mat).register_to(tacs_model)
+        # caps2tacs.ThicknessVariable(caps_group="rib", value=self.geometry.rib_h, material=null_mat).register_to(tacs_model)
         caps2tacs.ThicknessVariable(caps_group="base", value=self.geometry.h+self.geometry.t_b, material=null_mat).register_to(tacs_model)
         caps2tacs.ThicknessVariable(caps_group="stiff", value=self.geometry.t_w, material=null_mat).register_to(tacs_model)
 
@@ -275,6 +275,7 @@ class StiffenedPlateAnalysis:
                     pre_lines += [line]
 
             # make RBE2 elements
+            all_rbe_control_nodes = []
             if self._make_rbe:
                 # open the bdf file to get the max # CQUAD4 elements
                 fp1 = open(self.bdf_file, "r")
@@ -304,6 +305,7 @@ class StiffenedPlateAnalysis:
                                 xy_plane = node_dict["xy_plane"]
                                 if node_dict["xy_plane"]:
                                     rbe_control_node = node_dict["id"]
+                                    all_rbe_control_nodes += [rbe_control_node]
                                 else:
                                     rbe_nodes += [node_dict["id"]]
 
@@ -347,10 +349,16 @@ class StiffenedPlateAnalysis:
                         % ("SPC", 1, nid, "3456", 0.0)
                     )  # w = theta_x = theta_y
                 else:
-                    fp.write(
-                        "%-8s%8d%8d%8s%8.6f\n"
-                        % ("SPC", 1, nid, "36", 0.0)
-                    )  # w = theta_x = theta_y
+                    if node_dict["id"] in all_rbe_control_nodes: # no rotation of the rbe control node to stop rbe element 
+                        fp.write(
+                            "%-8s%8d%8d%8s%8.6f\n"
+                            % ("SPC", 1, nid, "346", 0.0)
+                        )  # w = theta_z = 0
+                    else:
+                        fp.write(
+                            "%-8s%8d%8d%8s%8.6f\n"
+                            % ("SPC", 1, nid, "36", 0.0)
+                        )  # w = theta_z = 0
                 # TODO : maybe I need to do this for the stiffener too for exx case, but unclear
                 #if node_dict["xy_plane"] or exy != 0: 
                 if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
