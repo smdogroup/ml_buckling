@@ -120,9 +120,7 @@ for foo in range(N):  # until has generated this many samples
 
         # select number of elements
         # in order to preserve element AR based on overall AR
-        _nelems = 1000
-        if new_plate.affine_aspect_ratio > 15:
-            _nelems *= 2
+        _nelems = 3000 # need >2000 and ~3000 for mesh convergence for this problem
         AR_g1 = aspect_ratio if aspect_ratio > 1 else 1.0/aspect_ratio
         min_elem = int(np.sqrt(_nelems / AR_g1))
         max_elem = int(min_elem * AR_g1)
@@ -131,16 +129,18 @@ for foo in range(N):  # until has generated this many samples
             ny = min_elem
         else:  # AR < 1.0
             ny = max_elem
-            nx = max(min_elem, 25)
+            nx = min_elem
 
         _run_buckling = True
 
         if _run_buckling:
 
+            load_factor = 0.03
+
             new_plate.generate_tripping_bdf(
                 nx=nx,  # my earlier mistake was the #elements was not copied from above!!
                 ny=ny,
-                exx=new_plate.affine_exx,
+                exx=new_plate.affine_exx * load_factor,
                 eyy=0.0,
                 exy=0.0,
             )
@@ -154,7 +154,7 @@ for foo in range(N):  # until has generated this many samples
             #exit()
 
             # min eigenvalue
-            kmin = new_eigvals[0]
+            kmin = new_eigvals[0] * load_factor
             error_0 = errors[0]
 
         else:  # just do a model parameter check
