@@ -54,27 +54,25 @@ if _clear_data:
 inner_ct = 0
 
 # run the nominal plate for mode tracking
-nominal_plate = mlb.UnstiffenedPlateAnalysis.hexcelIM7(
-    comm=comm,
-    bdf_file="plate.bdf",
-    a=1.0,
-    b=1.0,
-    h=0.01,
-    ply_angle=0,
-)
+# nominal_plate = mlb.UnstiffenedPlateAnalysis.hexcelIM7(
+#     comm=comm,
+#     bdf_file="plate.bdf",
+#     a=1.0,
+#     b=1.0,
+#     h=0.01,
+#     ply_angle=0,
+# )
 
-nominal_plate.generate_bdf(
-    nx=30,
-    ny=30,
-    exx=nominal_plate.affine_exx,
-    eyy=0.0,
-    exy=0.0,
-    clamped=False,
-    one_free=True,
-)
-nom_eigvals, _ = nominal_plate.run_buckling_analysis(
-    sigma=5.0, num_eig=20, write_soln=False
-)
+# nominal_plate.generate_tripping_bdf(
+#     nx=30,
+#     ny=30,
+#     exx=nominal_plate.affine_exx,
+#     eyy=0.0,
+#     exy=0.0,
+# )
+# nom_eigvals, _ = nominal_plate.run_buckling_analysis(
+#     sigma=5.0, num_eig=20, write_soln=False
+# )
 
 for foo in range(N):  # until has generated this many samples
     # randomly generate the material
@@ -92,7 +90,7 @@ for foo in range(N):  # until has generated this many samples
 
     fail_ct = 0
 
-    for aspect_ratio in np.linspace(0.2, 5.0, 40):
+    for aspect_ratio in np.linspace(0.2, 10.0, 30):
         a = aspect_ratio * b
 
         if fail_ct > 5:
@@ -143,7 +141,7 @@ for foo in range(N):  # until has generated this many samples
             )
 
             new_eigvals, errors = new_plate.run_buckling_analysis(
-                sigma=5.0, num_eig=40, write_soln=True
+                sigma=10.0, num_eig=40, write_soln=False
             )
 
             #exit()
@@ -159,14 +157,14 @@ for foo in range(N):  # until has generated this many samples
 
         if abs(error_0) < 1e-10 and reasonable_min and kmin:
             # perform the mode tracking
-            tracked_eigvals, _ = mlb.UnstiffenedPlateAnalysis.mac_permutation(
-                nominal_plate, new_plate, num_modes=20
-            )
+            # tracked_eigvals, _ = mlb.UnstiffenedPlateAnalysis.mac_permutation(
+            #     nominal_plate, new_plate, num_modes=20
+            # )
 
             # record the model parameters
             data_dict = {
                 # model parameter section
-                "Dstar": [new_plate.Dstar],
+                "xi": [new_plate.xi],
                 "gen_eps" : [new_plate.generalized_poisson],
                 "a0/b0": [new_plate.affine_aspect_ratio],
                 "a/b": [new_plate.aspect_ratio],
@@ -181,10 +179,10 @@ for foo in range(N):  # until has generated this many samples
             }
 
             # add the tracked eigenvalues
-            for imode, tracked_eigval in enumerate(tracked_eigvals):
-                data_dict[f"k_{imode+1}"] = (
-                    np.real(tracked_eigval) if tracked_eigval else None
-                )
+            # for imode, tracked_eigval in enumerate(tracked_eigvals):
+            #     data_dict[f"k_{imode+1}"] = (
+            #         np.real(tracked_eigval) if tracked_eigval else None
+            #     )
 
             # "s_xx" : [Sx0],
             # "s_yy" : [Sy0],

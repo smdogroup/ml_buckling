@@ -765,7 +765,7 @@ class UnstiffenedPlateAnalysis:
 
                     # check on boundary
                     if i == 0 or j == 0 or i == nx or j == ny:
-                        if (i == 0 and j == 0) or (i == nx and j == 0):
+                        if (i == 0 and j == 0): #  or (i == nx and j == 0):
                             fp.write(
                                 "%-8s%8d%8d%8s%8.6f\n"
                                 % ("SPC", 1, nodes[i, j], "3456", 0.0)
@@ -785,34 +785,34 @@ class UnstiffenedPlateAnalysis:
                             )  # v = eps_xy * x
 
             # write RBE2 elements
-            left_control_node = None
-            left_nodes = []
-            right_control_node = None
-            right_nodes = []
-            for j in range(ny + 1):
-                for i in range(nx + 1):
-                    if i == 0 and j == 0:
-                        left_control_node = nodes[i,j]
-                    elif i == nx and j == 0:
-                        right_control_node = nodes[i,j]
-                    elif i == 0:
-                        left_nodes += [nodes[i,j]]
-                    elif i == nx:
-                        right_nodes += [nodes[i,j]]
+            # left_control_node = None
+            # left_nodes = []
+            # right_control_node = None
+            # right_nodes = []
+            # for j in range(ny + 1):
+            #     for i in range(nx + 1):
+            #         if i == 0 and j == 0:
+            #             left_control_node = nodes[i,j]
+            #         elif i == nx and j == 0:
+            #             right_control_node = nodes[i,j]
+            #         elif i == 0:
+            #             left_nodes += [nodes[i,j]]
+            #         elif i == nx:
+            #             right_nodes += [nodes[i,j]]
 
-            # also could do 123456 or 123 (but I don't really want no rotation here I don't think)
-            print(f"writing RBE elements")
-            fp.write("%-8s%8d%8d%8d" % ("RBE2", elem, left_control_node, 13456))
-            for rbe_node in left_nodes:
-                fp.write("%8d" % (rbe_node))
-            fp.write("\n")
-            elem += 1
+            # # also could do 123456 or 123 (but I don't really want no rotation here I don't think)
+            # print(f"writing RBE elements")
+            # fp.write("%-8s%8d%8d%8d" % ("RBE2", elem, left_control_node, 13456))
+            # for rbe_node in left_nodes:
+            #     fp.write("%8d" % (rbe_node))
+            # fp.write("\n")
+            # elem += 1
 
-            fp.write("%-8s%8d%8d%8d" % ("RBE2", elem, right_control_node, 13456))
-            for rbe_node in right_nodes:
-                fp.write("%8d" % (rbe_node))
-            fp.write("\n")
-            elem += 1
+            # fp.write("%-8s%8d%8d%8d" % ("RBE2", elem, right_control_node, 13456))
+            # for rbe_node in right_nodes:
+            #     fp.write("%8d" % (rbe_node))
+            # fp.write("\n")
+            # elem += 1
 
             fp.write("ENDDATA")
             fp.close()

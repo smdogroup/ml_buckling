@@ -3,6 +3,9 @@ Sean Engelstad
 : 
 Demo analysis of a stiffened panel
 NOTE : copy u*iHat+v*jHat+w*kHat for paraview
+
+Note: the linear static analysis reports the in-plane loads not stresses
+as these are the working variables in the shell theory (i.e. sx0 for example is Nx)
 """
 
 import ml_buckling as mlb
