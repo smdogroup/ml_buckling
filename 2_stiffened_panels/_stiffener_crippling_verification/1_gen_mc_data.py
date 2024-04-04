@@ -74,6 +74,9 @@ inner_ct = 0
 #     sigma=5.0, num_eig=20, write_soln=False
 # )
 
+log_AR = np.linspace(-1.0, 2.0, 30)
+AR_vec = np.power(10.0, log_AR)
+
 for foo in range(N):  # until has generated this many samples
     # randomly generate the material
     materials = mlb.UnstiffenedPlateAnalysis.get_materials()
@@ -90,7 +93,7 @@ for foo in range(N):  # until has generated this many samples
 
     fail_ct = 0
 
-    for aspect_ratio in np.linspace(0.2, 10.0, 30):
+    for aspect_ratio in AR_vec:
         a = aspect_ratio * b
 
         if fail_ct > 5:
@@ -140,8 +143,13 @@ for foo in range(N):  # until has generated this many samples
                 exy=0.0,
             )
 
+            if new_plate.affine_aspect_ratio > 5.0:
+                guess = 0.5 * new_plate.affine_aspect_ratio
+            else:
+                guess = 10.0
+
             new_eigvals, errors = new_plate.run_buckling_analysis(
-                sigma=10.0, num_eig=40, write_soln=False
+                sigma=guess, num_eig=40, write_soln=False
             )
 
             #exit()
