@@ -113,7 +113,7 @@ for foo in range(N):  # until has generated this many samples
         )
 
         # make sure the affine aspect ratio is in a reasonable range
-        _accepted = 0.05 <= new_plate.affine_aspect_ratio <= 20.0
+        _accepted = 0.05 <= new_plate.affine_aspect_ratio <= 32.0
 
         if not (_accepted):
             continue  # go to next iteration
@@ -121,6 +121,8 @@ for foo in range(N):  # until has generated this many samples
         # select number of elements
         # in order to preserve element AR based on overall AR
         _nelems = 1000
+        if new_plate.affine_aspect_ratio > 15:
+            _nelems *= 2
         AR_g1 = aspect_ratio if aspect_ratio > 1 else 1.0/aspect_ratio
         min_elem = int(np.sqrt(_nelems / AR_g1))
         max_elem = int(min_elem * AR_g1)
@@ -144,7 +146,7 @@ for foo in range(N):  # until has generated this many samples
             )
 
             if new_plate.affine_aspect_ratio > 5.0:
-                guess = 0.5 * new_plate.affine_aspect_ratio
+                guess = 3.0
             else:
                 guess = 10.0
 
@@ -213,4 +215,5 @@ for foo in range(N):  # until has generated this many samples
 
         else:
             fail_ct += 1
+            comm.Barrier()
             continue

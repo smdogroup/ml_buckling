@@ -179,7 +179,7 @@ if _plot:
     if _plot_model_fit_xi: #
         # iterate over the different slender,D* bins
         for ibin, bin in enumerate(slender_bins):
-            slender_bin = [np.log(bin[0]), np.log(bin[1])]
+            slender_bin = bin
             avg_log_slender = 0.5 * (slender_bin[0] + slender_bin[1])
             mask1 = np.logical_and(slender_bin[0] <= X[:, 2], X[:, 2] <= slender_bin[1])
             if np.sum(mask1) == 0:

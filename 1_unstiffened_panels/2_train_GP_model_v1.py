@@ -6,6 +6,10 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil
+from mpi4py import MPI
+import sys
+
+comm = MPI.COMM_WORLD
 
 """
 This time I'll try a Gaussian Process model to fit the axial critical load surrogate model
@@ -36,11 +40,13 @@ print(f"csv filename = {csv_filename}")
 df = pd.read_csv("_data/" + csv_filename + ".csv")
 
 # extract only the model columns
-# TODO : if need more inputs => could maybe try adding log(E11/E22) in as a parameter?
-# or also log(E11/G12)
 X = df[["x0", "x1", "x2"]].to_numpy()
 Y = df["y"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
+
+# change from log to exp scale again
+X[:,0:2] = np.exp(X[:,0:2])
+Y = np.exp(Y)
 
 print(f"Monte Carlo #data = {X.shape[0]}")
 N_data = X.shape[0]
@@ -263,6 +269,11 @@ if _plot:
             plt.title(f"b/h in [{bin[0]},{bin[1]}]")
             ax = plt.subplot(111)
 
+            # predict the GP curve
+            n_plot = 300
+            X_plot = np.zeros((n_plot, 3))
+            f_plot = None
+
             for iDstar, Dstar_bin in enumerate(Dstar_bins):
                 if iDstar != 3: continue # only do one of them for this plot
                 mask2 = np.logical_and(Dstar_bin[0] <= X[:, 0], X[:, 0] <= Dstar_bin[1])
@@ -272,9 +283,6 @@ if _plot:
                 if np.sum(mask) == 0:
                     continue
 
-                # predict the GP curve
-                n_plot = 300
-                X_plot = np.zeros((n_plot, 3))
                 X_plot[:, 0] = avg_Dstar
                 X_plot[:, 1] = np.linspace(0.1, 10.0, n_plot)
                 X_plot[:, 2] = avg_log_slender
@@ -313,6 +321,28 @@ if _plot:
                 Y_in_range = Y[mask, :]
 
                 AR_in_range = X_in_range[:, 1]
+
+                # write the data to a csv file
+                #if comm.rank == 0:
+                model_dict = {
+                    "rho_0" : X_plot[:,1],
+                    "mean" : f_plot[:,0],
+                    "std_dev" : std_dev[:,0]
+                }
+                model_df = pd.DataFrame(model_dict)
+                model_df_filename = os.path.join(GP_folder, f"slender{ibin}-model-fit_model.csv")
+                print(f"writing model df filename {model_df_filename}")
+                model_df.to_csv(model_df_filename)
+                data_dict = {
+                    "AR" : AR_in_range,
+                    "lam" : Y_in_range[:,0],
+                }
+                data_df = pd.DataFrame(data_dict)
+                data_df_filename = os.path.join(GP_folder, f"slender{ibin}-model-fit_data.csv")
+                print(f"writing data df filename {data_df_filename}")
+                data_df.to_csv(data_df_filename)
+
+                # sys.exit()
 
                 # plot the raw data and the model in this range
                 # plot ax fill between
