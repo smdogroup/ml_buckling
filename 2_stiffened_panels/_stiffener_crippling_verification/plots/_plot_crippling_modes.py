@@ -63,8 +63,10 @@ for ibin, bin in enumerate(slender_bins):
     plt.xlabel(r"$\rho_0$")
     plt.ylabel(r"$k_{x_0}$")
     plt.legend()
-    plt.xlim(0.0, 10.0)
-    plt.ylim(0.0, 5.0)
+    plt.xscale('log')
+    plt.yscale('log')
+    # plt.xlim(0.0, 10.0)
+    # plt.ylim(0.0, 5.0)
     # box = ax.get_position()
     # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
     # # Put a legend to the right of the current axis

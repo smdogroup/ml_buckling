@@ -906,7 +906,7 @@ class UnstiffenedPlateAnalysis:
             if base_path is None:
                 base_path = os.getcwd()
             static_folder = os.path.join(base_path, self.static_folder_name)
-            if not os.path.exists(static_folder):
+            if not os.path.exists(static_folder) and self.comm.rank == 0:
                 os.mkdir(static_folder)
             SP.writeSolution(outputDir=static_folder)
 
@@ -956,7 +956,7 @@ class UnstiffenedPlateAnalysis:
             if base_path is None:
                 base_path = os.getcwd()
             buckling_folder = os.path.join(base_path, self.buckling_folder_name)
-            if not os.path.exists(buckling_folder):
+            if not os.path.exists(buckling_folder) and self.comm.rank == 0:
                 os.mkdir(buckling_folder)
             bucklingProb.writeSolution(outputDir=buckling_folder)
 

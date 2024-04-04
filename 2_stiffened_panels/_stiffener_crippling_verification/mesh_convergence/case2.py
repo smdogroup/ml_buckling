@@ -15,18 +15,18 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 
 h = 1.0
-AR = 8.0
-SR = 200.0
+AR = 12.0
+SR = 100.0
 b = h * SR
 a = b * AR
 
-flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
+flat_plate = mlb.UnstiffenedPlateAnalysis.hexcelIM7(
     comm=comm,
     bdf_file="plate.bdf",
     a=a,
     b=b,
     h=h,
-    ply_angle=0,
+    ply_angle=30,
 )
 
 AR_g1 = AR if AR > 1 else 1.0/AR
@@ -38,7 +38,7 @@ if AR > 1.0:
     ny = min_elem
 else:  # AR < 1.0
     ny = max_elem
-    nx = max(min_elem, 25)
+    nx = min_elem
 
 print(f"nx = {nx}")
 print(f"ny = {ny}")
