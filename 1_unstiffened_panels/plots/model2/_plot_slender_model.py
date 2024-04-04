@@ -3,18 +3,13 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from matplotlib import rc, rcParams
 import niceplots
-
-# rc('text', usetex=True)
-# rc('axes', linewidth=2)
-# rc('font', weight='bold')
 
 islender = 2
 model_df = pd.read_csv(f"slender{islender}-model-fit_model.csv")
 rho_0 = model_df['rho_0'].to_numpy()
 mean = model_df['mean'].to_numpy()
-std_dev = model_df['std_dev'].to_numpy()
+std_dev = model_df['std_dev'].to_numpy() * 10
 
 data_df = pd.read_csv(f"slender{islender}-model-fit_data.csv")
 AR = data_df['AR'].to_numpy()
@@ -51,12 +46,9 @@ ax.plot(
 )  # , label=f"D*-[{Dstar_bin[0]},{Dstar_bin[1]}]""
 
 # outside of for loop save the plot
-# font.size : 18
-# axes.labelweight : bold
-
-plt.xlabel(r"$\rho_0$")
-plt.ylabel(r"$\lambda_{min}^*$")
+plt.xlabel(r"$\log(\rho_0)$")
+plt.ylabel(r"$\log(\lambda_{min}^*)$")
 plt.legend()
-plt.xlim(0.1, 10.0)
-plt.ylim(0.0, 10.0)
+plt.xlim(np.log(0.1), np.log(20.0))
+plt.ylim(np.log(2.0), np.log(20.0))
 plt.savefig(f"slender{islender}-model-fit.png", dpi=400)

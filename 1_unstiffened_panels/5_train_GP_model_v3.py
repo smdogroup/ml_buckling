@@ -68,8 +68,8 @@ _plot = True
 _plot_Dstar_2d = False
 _plot_slender_2d = False
 _plot_3d = True
-_plot_model_fit = False
-_plot_model_fit_xi = False
+_plot_model_fit = True
+_plot_model_fit_xi = True
 
 # make a folder for the model fitting
 plots_folder = os.path.join(os.getcwd(), "plots")
@@ -126,7 +126,7 @@ y = Y_train
 # sigma_n, sigma_f, L1, L2, L3
 theta0 = np.array([1e-1, 3e-1, -1,
                   0.2, 1.0, 1.0, 0.3, 2])
-sigma_n = 0.05
+sigma_n = 1e-2
 
 def relu(x):
     return max([0.0, x])
@@ -179,7 +179,7 @@ if _plot:
     if _plot_model_fit_xi: #
         # iterate over the different slender,D* bins
         for ibin, bin in enumerate(slender_bins):
-            slender_bin = bin
+            slender_bin = [np.log(bin[0]), np.log(bin[1])]
             avg_log_slender = 0.5 * (slender_bin[0] + slender_bin[1])
             mask1 = np.logical_and(slender_bin[0] <= X[:, 2], X[:, 2] <= slender_bin[1])
             if np.sum(mask1) == 0:
@@ -264,6 +264,24 @@ if _plot:
             ax.plot(
                 log_xi_in_range, Y_in_range, "o", markersize=4, label="train-data"
             )  # , label=f"D*-[{Dstar_bin[0]},{Dstar_bin[1]}]""
+
+            model_dict = {
+                "xi" : X_plot[:,0],
+                "mean" : f_plot[:,0],
+                "std_dev" : std_dev[:,0]
+            }
+            model_df = pd.DataFrame(model_dict)
+            model_df_filename = os.path.join(GP_folder, f"model-fit-xi_model.csv")
+            print(f"writing model df filename {model_df_filename}")
+            model_df.to_csv(model_df_filename)
+            data_dict = {
+                "AR" : log_xi_in_range,
+                "lam" : Y_in_range[:,0],
+            }
+            data_df = pd.DataFrame(data_dict)
+            data_df_filename = os.path.join(GP_folder, f"model-fit-xi_data.csv")
+            print(f"writing data df filename {data_df_filename}")
+            data_df.to_csv(data_df_filename)
 
             # outside of for loop save the plot
             plt.xlabel(r"$log(\xi)$")
@@ -350,6 +368,24 @@ if _plot:
                 Y_in_range = Y[mask, :]
 
                 AR_in_range = X_in_range[:, 1]
+
+                model_dict = {
+                    "rho_0" : X_plot[:,1],
+                    "mean" : f_plot[:,0],
+                    "std_dev" : std_dev[:,0]
+                }
+                model_df = pd.DataFrame(model_dict)
+                model_df_filename = os.path.join(GP_folder, f"slender{ibin}-model-fit_model.csv")
+                print(f"writing model df filename {model_df_filename}")
+                model_df.to_csv(model_df_filename)
+                data_dict = {
+                    "AR" : AR_in_range,
+                    "lam" : Y_in_range[:,0],
+                }
+                data_df = pd.DataFrame(data_dict)
+                data_df_filename = os.path.join(GP_folder, f"slender{ibin}-model-fit_data.csv")
+                print(f"writing data df filename {data_df_filename}")
+                data_df.to_csv(data_df_filename)
 
                 # plot the raw data and the model in this range
                 # plot ax fill between
