@@ -157,6 +157,13 @@ for foo in range(N):  # until has generated this many samples
             kmin = new_eigvals[0] * load_factor
             error_0 = errors[0]
 
+            if new_plate.generalized_poisson < 0.3:
+                CF_eigval = 0.476 * new_plate.xi
+            else:
+                CF_eigval = 0.42 * new_plate.xi
+            rel_err = (kmin - CF_eigval) / CF_eigval
+            rel_err = np.real(rel_err)
+
         else:  # just do a model parameter check
             kmin = 1.0  # for model parameter check
 
@@ -177,6 +184,7 @@ for foo in range(N):  # until has generated this many samples
                 "a/b": [new_plate.aspect_ratio],
                 "b/h": [new_plate.slenderness],
                 "kmin": [np.real(kmin)],
+                "CF_err" : [rel_err],
                 "error": [np.real(error_0)],
                 # other parameter section
                 "material": [new_plate.material_name],

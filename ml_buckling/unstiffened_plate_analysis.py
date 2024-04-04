@@ -578,6 +578,9 @@ class UnstiffenedPlateAnalysis:
         self._eta = [self._y[int(i / self._M)] / self.b for i in range(self.num_nodes)]
 
         if self.comm.rank == 0:
+            if os.path.exists(self.bdf_file):
+                os.remove(self.bdf_file)
+
             fp = open(self.bdf_file, "w")
             fp.write("$ Input file for a square axial/shear-disp BC plate\n")
             fp.write("SOL 103\nCEND\nBEGIN BULK\n")
@@ -706,6 +709,9 @@ class UnstiffenedPlateAnalysis:
         self._eta = [self._y[int(i / self._M)] / self.b for i in range(self.num_nodes)]
 
         if self.comm.rank == 0:
+            if os.path.exists(self.bdf_file):
+                os.remove(self.bdf_file)
+
             fp = open(self.bdf_file, "w")
             fp.write("$ Input file for a square axial/shear-disp BC plate\n")
             fp.write("SOL 103\nCEND\nBEGIN BULK\n")

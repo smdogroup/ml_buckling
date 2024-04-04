@@ -15,22 +15,23 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 
 h = 1.0
-AR = 11.7210
-SR = 150.127
-b = h * SR
-a = b * AR
+SR = 27.1494
 
 # AR_vec = [11.7210]
-AR_vec = [1,3,5,10]
+AR_vec = [0.2, 1, 2,4,6,8,10]
+rel_errs = []
 for AR in AR_vec:
 
-    flat_plate = mlb.UnstiffenedPlateAnalysis.victrexAE(
+    b = h * SR
+    a = b * AR
+
+    flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
         comm=comm,
         bdf_file="plate.bdf",
         a=a,
         b=b,
         h=h,
-        ply_angle=77.2601,
+        ply_angle=30.36,
     )
 
     AR_g1 = AR if AR > 1 else 1.0/AR
@@ -65,14 +66,18 @@ for AR in AR_vec:
     # exit()
 
     tacs_eigvals, errors = flat_plate.run_buckling_analysis(
-        sigma=5.0, num_eig=40, write_soln=True
+        sigma=5.0, num_eig=40, write_soln=False
     ) # num_eig = 12 (before) => somehow this change might be affecting soln?
 
     # compare to exact eigenvalue
     tacs_eigval = tacs_eigvals[0] * load_factor
     CF_eigval = 0.476 * flat_plate.xi
     rel_err = (tacs_eigval - CF_eigval) / CF_eigval
+    rel_errs += [rel_err]
 
     print(f"tacs eigval = {tacs_eigval}")
     print(f"CF eigval = {CF_eigval}")
     print(f"rel err = {rel_err}")
+
+print(f"ARs = {AR_vec}")
+print(f"rel errors = {rel_errs}")
