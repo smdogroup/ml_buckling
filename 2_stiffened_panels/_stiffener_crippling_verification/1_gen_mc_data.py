@@ -145,10 +145,7 @@ for foo in range(N):  # until has generated this many samples
                 exy=0.0,
             )
 
-            if new_plate.affine_aspect_ratio > 5.0:
-                guess = 3.0
-            else:
-                guess = 10.0
+            guess = 10.0
 
             new_eigvals, errors = new_plate.run_buckling_analysis(
                 sigma=guess, num_eig=40, write_soln=False
