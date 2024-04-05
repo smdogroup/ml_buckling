@@ -21,6 +21,8 @@ xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1, 7)]
 # added smaller and larger bins here cause we miss some of the outliers near the higher a0/b0 with less data
 
 
+plt.style.use(niceplots.get_style())
+
 # iterate over the different slender,D* bins
 for ibin, bin in enumerate(slender_bins):
     slender_bin = [np.log(bin[0]), np.log(bin[1])]
@@ -54,14 +56,14 @@ for ibin, bin in enumerate(slender_bins):
             X_in_range,
             Y_in_range,
             "o",
-            markersize=3,
+            #markersize=3,
             color=colors[iDstar],
             label=r"$\xi" + f"-[{Dstar_bin[0]},{Dstar_bin[1]}]" + r"$",
         )
 
     # outside of for loop save the plot
     plt.xlabel(r"$\rho_0$")
-    plt.ylabel(r"$k_{x_0}$")
+    plt.ylabel(r"$\lambda_{min}^*$")
     plt.legend()
     plt.xscale('log')
     plt.yscale('log')
