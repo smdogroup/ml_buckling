@@ -54,7 +54,7 @@ data_folder = os.path.join(os.getcwd(), "data")
 if not os.path.exists(data_folder):
     os.mkdir(data_folder)
 
-log10_hw = np.linspace(-3, -1, 50)
+log10_hw = np.linspace(-3, -1, 10)
 hw_vec = np.power(10, log10_hw)
 for i,h_w in enumerate(hw_vec):
     b_w = h_w / stiff_AR
@@ -68,12 +68,12 @@ for i,h_w in enumerate(hw_vec):
         clamped=False,
         edge_pt_min=5,
         edge_pt_max=40,
-        _make_rbe=False
+        _make_rbe=False # would like to change this to True
     )
 
     # predict the actual eigenvalue
     pred_lambda = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
-    _tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=False)
+    _tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
     stiff_analysis.post_analysis()
 
     tacs_eigvals += [np.real(_tacs_eigvals[0])]

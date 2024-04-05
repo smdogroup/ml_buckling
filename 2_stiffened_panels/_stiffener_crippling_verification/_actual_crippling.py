@@ -43,7 +43,6 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    _make_rbe=True
 )
 
 print(f"Darray stiff = {stiff_analysis.Darray_stiff}")
@@ -58,6 +57,7 @@ stiff_analysis.pre_analysis(
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
+    _make_rbe=True
 )
 
 print(f"exx = {stiff_analysis.affine_exx}")
