@@ -32,8 +32,8 @@ material = mlb.CompositeMaterial(
     E22=8.96e9,
     G12=7.1e9,
     nu12=0.30,
-    ply_angles=np.deg2rad([0,90,0,90]),
-    ply_fractions=np.array([0.25, 0.25, 0.25, 0.25]),
+    ply_angles=[0,90,0,90],
+    ply_fractions=[0.25, 0.25, 0.25, 0.25],
     ref_axis=np.array([1,0,0]),
 )
 
@@ -42,7 +42,6 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    _make_rbe=False #True
 )
 
 
@@ -55,7 +54,7 @@ data_folder = os.path.join(os.getcwd(), "data")
 if not os.path.exists(data_folder):
     os.mkdir(data_folder)
 
-log10_hw = np.linspace(-3, -1, 50)
+log10_hw = np.linspace(-3, -1, 10)
 hw_vec = np.power(10, log10_hw)
 for i,h_w in enumerate(hw_vec):
     b_w = h_w / stiff_AR
@@ -69,6 +68,8 @@ for i,h_w in enumerate(hw_vec):
         clamped=False,
         edge_pt_min=5,
         edge_pt_max=40,
+        #_make_rbe=True,
+        #_rigid_u2_stiffener=False,
     )
 
     # predict the actual eigenvalue
