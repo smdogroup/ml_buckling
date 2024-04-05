@@ -18,14 +18,11 @@ class StiffenedPlateAnalysis:
         plate_material:CompositeMaterial,
         stiffener_material:CompositeMaterial,
         name=None,  # use the plate name to differentiate plate folder names
-        _compress_stiff=False, # whether to compress stiffeners to in axial case (TODO : figure this out => need to study static analysis)
     ):
         self.comm = comm
         self.geometry = geometry
         self.plate_material = plate_material
         self.stiffener_material = stiffener_material
-
-        self._compress_stiff_override = _compress_stiff
 
         # geometry properties
         self._name = name
@@ -171,7 +168,8 @@ class StiffenedPlateAnalysis:
             clamped=False,
             edge_pt_min=5,
             edge_pt_max=40,
-            _make_rbe=True
+            _make_rbe=True,
+            _rigid_u2_stiffener=False,
         ):
         """
         Generate a stiffened plate mesh with CQUAD4 elements
@@ -265,6 +263,7 @@ class StiffenedPlateAnalysis:
 
             # make nodes dict for nodes on the boundary
             boundary_nodes = []
+            nodes2 = []
             def in_tol(val1,val2):
                 return abs(val1-val2) < 1e-5
             for node_dict in nodes:
@@ -280,17 +279,19 @@ class StiffenedPlateAnalysis:
 
                 on_bndry = x_left or x_right or y_bot or y_top
                 #on_bndry = on_bndry and xy_plane
+                node_dict["on_bndry"] = on_bndry
 
                 if on_bndry:
                     node_dict["xleft"] = x_left
                     node_dict["xright"] = x_right
                     node_dict["ybot"] = y_bot
                     node_dict["ytop"] = y_top
-                    node_dict["xy_plane"] = xy_plane or self._compress_stiff_override
+                    node_dict["xy_plane"] = xy_plane
 
                     #print(f"boundary node dict = {node_dict}")
 
                     boundary_nodes += [node_dict]
+                nodes2 += [node_dict]
 
             # need to read in the ESP/CAPS dat file
             # then append write the SPC cards to it
@@ -340,20 +341,31 @@ class StiffenedPlateAnalysis:
                         rbe_nodes = []
                         rbe_control_node = None
 
-                        for node_dict in boundary_nodes:                        
-                            if in_tol(node_dict["x"],xval) and in_tol(node_dict["y"], yval):
-                                zval = node_dict["z"]
-                                xy_plane = node_dict["xy_plane"]
-                                if node_dict["xy_plane"]:
-                                    rbe_control_node = node_dict["id"]
-                                    all_rbe_control_nodes += [rbe_control_node]
-                                else:
-                                    rbe_nodes += [node_dict["id"]]
+                        if not _rigid_u2_stiffener:
+                            for node_dict in boundary_nodes:                        
+                                if in_tol(node_dict["x"],xval) and in_tol(node_dict["y"], yval):
+                                    zval = node_dict["z"]
+                                    xy_plane = node_dict["xy_plane"]
+                                    if node_dict["xy_plane"]:
+                                        rbe_control_node = node_dict["id"]
+                                        all_rbe_control_nodes += [rbe_control_node]
+                                    else:
+                                        rbe_nodes += [node_dict["id"]]
+                        else:
+                            for node_dict in nodes2:                        
+                                if in_tol(node_dict["x"],xval) and in_tol(node_dict["y"], yval):
+                                    zval = node_dict["z"]
+                                    xy_plane = node_dict["xy_plane"]
+                                    if node_dict["xy_plane"] and node_dict["on_bndry"]:
+                                        rbe_control_node = node_dict["id"]
+                                        all_rbe_control_nodes += [rbe_control_node]
+                                    elif not(node_dict["xy_plane"]):
+                                        rbe_nodes += [node_dict["id"]]
 
                         # write the RBE element
                         eid += 1
                         # also could do 123456 or 123 (but I don't really want no rotation here I don't think)
-                        fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 23)) #123456
+                        fp1.write("%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 23 if not _rigid_u2_stiffener else 2)) #123456
                         for rbe_node in rbe_nodes:
                             fp1.write("%8d" % (rbe_node))
                         fp1.write("\n")

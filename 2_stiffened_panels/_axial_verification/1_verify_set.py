@@ -32,9 +32,9 @@ material = mlb.CompositeMaterial(
     E22=8.96e9,
     G12=7.1e9,
     nu12=0.30,
-    ply_angles=np.deg2rad([0,90,0,90]),
-    ply_fractions=np.array([0.25, 0.25, 0.25, 0.25]),
-    ref_axis=np.array([1,0,0]),
+    ply_angles=[0,90,0,90],
+    ply_fractions=[0.25, 0.25, 0.25, 0.25],
+    ref_axis=[1,0,0],
 )
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
@@ -42,7 +42,6 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    _make_rbe=False #True
 )
 
 
@@ -69,6 +68,7 @@ for i,h_w in enumerate(hw_vec):
         clamped=False,
         edge_pt_min=5,
         edge_pt_max=40,
+        _make_rbe=False
     )
 
     # predict the actual eigenvalue

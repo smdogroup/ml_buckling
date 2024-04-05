@@ -28,7 +28,7 @@ class CompositeMaterial:
         self._ply_fractions = ply_fractions
         self.material_name = material_name
         self.symmetric = symmetric
-        self.ref_axis = ref_axis
+        self.ref_axis = np.array(ref_axis)
 
     @property
     def num_plies(self) -> int:
