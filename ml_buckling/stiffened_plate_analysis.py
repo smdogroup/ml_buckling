@@ -318,18 +318,31 @@ class StiffenedPlateAnalysis:
 
         self._test_broadcast()
 
-        # non-dimensional xyz coordinates of the plate
-        self._xi = []
-        self._eta = []
-        self._zeta = []
+        self._xi = None
+        self._eta = None
+        self._zeta = None
+        self.num_nodes = None
 
-        for node in nodes:
-            self._xi += [node["x"] / self.geometry.a]
-            self._eta += [node["y"] / self.geometry.b]
-            self._zeta += [node["z"] / self.geometry.h_w]
-        self._xi = np.array(self._xi)
-        self._eta = np.array(self._eta)
-        self._zeta = np.array(self._zeta)
+        if self.comm.rank == 0:
+
+            # non-dimensional xyz coordinates of the plate
+            self._xi = []
+            self._eta = []
+            self._zeta = []
+
+            for node in nodes:
+                self._xi += [node["x"] / self.geometry.a]
+                self._eta += [node["y"] / self.geometry.b]
+                self._zeta += [node["z"] / self.geometry.h_w]
+            self._xi = np.array(self._xi)
+            self._eta = np.array(self._eta)
+            self._zeta = np.array(self._zeta)
+
+        self._xi = self.comm.bcast(self._xi, root=0)
+        self._eta = self.comm.bcast(self._eta, root=0)
+        self._zeta = self.comm.bcast(self._zeta, root=0)
+        self.num_nodes = self.comm.bcast(self.num_nodes, root=0)
+        self.comm.Barrier()
 
         if self.comm.rank == 0:
 

@@ -62,7 +62,7 @@ nom_panel.post_analysis()
 
 
 new_geometry = mlb.StiffenedPlateGeometry.copy(nom_geometry)
-new_geometry.h_w = 20e-3
+new_geometry.h_w = 10e-3
 
 new_panel = mlb.StiffenedPlateAnalysis.copy(nom_panel)
 new_panel.geometry = new_geometry
