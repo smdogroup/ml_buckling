@@ -37,6 +37,17 @@ class StiffenedPlateAnalysis:
         self._tacs_aim = None
         self._index = 0
 
+    @classmethod
+    def copy(cls, analysis:Self):
+        return cls(
+            comm=analysis.comm,
+            geometry=analysis.geometry,
+            plate_material=analysis.plate_material,
+            stiffener_material=analysis.stiffener_material,
+            name=analysis._name,
+            _compress_stiff=analysis._compress_stiff_override,
+        )
+
     @property
     def buckling_folder_name(self) -> str:
         if self._name:

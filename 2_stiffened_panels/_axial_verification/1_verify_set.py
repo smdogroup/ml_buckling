@@ -57,9 +57,10 @@ if not os.path.exists(data_folder):
 log10_hw = np.linspace(-3, -1, 10)
 hw_vec = np.power(10, log10_hw)
 for i,h_w in enumerate(hw_vec):
-    b_w = h_w / stiff_AR
     stiff_analysis.geometry.h_w = h_w
-    stiff_analysis.geometry.b_w = b_w
+    stiff_analysis.geometry.w_b = h_w / stiff_AR
+
+    _make_rbe = True # False
 
     stiff_analysis.pre_analysis(
         global_mesh_size=0.03,
@@ -68,7 +69,7 @@ for i,h_w in enumerate(hw_vec):
         clamped=False,
         edge_pt_min=5,
         edge_pt_max=40,
-        _make_rbe=False # would like to change this to True
+        _make_rbe=_make_rbe, 
     )
 
     # predict the actual eigenvalue
@@ -76,9 +77,14 @@ for i,h_w in enumerate(hw_vec):
     _tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
     stiff_analysis.post_analysis()
 
-    tacs_eigvals += [np.real(_tacs_eigvals[0])]
+    if _make_rbe:
+        eigval = _tacs_eigvals[1]
+    else:
+        eigval = _tacs_eigvals[0]
+
+    tacs_eigvals += [np.real(eigval)]
     CF_eigvals += [pred_lambda]
-    rel_err = (pred_lambda - np.real(_tacs_eigvals[0])) / pred_lambda
+    rel_err = (pred_lambda - np.real(eigval)) / pred_lambda
     rel_errors += [rel_err]
 
 

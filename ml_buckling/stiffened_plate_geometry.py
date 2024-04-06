@@ -61,3 +61,17 @@ class StiffenedPlateGeometry:
         # number of whole number, 
         # local sections bounded by stiffeners
         return self.num_stiff
+    
+    @classmethod
+    def copy(cls, geometry):
+        return cls(
+            a=geometry.a,
+            b=geometry.b,
+            h=geometry.h,
+            num_stiff=geometry.num_stiff,
+            w_b=geometry.w_b,
+            t_b=geometry.t_b,
+            h_w=geometry.h_w,
+            t_w=geometry.t_w,
+            rib_h=geometry.rib_h,
+        )
