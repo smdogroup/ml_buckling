@@ -7,8 +7,13 @@ from pprint import pprint
 from .stiffened_plate_geometry import StiffenedPlateGeometry
 from .composite_material import CompositeMaterial
 from .composite_material_utility import CompositeMaterialUtility
+from typing_extensions import Self
 
 dtype = utilities.BaseUI.dtype
+
+def exp_kernel1(xp, xq, sigma_f, L):
+    # xp, xq are Nx1, Nx1 vectors
+    return sigma_f**2 * np.exp(-0.5 * (xp - xq).T @ (xp - xq) / L**2)
 
 class StiffenedPlateAnalysis:
     def __init__(
@@ -301,6 +306,19 @@ class StiffenedPlateAnalysis:
             fp.close()
 
         self._test_broadcast()
+
+        # non-dimensional xyz coordinates of the plate
+        self._xi = []
+        self._eta = []
+        self._zeta = []
+
+        for node in nodes:
+            self._xi += [node["x"] / self.geometry.a]
+            self._eta += [node["y"] / self.geometry.b]
+            self._zeta += [node["z"] / self.geometry.h_w]
+        self._xi = np.array(self._xi)
+        self._eta = np.array(self._eta)
+        self._zeta = np.array(self._zeta)
 
         if self.comm.rank == 0:
 
@@ -702,5 +720,136 @@ class StiffenedPlateAnalysis:
 
         _lambda = N11_crit / N11
         return _lambda
+    
+    MAC_THRESHOLD = 0.1  # 0.6
+
+    @property
+    def nondim_X(self):
+        """non-dimensional X matrix for Gaussian Process model"""
+        return np.concatenate([
+            np.expand_dims(self._xi, axis=-1),
+            np.expand_dims(self._eta, axis=-1),
+            np.expand_dims(self._zeta, axis=-1)
+        ], axis=1,
+        )
+    
+    def get_eigenvector(self, imode):
+        # convert eigenvectors to w coordinates only, 6 dof per shell
+        # print(f"ndof in eigenvector = {self._eigenvectors[imode].shape[0]}")
+        return self._eigenvectors[imode][2::6]
+    
+    def interpolate_eigenvectors(self, X_test, compute_covar=False):
+        """
+        interpolate the eigenvector from this object the nominal plate to a new mesh in non-dim coordinates
+        """
+        X_train = self.nondim_X
+        num_train = self.num_nodes
+        num_test = X_test.shape[0]
+        # default hyperparameters
+        sigma_n = 1e-4
+        sigma_f = 1.0
+        L = 0.4
+        _kernel = lambda xp, xq: exp_kernel1(xp, xq, sigma_f=sigma_f, L=L)
+        K_train = sigma_n**2 * np.eye(num_train) + np.array(
+            [
+                [_kernel(X_train[i, :], X_train[j, :]) for i in range(num_train)]
+                for j in range(num_train)
+            ]
+        )
+        K_test = np.array(
+            [
+                [_kernel(X_train[i, :], X_test[j, :]) for i in range(num_train)]
+                for j in range(num_test)
+            ]
+        )
+
+        if not compute_covar:
+            _interpolated_eigenvectors = []
+            for imode in range(self.num_modes):
+                phi = self.get_eigenvector(imode)
+                if self._saved_alphas:  # skip linear solve in this case
+                    alpha = self._alphas[imode]
+                else:
+                    alpha = np.linalg.solve(K_train, phi)
+                    self._alphas[imode] = alpha
+                phi_star = K_test @ alpha
+                _interpolated_eigenvectors += [phi_star]
+            self._saved_alphas = True
+            return _interpolated_eigenvectors
+        else:
+            raise AssertionError(
+                "Haven't written part of extrapolate eigenvector to get the conditional covariance yet."
+            )
+    
+    @property
+    def num_modes(self) -> int:
+        """number of eigenvalues or modes that were recorded"""
+        return self._num_modes
+
+    @property
+    def eigenvectors(self):
+        return [self.get_eigenvector(imode) for imode in range(self.num_modes)]
+
+    @property
+    def eigenvalues(self):
+        return self._eigenvalues
+
+    @classmethod
+    def mac_permutation(
+        cls, nominal_plate : Self, new_plate : Self, num_modes: int
+    ) -> dict:
+        """
+        compute the permutation of modes in the new plate that correspond to the modes in the nominal plate
+        using Gaussian Process interpolation for modal assurance criterion
+        """
+        eigenvalues = [None for _ in range(num_modes)]
+        permutation = {}
+        nominal_interp_modes = nominal_plate.interpolate_eigenvectors(
+            X_test=new_plate.nondim_X
+        )
+        new_modes = new_plate.eigenvectors
+
+        # _debug = False
+        # if _debug:
+        #     for imode, interp_mode in enumerate(nominal_interp_modes):
+        #         interp_mat = new_plate._vec_to_plate_matrix(interp_mode)
+        #         import matplotlib.pyplot as plt
+
+        #         plt.imshow(interp_mat.astype(np.double))
+        #         plt.show()
+
+        for imode, nominal_mode in enumerate(nominal_interp_modes):
+            if imode >= num_modes:  # if larger than number of nominal modes to compare
+                break
+            nominal_mode_unit = nominal_mode / np.linalg.norm(nominal_mode)
+
+            similarity_list = []
+            for new_mode in new_modes:
+                new_mode_unit = new_mode / np.linalg.norm(new_mode)
+                # compute cosine similarity with the unit vectors
+                similarity_list += [
+                    abs(np.dot(nominal_mode_unit, new_mode_unit).astype(np.double))
+                ]
+
+            # compute the maximum similarity index
+            # if _debug:
+            #     print(f"similarity list imode {imode} = {similarity_list}")
+            jmode_star = np.argmax(np.array(similarity_list))
+            permutation[imode] = jmode_star
+            if similarity_list[jmode_star] > cls.MAC_THRESHOLD:  # similarity threshold
+                eigenvalues[imode] = new_plate.eigenvalues[jmode_star]
+
+        # check the permutation map is one-to-one
+
+        # print to the terminal about the modal criterion
+        print(f"0-based mac criterion permutation map")
+        print(
+            f"\tbetween nominal plate {nominal_plate._plate_name} and new plate {new_plate._plate_name}"
+        )
+        print(f"\tthe permutation map is the following::\n")
+        for imode in range(num_modes):
+            print(f"\t nominal {imode} : new {permutation[imode]}")
+
+        return eigenvalues, permutation
 
 
