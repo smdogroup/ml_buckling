@@ -52,7 +52,7 @@ nom_panel.pre_analysis(
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
-    _make_rbe=False # would like to change this to True
+    _make_rbe=True # would like to change this to True
 )
 
 # predict the actual eigenvalue
@@ -75,14 +75,14 @@ new_panel.pre_analysis(
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
-    _make_rbe=False # would like to change this to True
+    _make_rbe=True # would like to change this to True
 )
 
 # predict the actual eigenvalue
 pred_lambda = new_panel.predict_crit_load(exx=new_panel.affine_exx)
-_tacs_eigvals, errors = new_panel.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+_tacs_eigvals, errors = new_panel.run_buckling_analysis(sigma=10.0, num_eig=100, write_soln=True)
 new_panel.post_analysis()
 
-eigvals, permutation = mlb.StiffenedPlateAnalysis.mac_permutation(nom_panel, new_panel)
+eigvals, permutation = mlb.StiffenedPlateAnalysis.mac_permutation(nom_panel, new_panel, num_modes=20)
 print(f"eigvals = {eigvals}")
 print(f"permutation = {permutation}")

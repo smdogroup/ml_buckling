@@ -744,10 +744,15 @@ class StiffenedPlateAnalysis:
         ], axis=1,
         )
     
-    def get_eigenvector(self, imode):
+    def get_eigenvector(self, imode, uvw=False):
         # convert eigenvectors to w coordinates only, 6 dof per shell
         # print(f"ndof in eigenvector = {self._eigenvectors[imode].shape[0]}")
-        return self._eigenvectors[imode][2::6]
+        eigvector = self._eigenvalues[imode]
+        if uvw:
+            uvw_subvector = np.concatenate([eigvector[0::6], eigvector[1::6], eigvector[2::6]], axis=0)
+            return uvw_subvector
+        else:
+            return eigvector[2::6]
     
     def interpolate_eigenvectors(self, X_test, compute_covar=False):
         """
@@ -804,6 +809,19 @@ class StiffenedPlateAnalysis:
     @property
     def eigenvalues(self):
         return self._eigenvalues
+    
+    def is_non_crippling_mode(self, imode):
+        # ensure that the majority of the eigenvector magnitude is due to w displacement
+        # and not v displacement of stiffener, split into these two sub-vectors w_sub and total eigenvector
+        eigvector = self._eigenvectors[imode]
+        w_subvector = eigvector[2::6]
+        uvw_subvector = np.concatenate([eigvector[0::6], eigvector[1::6], eigvector[2::6]], axis=0)
+
+        w_mag = np.sqrt(np.dot(w_subvector, w_subvector))
+        full_mag = np.sqrt(np.dot(uvw_subvector, uvw_subvector))
+        mag_frac = w_mag / full_mag
+        print(f"w_mag {w_mag}, full mag {full_mag}, mag frac {mag_frac}")
+        return mag_frac > 0.9
 
     @classmethod
     def mac_permutation(
@@ -832,10 +850,17 @@ class StiffenedPlateAnalysis:
         for imode, nominal_mode in enumerate(nominal_interp_modes):
             if imode >= num_modes:  # if larger than number of nominal modes to compare
                 break
+
+            # skip crippling modes
+            if not nominal_plate.is_non_crippling_mode(inew): continue
+
             nominal_mode_unit = nominal_mode / np.linalg.norm(nominal_mode)
 
             similarity_list = []
-            for new_mode in new_modes:
+            for inew,new_mode in enumerate(new_modes):
+
+                # skip crippling modes
+                if not new_plate.is_non_crippling_mode(inew): continue
                 new_mode_unit = new_mode / np.linalg.norm(new_mode)
                 # compute cosine similarity with the unit vectors
                 similarity_list += [
