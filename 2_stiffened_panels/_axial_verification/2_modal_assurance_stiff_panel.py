@@ -42,17 +42,18 @@ nom_panel = mlb.StiffenedPlateAnalysis(
     geometry=nom_geometry,
     stiffener_material=material,
     plate_material=material,
+    name="nominal"
 )
 
 # initial panel analysis for MAC
 nom_panel.pre_analysis(
-    global_mesh_size=0.03,
+    global_mesh_size=0.05,
     exx=nom_panel.affine_exx,
     exy=0.0,
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
-    _make_rbe=True # would like to change this to True
+    _make_rbe=False # TODO : would like to change this to True
 )
 
 # predict the actual eigenvalue
@@ -64,18 +65,18 @@ nom_panel.post_analysis()
 new_geometry = mlb.StiffenedPlateGeometry.copy(nom_geometry)
 new_geometry.h_w = 10e-3
 
-new_panel = mlb.StiffenedPlateAnalysis.copy(nom_panel)
+new_panel = mlb.StiffenedPlateAnalysis.copy(nom_panel, name="new")
 new_panel.geometry = new_geometry
 
 
 new_panel.pre_analysis(
-    global_mesh_size=0.03,
+    global_mesh_size=0.05,
     exx=new_panel.affine_exx,
     exy=0.0,
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
-    _make_rbe=True # would like to change this to True
+    _make_rbe=False # TODO : would like to change this to True
 )
 
 # predict the actual eigenvalue

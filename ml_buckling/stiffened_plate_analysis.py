@@ -36,15 +36,16 @@ class StiffenedPlateAnalysis:
         self._name = name
         self._tacs_aim = None
         self._index = 0
+        self._saved_alphas = False
 
     @classmethod
-    def copy(cls, analysis:Self):
+    def copy(cls, analysis:Self, name=None):
         return cls(
             comm=analysis.comm,
             geometry=analysis.geometry,
             plate_material=analysis.plate_material,
             stiffener_material=analysis.stiffener_material,
-            name=analysis._name,
+            name=analysis._name if name is None else name,
             _compress_stiff=analysis._compress_stiff_override,
         )
 
@@ -337,6 +338,7 @@ class StiffenedPlateAnalysis:
             self._xi = np.array(self._xi)
             self._eta = np.array(self._eta)
             self._zeta = np.array(self._zeta)
+            self.num_nodes = len(nodes)
 
         self._xi = self.comm.bcast(self._xi, root=0)
         self._eta = self.comm.bcast(self._eta, root=0)
@@ -760,7 +762,7 @@ class StiffenedPlateAnalysis:
     def get_eigenvector(self, imode, uvw=False):
         # convert eigenvectors to w coordinates only, 6 dof per shell
         # print(f"ndof in eigenvector = {self._eigenvectors[imode].shape[0]}")
-        eigvector = self._eigenvalues[imode]
+        eigvector = self._eigenvectors[imode]
         if uvw:
             uvw_subvector = np.concatenate([eigvector[0::6], eigvector[1::6], eigvector[2::6]], axis=0)
             return uvw_subvector
@@ -833,7 +835,7 @@ class StiffenedPlateAnalysis:
         w_mag = np.sqrt(np.dot(w_subvector, w_subvector))
         full_mag = np.sqrt(np.dot(uvw_subvector, uvw_subvector))
         mag_frac = w_mag / full_mag
-        print(f"w_mag {w_mag}, full mag {full_mag}, mag frac {mag_frac}")
+        #print(f"w_mag {w_mag}, full mag {full_mag}, mag frac {mag_frac}")
         return mag_frac > 0.9
 
     @classmethod
@@ -865,7 +867,7 @@ class StiffenedPlateAnalysis:
                 break
 
             # skip crippling modes
-            if not nominal_plate.is_non_crippling_mode(inew): continue
+            if not nominal_plate.is_non_crippling_mode(imode): continue
 
             nominal_mode_unit = nominal_mode / np.linalg.norm(nominal_mode)
 
@@ -893,11 +895,12 @@ class StiffenedPlateAnalysis:
         # print to the terminal about the modal criterion
         print(f"0-based mac criterion permutation map")
         print(
-            f"\tbetween nominal plate {nominal_plate._plate_name} and new plate {new_plate._plate_name}"
+            f"\tbetween nominal plate {nominal_plate._name} and new plate {new_plate._name}"
         )
         print(f"\tthe permutation map is the following::\n")
-        for imode in range(num_modes):
+        for imode in permutation:
             print(f"\t nominal {imode} : new {permutation[imode]}")
+        eigenvalues = np.real(eigenvalues)
 
         return eigenvalues, permutation
 
