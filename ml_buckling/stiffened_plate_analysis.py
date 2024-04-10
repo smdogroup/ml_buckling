@@ -772,7 +772,7 @@ class StiffenedPlateAnalysis:
         interpolate the eigenvector from this object the nominal plate to a new mesh in non-dim coordinates
         """
         X_train = self.nondim_X
-        num_train = self.num_nodes
+        num_train = int(self.num_nodes)
         num_test = X_test.shape[0]
         # default hyperparameters
         sigma_n = 1e-4
