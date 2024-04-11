@@ -310,7 +310,10 @@ class StiffenedPlateAnalysis:
     def _test_broadcast(self):
         return
         # test bcast
-        my_var = 0
+        if self.comm.rank == 0:
+            my_var = 0
+        else:
+            my_var = None
         print(f"pre myvar{self._index} = {my_var} on rank {self.comm.rank}")
         my_var = self.comm.bcast(my_var, root=0)
         print(f"post myvar{self._index} = {my_var} on rank {self.comm.rank}")
@@ -970,12 +973,15 @@ class StiffenedPlateAnalysis:
     @property
     def nondim_X(self):
         """non-dimensional X matrix for Gaussian Process model"""
-        return np.concatenate([
-            np.expand_dims(self._xi, axis=-1),
-            np.expand_dims(self._eta, axis=-1),
-            np.expand_dims(self._zeta, axis=-1)
-        ], axis=1,
-        )
+        if self.comm.rank == 0:
+            return np.concatenate([
+                np.expand_dims(self._xi, axis=-1),
+                np.expand_dims(self._eta, axis=-1),
+                np.expand_dims(self._zeta, axis=-1)
+            ], axis=1,
+            )
+        else:
+            return None
     
     def get_eigenvector(self, imode, uvw=False):
         # convert eigenvectors to w coordinates only, 6 dof per shell

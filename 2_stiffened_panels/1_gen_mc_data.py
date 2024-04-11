@@ -110,12 +110,17 @@ for material in mlb.CompositeMaterial.get_materials():
                         tacs_eigvals,errors = stiffened_plate.run_buckling_analysis(sigma=10.0, num_eig=50, write_soln=True)
                         stiffened_plate.post_analysis()
 
-                        stiffened_plate.print_mode_classification()
+                        if comm.rank == 0:
+                            stiffened_plate.print_mode_classification()
 
                         #if abs(errors[0]) > 1e-7: continue
 
                         global_lambda_star = stiffened_plate.min_global_mode_eigenvalue
                         if global_lambda_star is None: continue # no global modes appeared
+
+                        if not(0.5 <= global_lambda_star <= 50.0): 
+                            print(f"Warning global mode eigenvalue {global_lambda_star} not in [0.5, 50.0]")
+                            continue 
 
                         # save data to csv file otherwise because this data point is good
                         # record the model parameters
@@ -125,7 +130,7 @@ for material in mlb.CompositeMaterial.get_materials():
                             "xi" : [stiffened_plate.xi_plate],
                             "gamma" : [stiffened_plate.gamma],
                             "zeta" : [stiffened_plate.zeta_plate],
-                            "lambda_star" : [global_lambda_star],
+                            "lambda_star" : [np.real(global_lambda_star)],
                         }
 
                         # write to the training csv file
