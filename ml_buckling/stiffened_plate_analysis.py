@@ -38,6 +38,11 @@ class StiffenedPlateAnalysis:
         self._index = 0
         self._saved_alphas = False
 
+        # save the input strains
+        self._exx = None
+        self._exy = None
+        self._eyy = None
+
     @classmethod
     def copy(cls, analysis:Self, name=None):
         return cls(
@@ -326,6 +331,10 @@ class StiffenedPlateAnalysis:
         Generate a stiffened plate mesh with CQUAD4 elements
         create pure axial, pure shear, or combined loading displacement
         """
+
+        self._exx = exx
+        self._exy = exy
+        self._eyy = eyy
 
         self._test_broadcast()
 
@@ -1048,12 +1057,15 @@ class StiffenedPlateAnalysis:
         return mag_frac > 0.9
     
     def _in_tol(self,val1,val2,tol=1e-5):
-        return abs(val1-val2) < tol
+        return np.abs(val1-val2) < tol
 
     def is_local_mode(self, imode, just_check_local=False):
         """check if its a local mode by comparing the inf-norm (or max) w displacements along the stiffeners to the overall plate"""
         N = self.geometry.num_stiff + 1
-        w = self._eigenvectors[imode]
+        w = self._eigenvectors[imode][2::6] # get only the w displacement entries
+
+        # trim out and remove RBE elements if need be
+        w = w[:self.num_nodes]
 
         # compute max w displacement in the stiffeners
         mask = None
@@ -1094,6 +1106,17 @@ class StiffenedPlateAnalysis:
             return None
         else:
             return np.min(np.array(self.global_mode_eigenvalues))
+        
+    def print_mode_classification(self):
+        """for each mode print out whether it's a global, local, or stiffener crippling mode"""
+        for imode in range(self.num_modes):
+            if self.is_local_mode(imode):
+                print(f"\tMode {imode} is local")
+            elif self.is_global_mode(imode):
+                print(f"\tMode {imode} is global")
+            else:
+                print(f"\tMode {imode} is stiffener crippling")
+        return
 
     @classmethod
     def mac_permutation(
@@ -1161,4 +1184,24 @@ class StiffenedPlateAnalysis:
 
         return eigenvalues, permutation
 
+    def __str__(self):
+        mystr = f"Stiffened panel analysis object '{self._name}':\n"
+        mystr += str(self.geometry)
+        mystr += "Plate material:\n"
+        mystr += str(self.plate_material)
+        mystr += "Stiffener material:\n"
+        mystr += str(self.stiffener_material)
+        mystr += "\nAdvanced parameters in the stiffened panel analysis obj\n"
+        mystr += f"\trho_0 = {self.affine_aspect_ratio}\n"
+        mystr += f"\txi plate = {self.xi_plate}\n"
+        mystr += f"\txi stiff = {self.xi_stiff}\n"
+        mystr += f"\tgamma = {self.gamma}\n"
+        mystr += f"\tzeta plate = {self.zeta_plate}\n"
+        mystr += f"\tzeta stiff = {self.zeta_stiff}\n"
+        mystr += "Mesh + Case Settings\n"
+        mystr += f"\texx = {self._exx:.5e}\n"
+        mystr += f"\texy = {self._exy:.5e}\n"
+        mystr += f"\teyy = {self._eyy:.5e}\n" 
+        mystr += f"\tnum nodes = {self.num_nodes}\n"
+        return mystr
 

@@ -21,7 +21,7 @@ class StiffenedPlateGeometry:
         self.num_stiff = num_stiff
         
         # not implemented in closed-form yet so ignore this
-        assert t_w == 0.0
+        assert t_b == 0.0
 
         self.w_b = w_b
         self.t_b = t_b
@@ -65,6 +65,18 @@ class StiffenedPlateGeometry:
         # local sections bounded by stiffeners
         return self.num_stiff
     
+    @property
+    def AR(self) -> float:
+        return self.a / self.b
+    
+    @property
+    def SR(self) -> float:
+        return self.b / self.h
+    
+    @property
+    def stiff_AR(self) -> float:
+        return self.h_w / self.t_w
+    
     @classmethod
     def copy(cls, geometry):
         return cls(
@@ -78,3 +90,18 @@ class StiffenedPlateGeometry:
             t_w=geometry.t_w,
             rib_h=geometry.rib_h,
         )
+
+    def __str__(self):
+        mystr = "Stiffened panel geometry object:\n"
+        mystr += f"\ta = {self.a}\n"
+        mystr += f"\tb = {self.b}\n"
+        mystr += f"\th = {self.h}\n"
+        mystr += f"\tnum_stiff = {self.num_stiff}\n"
+        mystr += f"\tw_b = {self.w_b}\n"
+        mystr += f"\tt_b = {self.t_b}\n"
+        mystr += f"\th_w = {self.h_w}\n"
+        mystr += f"\tt_w = {self.t_w}\n"
+        mystr += f"\tAR = {self.AR}\n"
+        mystr += f"\tSR = {self.SR}\n"
+        mystr += f"\tstiff_AR = {self.stiff_AR}\n"
+        return mystr

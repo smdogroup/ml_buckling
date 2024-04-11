@@ -239,3 +239,18 @@ class CompositeMaterial:
             G12=4.688e9,
             ref_axis=ref_axis,
         )
+    
+    def __str__(self):
+        mystr = "Composite material object\n"
+        mystr += f"\tE11 = {self.E11}\n" 
+        mystr += f"\tnu12 = {self.nu12}\n" 
+        mystr += f"\t_E22 = {self._E22}\n" 
+        mystr += f"\t_G12 = {self._G12}\n" 
+        mystr += f"\t_G23 = {self._G23}\n" 
+        mystr += f"\t_G13 = {self._G13}\n" 
+        mystr += f"\t_ply_angles = {self._ply_angles}\n" 
+        mystr += f"\t_ply_fractions = {self._ply_fractions}\n" 
+        mystr += f"\tmaterial_name = {self.material_name}\n" 
+        mystr += f"\tsymmetric = {self.symmetric}\n" 
+        mystr += f"\tref_axis = {self.ref_axis}\n"
+        return mystr

@@ -50,8 +50,9 @@ for material in mlb.CompositeMaterial.get_materials():
             b = h * SR
             
             # stiffener heights and spacing
-            log_SHR = np.linspace(np.log(0.01), np.log(0.5), 5)
+            log_SHR = np.linspace(np.log(0.05), np.log(0.4), 5)
             SHR_vec = np.exp(log_SHR)
+            #SHR_vec = SHR_vec[::-1]
 
             for SHR in SHR_vec:
 
@@ -66,6 +67,9 @@ for material in mlb.CompositeMaterial.get_materials():
                     AR_vec = np.exp(log_AR_vec)
 
                     for AR in AR_vec:
+
+                        # temporarily set AR to reasonable value
+                        AR = 1.0
                         
                         a = b * AR
                         geometry = mlb.StiffenedPlateGeometry(
@@ -91,19 +95,24 @@ for material in mlb.CompositeMaterial.get_materials():
                         if not valid_affine_AR: continue
 
                         stiffened_plate.pre_analysis(
-                            global_mesh_size=0.05,
+                            global_mesh_size=b/10,
                             exx=stiffened_plate.affine_exx if args.load == "Nx" else 0.0,
                             exy=stiffened_plate.affine_exy if args.load == "Nxy" else 0.0,
                             clamped=False,
                             edge_pt_min=5,
                             edge_pt_max=50,
-                            _make_rbe=False
+                            _make_rbe=True # True
                         )
+
+                        print(stiffened_plate)
+                        #exit()
 
                         tacs_eigvals,errors = stiffened_plate.run_buckling_analysis(sigma=10.0, num_eig=50, write_soln=True)
                         stiffened_plate.post_analysis()
 
-                        if abs(errors[0]) > 1e-7: continue
+                        stiffened_plate.print_mode_classification()
+
+                        #if abs(errors[0]) > 1e-7: continue
 
                         global_lambda_star = stiffened_plate.min_global_mode_eigenvalue
                         if global_lambda_star is None: continue # no global modes appeared
