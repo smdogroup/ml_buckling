@@ -1,21 +1,26 @@
 # make a stiffened panel geometry, Sean P. Engelstad
 
 cfgpmtr end_rib 0
+cfgpmtr stiff_base 0
 
-despmtr a 1.0
-despmtr b 1.0
-despmtr num_stiff 5
+despmtr a 0.1
+despmtr b 0.1
+despmtr num_stiff 1
 despmtr w_b 0.02
-despmtr h_w 0.1
+despmtr h_w 0.01
 
 set num_local num_stiff+1
 set s_p b/num_local
 
 set y_start 0
 patbeg ilocal num_local
-   set b_local (b-num_stiff*w_b)/num_local
+   ifthen stiff_base EQ 1
+      set b_local (b-num_stiff*w_b)/num_local
+   else
+      set b_local b/num_local
+   endif
    
-   ifthen ilocal GT 1
+   ifthen ilocal GT 1 AND stiff_base EQ 1
       set y_start y_start+w_b
    endif
    
@@ -31,13 +36,17 @@ patbeg ilocal num_local
       
       # make the local stiffener base section
       set y_start y_start+b_local
-      box 0 y_start 0 a w_b 0
-      select face
-      attribute capsGroup $base
-      union
+      ifthen stiff_base EQ 1
+         box 0 y_start 0 a w_b 0
+         select face
+         attribute capsGroup $base
+         union
+         set y_mid y_start+w_b*0.5
+      else
+         set y_mid y_start
+      endif
    
-      # make the stiffener wall
-      set y_mid y_start+w_b*0.5
+      # make the stiffener wall      
       box 0 y_mid 0 a 0 -h_w
       select face
        attribute capsGroup $stiff
@@ -70,4 +79,4 @@ select body
 attribute capsAIM $egadsTessAIM;tacsAIM   
 
 end
-|||||||||||||||
+||||||||||||||||||||

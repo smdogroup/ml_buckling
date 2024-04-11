@@ -361,17 +361,18 @@ class StiffenedPlateAnalysis:
         null_mat = caps2tacs.Isotropic.null().register_to(tacs_model)
 
         # set Stiffened plate geometry class into the CSM geometry
+        tacs_aim.set_config_parameter("stiff_base", 0)
         tacs_aim.set_design_parameter("a", self.geometry.a)
         tacs_aim.set_design_parameter("b", self.geometry.b)
         tacs_aim.set_design_parameter("num_stiff", self.geometry.num_stiff)
-        tacs_aim.set_design_parameter("w_b", self.geometry.w_b)
+        #tacs_aim.set_design_parameter("w_b", self.geometry.w_b)
         tacs_aim.set_design_parameter("h_w", self.geometry.h_w)
 
         # set shell properties with CompDescripts
         # auto makes shell properties (need thickDVs so that the compDescripts get written out from tacsAIM)
         caps2tacs.ThicknessVariable(caps_group="panel", value=self.geometry.h, material=null_mat).register_to(tacs_model)
         # caps2tacs.ThicknessVariable(caps_group="rib", value=self.geometry.rib_h, material=null_mat).register_to(tacs_model)
-        caps2tacs.ThicknessVariable(caps_group="base", value=self.geometry.h+self.geometry.t_b, material=null_mat).register_to(tacs_model)
+        #caps2tacs.ThicknessVariable(caps_group="base", value=self.geometry.h+self.geometry.t_b, material=null_mat).register_to(tacs_model)
         caps2tacs.ThicknessVariable(caps_group="stiff", value=self.geometry.t_w, material=null_mat).register_to(tacs_model)
 
         # add v,theta_z constraint to stiffener corner nodes - since they are tied off here to ribs

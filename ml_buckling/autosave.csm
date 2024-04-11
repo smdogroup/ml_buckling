@@ -1,0 +1,60 @@
+# autosave.csm written by ocsmSave (v1.25)
+
+# Constant, Design, and Output Parameters:
+CFGPMTR   end_rib       0.00000
+DESPMTR   a       0.10000
+DESPMTR   b       0.10000
+DESPMTR   num_stiff       5.00000
+DESPMTR   w_b       0.02000
+DESPMTR   h_w       0.10000
+
+# Global Attributes:
+
+# Branches:
+SET       num_local num_stiff+1
+SET       s_p b/num_local
+SET       y_start 0
+PATBEG    ilocal   num_local
+   SET       b_local (b-num_stiff*w_b)/num_local
+   IFTHEN    ilocal   GT   1   and   0   eq   0
+      SET       y_start y_start+w_b
+   ENDIF
+   BOX       0   y_start   0   a   b_local   0
+   SELECT    face
+ATTRIBUTE capsGroup   $panel
+   IFTHEN    ilocal   GT   1   and   0   eq   0
+      UNION     0   0   0
+   ENDIF
+   IFTHEN    ilocal   LT   num_local   and   0   eq   0
+      SET       y_start y_start+b_local
+      BOX       0   y_start   0   a   w_b   0
+      SELECT    face
+ATTRIBUTE capsGroup   $base
+      UNION     0   0   0
+      SET       y_mid y_start+w_b*0.5
+      BOX       0   y_mid   0   a   0   -h_w
+      SELECT    face
+ATTRIBUTE capsGroup   $stiff
+      SELECT    node   1
+      SELECT    add   2
+ATTRIBUTE capsConstraint   $stCorner
+      SELECT    edge   2
+      SELECT    add   4
+ATTRIBUTE capsConstraint   $stCorner
+      UNION     0   0   0
+   ENDIF
+PATEND
+IFTHEN    end_rib   EQ   1   and   0   eq   0
+   BOX       0   0   0   0   b   -h_w
+   SELECT    face
+ATTRIBUTE capsGroup   $rib
+   UNION     0   0   0
+   BOX       a   0   0   0   b   -h_w
+   SELECT    face
+ATTRIBUTE capsGroup   $rib
+   UNION     0   0   0
+ENDIF
+SELECT    body
+ATTRIBUTE capsAIM   $egadsTessAIM;tacsAIM
+
+END
