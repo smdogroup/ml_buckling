@@ -165,5 +165,5 @@ for material in mlb.CompositeMaterial.get_materials():
                         # MPI COMM Barrier in case running with multiple procs
                         comm.Barrier()
 
-                        if inner_ct == 1:
-                            exit() # temporary debug exit()
+                        #if inner_ct == 1:
+                        #    exit() # temporary debug exit()
