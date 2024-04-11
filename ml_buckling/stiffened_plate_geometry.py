@@ -20,6 +20,9 @@ class StiffenedPlateGeometry:
         self.h = h
         self.num_stiff = num_stiff
         
+        # not implemented in closed-form yet so ignore this
+        assert t_w == 0.0
+
         self.w_b = w_b
         self.t_b = t_b
         self.h_w = h_w

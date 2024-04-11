@@ -128,6 +128,128 @@ class StiffenedPlateAnalysis:
         return 1/self.xi_stiff * D12/np.sqrt(D11 * D22)
     
     @property
+    def Darray_plate(self) -> float:
+        """array [D11,D12,D22,D66] for the stiffener"""
+        zL = 0
+        _Darray = np.zeros((4,))
+        ply_thicknesses = self.plate_material.get_ply_thicknesses(self.geometry.h)
+        for iply,ply_angle in enumerate(self.plate_material.ply_angles):
+            ply_thick = ply_thicknesses[iply]
+            zU = zL + ply_thick
+            util = CompositeMaterialUtility(
+                E11=self.plate_material.E11,
+                E22=self.plate_material.E22,
+                nu12=self.plate_material.nu12,
+                G12=self.plate_material.G12
+            ).rotate_ply(ply_angle)
+
+            nu_denom = (1 - util.nu12 * util.nu21)
+            Q11 = util.E11 / nu_denom
+            Q22 = util.E22 / nu_denom
+            Q12 = util.nu12 * Q22
+            Q66 = util.G12
+
+            _Darray[0] += 1.0/3 * Q11 * (zU**3 - zL**3)
+            _Darray[1] += 1.0/3 * Q12 * (zU**3 - zL**3)
+            _Darray[2] += 1.0/3 * Q22 * (zU**3 - zL**3)
+            _Darray[3] += 1.0/3 * Q66 * (zU**3 - zL**3)
+
+            zL = zU * 1.0
+        return _Darray
+    
+    @property
+    def Aarray_plate(self) -> float:
+        """array [A11,A12,A22,A66] for the plate"""
+        zL = 0
+        _Aarray = np.zeros((4,))
+        ply_thicknesses = self.plate_material.get_ply_thicknesses(self.geometry.h)
+        for iply,ply_angle in enumerate(self.plate_material.ply_angles):
+            ply_thick = ply_thicknesses[iply]
+            zU = zL + ply_thick
+            util = CompositeMaterialUtility(
+                E11=self.plate_material.E11,
+                E22=self.plate_material.E22,
+                nu12=self.plate_material.nu12,
+                G12=self.plate_material.G12
+            ).rotate_ply(ply_angle)
+
+            nu_denom = (1 - util.nu12 * util.nu21)
+            Q11 = util.E11 / nu_denom
+            Q22 = util.E22 / nu_denom
+            Q12 = util.nu12 * Q22
+            Q66 = util.G12
+
+            _Aarray[0] += Q11 * (zU - zL)
+            _Aarray[1] += Q12 * (zU - zL)
+            _Aarray[2] += Q22 * (zU - zL)
+            _Aarray[3] += Q66 * (zU - zL)
+
+            zL = zU * 1.0
+        return _Aarray
+    
+    @property
+    def Aarray_stiff(self) -> float:
+        """array [A11,A12,A22,A66] for the stiffener"""
+        zL = 0
+        _Aarray = np.zeros((4,))
+        ply_thicknesses = self.stiffener_material.get_ply_thicknesses(self.geometry.t_w)
+        for iply,ply_angle in enumerate(self.stiffener_material.ply_angles):
+            ply_thick = ply_thicknesses[iply]
+            zU = zL + ply_thick
+            util = CompositeMaterialUtility(
+                E11=self.stiffener_material.E11,
+                E22=self.stiffener_material.E22,
+                nu12=self.stiffener_material.nu12,
+                G12=self.stiffener_material.G12
+            ).rotate_ply(ply_angle)
+
+            nu_denom = (1 - util.nu12 * util.nu21)
+            Q11 = util.E11 / nu_denom
+            Q22 = util.E22 / nu_denom
+            Q12 = util.nu12 * Q22
+            Q66 = util.G12
+
+            _Aarray[0] += Q11 * (zU - zL)
+            _Aarray[1] += Q12 * (zU - zL)
+            _Aarray[2] += Q22 * (zU - zL)
+            _Aarray[3] += Q66 * (zU - zL)
+
+            zL = zU * 1.0
+        return _Aarray
+    
+    @property
+    def xi_plate(self):
+        _Darray = self.Darray_plate
+        D11 = _Darray[0]; D12 = _Darray[1]; D22 = _Darray[2]; D66 = _Darray[3]
+        return (D12 + 2 * D66) / np.sqrt(D11 * D22)
+    
+    @property
+    def affine_aspect_ratio(self):
+        _Darray = self.Darray_plate
+        D11 = _Darray[0]; D22 = _Darray[2]
+        return self.geometry.a / self.geometry.b * (D22 / D11)**0.5
+    
+    @property
+    def delta(self) -> float:
+        """area ratio parameter extended to N stiffener case"""
+        A_stiff = self.geometry.h_w * self.geometry.t_w
+        return self.stiffener_material.E11 * A_stiff / (self.plate_material.E11 * self.geometry.s_p * self.geometry.h)
+
+    @property
+    def zeta_plate(self) -> float:
+        """compute the transverse shear ratio for the plate"""
+        _Aarray = self.Aarray_plate
+        A11 = _Aarray[0]; A66 = _Aarray[3]
+        return A66 / A11 * (self.geometry.b / self.geometry.h)**2
+    
+    @property
+    def zeta_stiff(self) -> float:
+        """compute the transverse shear ratio for the stiffener"""
+        _Aarray = self.Aarray_stiff
+        A11 = _Aarray[0]; A66 = _Aarray[3]
+        return A66 / A11 * (self.geometry.h_w / self.geometry.t_w)**2
+
+    @property
     def affine_exx(self):
         """
         Solve exx such that lambda = lambda_min*
@@ -135,20 +257,37 @@ class StiffenedPlateAnalysis:
             when the stiffeners are stronger
         TODO : could estimate based on local mode too?
         """
-        material = self.plate_material
-        nu21 = material.nu12 * material.E22 / material.E11
-        denom = 1.0 - material.nu12 * nu21
-        D11 = material.E11 * self.geometry.h**3 / 12.0 / denom
-        D22 = material.E22 * self.geometry.h**3 / 12.0 / denom
+        _Darray = self.Darray_plate
+        D11 = _Darray[0]; D22 = _Darray[2]
         exx_T = (
-            np.pi**2 * np.sqrt(D11 * D22) / self.geometry.b**2 / self.geometry.h / material.E11
+            np.pi**2 * np.sqrt(D11 * D22) / self.geometry.b**2 / (1+self.delta) / self.geometry.h / self.plate_material.E11
         )
         return exx_T
-    
+
     @property
-    def affine_eyy(self):
-        """TODO : write this eqn out"""
-        return None
+    def gamma(self) -> float:
+        """stiffener to plate bending stiffness ratio"""
+        # get the stiffener bending stiffeness EI about modulus weighted centroid
+        E_S = self.stiffener_material.E_eff
+        A_W = self.geometry.area_w
+        A_B = self.geometry.area_b
+        wb = self.geometry.w_b
+        tb = self.geometry.t_b
+        #print(f"tb = {tb}")
+        tw = self.geometry.t_w
+        hw = self.geometry.h_w
+        A_S = self.geometry.area_S
+        E_P = self.plate_material.E_eff
+        A_P = self.geometry.area_P
+        _Darray = self.Darray_plate
+        D11 = _Darray[0]
+
+        # modulus weighted centroid zcen
+        z_cen = E_S * (A_B * tb/2.0 + A_W * hw/2.0) / (E_S * A_S + E_P * A_P)
+        z_s = E_S * (A_B * tb/2.0 + A_W * hw/2.0) / (E_S * A_S)
+        I_S = (wb**3 * tb + tw*hw**3) / 12.0
+        EI_s = E_S * I_S + E_S * A_S * (z_s - z_cen)**2
+        return EI_s / self.geometry.s_p / D11
 
     @property
     def affine_exy(self):
@@ -156,17 +295,10 @@ class StiffenedPlateAnalysis:
         get the exy so that lambda = kx_0y_0 the affine buckling coefficient for pure shear load
         out of the buckling analysis!
         """
-        material = self.plate_material
-        nu21 = material.nu12 * material.E22 / material.E11
-        denom = 1.0 - material.nu12 * nu21
-        D11 = material.E11 * self.geometry.h**3 / 12.0 / denom
-        D22 = material.E22 * self.geometry.h**3 / 12.0 / denom
+        _Darray = self.Darray_plate
+        D11 = _Darray[0]; D22 = _Darray[2]
         exy_T = (
-            np.pi**2
-            * (D11 * D22**3) ** 0.25
-            / self.geometry.b**2
-            / self.geometry.h
-            / material.G12
+            np.pi**2 * (D11*D22**3)**0.25 / self.geometry.b**2 / self.geometry.h / self.plate_material.G12
         )
         return exy_T
     
@@ -747,6 +879,83 @@ class StiffenedPlateAnalysis:
         _lambda = N11_crit / N11
         return _lambda
     
+
+
+    def predict_crit_load(self, exx=0, exy=0, eyy=0, mode_loop=True):
+        assert exy == 0 and eyy == 0 #haven't written these yet
+        assert self.geometry.num_stiff == 1 # hasn't been implemented for >1 stiffeners yet
+
+        # axial mode case
+        # -----------------------------
+        # get the stiffener bending stiffeness EI about modulus weighted centroid
+        E_S = self.stiffener_material.E_eff
+        A_W = self.geometry.area_w
+        A_B = self.geometry.area_b
+        wb = self.geometry.w_b
+        tb = self.geometry.t_b
+        #print(f"tb = {tb}")
+        tw = self.geometry.t_w
+        hw = self.geometry.h_w
+        a = self.geometry.a
+        b = self.geometry.b
+        A_S = self.geometry.area_S
+        E_P = self.plate_material.E_eff
+        A_P = self.geometry.area_P
+        I_P = self.geometry.h**3 / 12.0
+
+        # modulus weighted centroid zcen
+        z_cen = E_S * (A_B * tb/2.0 + A_W * hw/2.0) / (E_S * A_S + E_P * A_P)
+        z_s = E_S * (A_B * tb/2.0 + A_W * hw/2.0) / (E_S * A_S)
+        I_S = (wb**3 * tb + tw*hw**3) / 12.0
+        EI_s = E_S * I_S + E_S * A_S * (z_s - z_cen)**2
+
+        D11 = self.plate_material.Q11 * I_P
+        D22 = self.plate_material.Q22 * I_P
+        D12 = self.plate_material.Q12 * I_P
+        D66 = self.plate_material.Q66 * I_P
+        # print(f"D11 = {D11}, D22 = {D22}, D12 = {D12}")
+
+        delta = A_S / A_P
+
+        # global mode
+        if mode_loop:
+            N11_crit_global = 1e10
+            for m1_star in range(1,51):
+                _N11_crit_global = 2 * a * np.pi**2 / m1_star**2 / b / (0.5 + delta) * (0.25 * (D11 * m1_star**4 * b / a**3 + D22 * a/ b**3) + m1_star**2 / a * (1.0/b * (D12/2.0 + D66) + m1_star**2 / 2.0 / a**2 * EI_s))
+                if _N11_crit_global < N11_crit_global:
+                    N11_crit_global = _N11_crit_global
+        else:
+            m1_star = a/b * (D22 / (D11 + 2*EI_s / b))**0.25
+            N11_crit_global = 2 * a * np.pi**2 / m1_star**2 / b / (0.5 + delta) * (0.25 * (D11 * m1_star**4 * b / a**3 + D22 * a/ b**3) + m1_star**2 / a * (1.0/b * (D12/2.0 + D66) + m1_star**2 / 2.0 / a**2 * EI_s))
+
+        # print(f"N11 crit global = {N11_crit_global}")
+
+        # local mode
+        if mode_loop:
+            N11_crit_local = 1e10
+            for m2_star in range(1,51):
+                _N11_crit_local = (m2_star**2 / a**2 * D11 + 16.0 * a**2 / m2_star**2 / b**4 * D22 + 8.0/b**2 * (D12 + 2.0 * D66)) * np.pi**2
+                if _N11_crit_local < N11_crit_local:
+                    N11_crit_local = _N11_crit_local
+        else:
+            m2_star = 2.0 * a / b * (D22 / D11) ** 0.25
+            N11_crit_local = (m2_star**2 / a**2 * D11 + 16.0 * a**2 / m2_star**2 / b**4 * D22 + 8.0/b**2 * (D12 + 2.0 * D66)) * np.pi**2
+
+        
+        if N11_crit_global < N11_crit_local:
+            N11_crit = N11_crit_global
+        else:
+            N11_crit = N11_crit_local
+
+        s11_app = exx * E_P
+
+        # compute current N11, should it be effective E11 here?
+        # N11 = exx * self.plate_material.E11 * self.geometry.h
+        N11 = exx * E_P * self.geometry.h
+
+        _lambda = N11_crit / N11
+        return _lambda
+    
     MAC_THRESHOLD = 0.1  # 0.6
 
     @property
@@ -837,6 +1046,54 @@ class StiffenedPlateAnalysis:
         mag_frac = w_mag / full_mag
         #print(f"w_mag {w_mag}, full mag {full_mag}, mag frac {mag_frac}")
         return mag_frac > 0.9
+    
+    def _in_tol(self,val1,val2,tol=1e-5):
+        return abs(val1-val2) < tol
+
+    def is_local_mode(self, imode, just_check_local=False):
+        """check if its a local mode by comparing the inf-norm (or max) w displacements along the stiffeners to the overall plate"""
+        N = self.geometry.num_stiff + 1
+        w = self._eigenvectors[imode]
+
+        # compute max w displacement in the stiffeners
+        mask = None
+        for i in range(1,self.geometry.num_stiff+1):
+            _mask = self._in_tol(self._eta, i / N)
+            if mask is None:
+                mask = _mask
+            else:
+                mask = np.logical_or(mask, _mask)
+        w_stiff = w[mask]
+        w_stiff_max = np.max(np.abs(w_stiff))
+
+        # compute max w displacement in overlal plate
+        w_max = max([np.max(np.abs(w)),1e-13])
+        if just_check_local:
+            return (w_stiff_max / w_max < 0.05)
+        else: # also checks for non stiffener crippling modes
+            return (w_stiff_max / w_max < 0.05) and self.is_non_crippling_mode(imode)
+    
+    def is_global_mode(self, imode, just_check_global=False):
+        """check that the mode is global i.e. the max w displacement occurs in the """
+        if just_check_global:
+            return not self.is_local_mode(imode, just_check_local=True)
+        else:
+            return not self.is_local_mode(imode, just_check_local=True) and self.is_non_crippling_mode(imode)
+    
+    @property
+    def global_modes(self) -> list:
+        return [imode for imode in range(self.num_modes) if self.is_global_mode(imode)]
+    
+    @property
+    def global_mode_eigenvalues(self) -> list:
+        return [self._eigenvalues[imode] for imode in self.global_modes]
+    
+    @property
+    def min_global_mode_eigenvalue(self) -> float:
+        if len(self.global_mode_eigenvalues) == 0:
+            return None
+        else:
+            return np.min(np.array(self.global_mode_eigenvalues))
 
     @classmethod
     def mac_permutation(
