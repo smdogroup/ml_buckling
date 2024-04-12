@@ -1122,7 +1122,8 @@ class StiffenedPlateAnalysis:
         if len(self.global_mode_eigenvalues) == 0:
             return None
         else:
-            return np.min(np.array(self.global_mode_eigenvalues))
+            return np.min(np.abs(np.array(self.global_mode_eigenvalues)))
+            
 
     def print_mode_classification(self):
         """for each mode print out whether it's a global, local, or stiffener crippling mode"""
