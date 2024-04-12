@@ -29,8 +29,8 @@ flat_plate = mlb.UnstiffenedPlateAnalysis.hexcelIM7(
     ply_angle=30,
 )
 
-AR_g1 = AR if AR > 1 else 1.0/AR
-_nelems = 3000 # need at least 3000 elements to achieve mesh convergence for this case, ~2000 or less is not converged and has high eigvalue
+AR_g1 = AR if AR > 1 else 1.0 / AR
+_nelems = 3000  # need at least 3000 elements to achieve mesh convergence for this case, ~2000 or less is not converged and has high eigvalue
 min_elem = int(np.sqrt(_nelems / AR_g1))
 max_elem = int(min_elem * AR_g1)
 if AR > 1.0:
@@ -49,7 +49,7 @@ flat_plate.generate_tripping_bdf(
     ny=ny,
     exx=flat_plate.affine_exx * load_factor,
     eyy=0.0,
-    exy=0.0, # flat_plate.affine_exy,
+    exy=0.0,  # flat_plate.affine_exy,
 )
 
 print(f"xi = {flat_plate.Dstar}")

@@ -71,6 +71,4 @@ tacs_eigvals, _ = shear_plate.run_buckling_analysis(
 
 # perform modal assurance criterion between these two buckling analyses
 # ---------------------------------------------------------------------
-mlb.UnstiffenedPlateAnalysis.mac_permutation(
-    axial_plate, shear_plate, num_modes=6
-)
+mlb.UnstiffenedPlateAnalysis.mac_permutation(axial_plate, shear_plate, num_modes=6)

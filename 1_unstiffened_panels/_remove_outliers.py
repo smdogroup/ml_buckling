@@ -14,8 +14,8 @@ Output: k_x0
 """
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument('--load', type=str)
-parent_parser.add_argument('--BC', type=str)
+parent_parser.add_argument("--load", type=str)
+parent_parser.add_argument("--BC", type=str)
 
 args = parent_parser.parse_args()
 
@@ -72,16 +72,18 @@ plots_folder = os.path.join(os.getcwd(), "plots")
 sub_plots_folder = os.path.join(plots_folder, csv_filename)
 wo_outliers_folder = os.path.join(sub_plots_folder, "model-no-outliers")
 w_outliers_folder = os.path.join(sub_plots_folder, "model-w-outliers")
-for ifolder,folder in enumerate([
-    plots_folder,
-    sub_plots_folder,
-    wo_outliers_folder,
-    w_outliers_folder,
-    GP_folder,
-]):
+for ifolder, folder in enumerate(
+    [
+        plots_folder,
+        sub_plots_folder,
+        wo_outliers_folder,
+        w_outliers_folder,
+        GP_folder,
+    ]
+):
     if ifolder > 0 and os.path.exists(folder):
         shutil.rmtree(folder)
-    if ifolder in [2,3]:
+    if ifolder in [2, 3]:
         _mk_folder = _plot_outliers
     else:
         _mk_folder = True
@@ -140,7 +142,7 @@ for ibin, bin in enumerate(slender_bins):
             t_local = Y[mask, :]
 
             loc_AR = X_local[:, 1:2]
-            X_fit = np.concatenate([np.ones((N, 1)), loc_AR, loc_AR**2], axis=1)
+            X_fit = np.concatenate([np.ones((N, 1)), loc_AR, loc_AR ** 2], axis=1)
             # print(f"X_fit shape = {X_fit.shape}")
             # print(f"t_local shape = {t_local.shape}")
             w_hat = np.linalg.solve(X_fit.T @ X_fit, X_fit.T @ t_local)
@@ -156,7 +158,7 @@ for ibin, bin in enumerate(slender_bins):
             if _plot_outliers:
                 plot_AR = np.linspace(AR_bin[0], AR_bin[1], 20).reshape((20, 1))
                 X_plot = np.concatenate(
-                    [np.ones((20, 1)), plot_AR, plot_AR**2], axis=1
+                    [np.ones((20, 1)), plot_AR, plot_AR ** 2], axis=1
                 )
                 t_plot = X_plot @ w_hat
 
@@ -251,12 +253,7 @@ Y = Y[keep_mask, :]
 X[:, :] = np.log(X[:, :])
 Y[:, 0:] = np.log(Y[:, 0:])
 
-data_dict = {
-    "x0" : X[:,0],
-    "x1" : X[:,1],
-    "x2" : X[:,2],
-    "y" : Y[:,0]
-}
+data_dict = {"x0": X[:, 0], "x1": X[:, 1], "x2": X[:, 2], "y": Y[:, 0]}
 
 # write out to csv file in _data folder
 new_df = pd.DataFrame(data_dict)

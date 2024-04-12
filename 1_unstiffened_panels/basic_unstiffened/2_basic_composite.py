@@ -22,7 +22,7 @@ flat_plate.generate_bdf(
     ny=30,
     exx=flat_plate.affine_exx,
     eyy=0.0,
-    exy=0.0, # flat_plate.affine_exy,
+    exy=0.0,  # flat_plate.affine_exy,
     clamped=True,
 )
 

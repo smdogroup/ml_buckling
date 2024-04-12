@@ -18,8 +18,8 @@ Output: k_x0
 """
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument('--load', type=str)
-parent_parser.add_argument('--BC', type=str)
+parent_parser.add_argument("--load", type=str)
+parent_parser.add_argument("--BC", type=str)
 
 args = parent_parser.parse_args()
 
@@ -45,7 +45,7 @@ Y = df["y"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
 # change from log to exp scale again
-X[:,0:2] = np.exp(X[:,0:2])
+X[:, 0:2] = np.exp(X[:, 0:2])
 Y = np.exp(Y)
 
 print(f"Monte Carlo #data = {X.shape[0]}")
@@ -89,13 +89,15 @@ sub_data_folder = os.path.join(data_folder, csv_filename)
 wo_outliers_folder = os.path.join(sub_data_folder, "model-no-outliers")
 w_outliers_folder = os.path.join(sub_data_folder, "model-w-outliers")
 GP_folder = os.path.join(sub_data_folder, "GP_v1")
-for ifolder,folder in enumerate([
-    data_folder,
-    sub_data_folder,
-    wo_outliers_folder,
-    w_outliers_folder,
-    GP_folder,
-]):
+for ifolder, folder in enumerate(
+    [
+        data_folder,
+        sub_data_folder,
+        wo_outliers_folder,
+        w_outliers_folder,
+        GP_folder,
+    ]
+):
     if ifolder >= 2 and os.path.exists(folder):
         shutil.rmtree(folder)
     if not os.path.exists(folder):
@@ -136,12 +138,12 @@ sigma_f = theta[1]
 char_lengths = theta[2:]
 
 # update the kernel function with new hyperparameters
-M = np.diag(1.0 / char_lengths**2)
+M = np.diag(1.0 / char_lengths ** 2)
 
 
 def kernel(xp, xq):
     # xp, xq are Nx1,Mx1 vectors (D*, a0/b0, ln(b/h))
-    return sigma_f**2 * np.exp(-0.5 * (xp - xq) @ M @ (xp - xq).T)
+    return sigma_f ** 2 * np.exp(-0.5 * (xp - xq) @ M @ (xp - xq).T)
 
 
 # compute the training kernel matrix
@@ -150,7 +152,7 @@ K_y = np.array(
         [kernel(X_train[i, :], X_train[j, :]) for i in range(n_train)]
         for j in range(n_train)
     ]
-) + sigma_n**2 * np.eye(n_train)
+) + sigma_n ** 2 * np.eye(n_train)
 
 # compute the objective : maximize log marginal likelihood
 # sign,log_detK = np.linalg.slogdet(K_y) # special numpy routine for log(det(K))
@@ -275,7 +277,8 @@ if _plot:
             f_plot = None
 
             for iDstar, Dstar_bin in enumerate(Dstar_bins):
-                if iDstar != 3: continue # only do one of them for this plot
+                if iDstar != 3:
+                    continue  # only do one of them for this plot
                 mask2 = np.logical_and(Dstar_bin[0] <= X[:, 0], X[:, 0] <= Dstar_bin[1])
                 avg_Dstar = 0.5 * (Dstar_bin[0] + Dstar_bin[1])
 
@@ -303,7 +306,7 @@ if _plot:
                 )
 
                 # cholesky decomp to find the covariance and standard deviations of the model
-                L = np.linalg.cholesky(K_y) # decomposes K_train into L * L^T
+                L = np.linalg.cholesky(K_y)  # decomposes K_train into L * L^T
 
                 # now also get the covariance of the plot dataset
                 # solve (L L^T) A = K_cross^T by first solving L A1 = Kcross^T
@@ -311,7 +314,7 @@ if _plot:
                 # solve L^T A = A1
                 A = scipy.linalg.solve_triangular(L.T, A1, lower=False)
 
-                cov_Y_plot = Kpp - Kplot_train @ A # + sigma_n**2 * np.eye(n_plot)
+                cov_Y_plot = Kpp - Kplot_train @ A  # + sigma_n**2 * np.eye(n_plot)
                 var_Y_plot = np.diag(cov_Y_plot).reshape((n_plot, 1))
                 std_dev = np.sqrt(var_Y_plot)
 
@@ -323,22 +326,26 @@ if _plot:
                 AR_in_range = X_in_range[:, 1]
 
                 # write the data to a csv file
-                #if comm.rank == 0:
+                # if comm.rank == 0:
                 model_dict = {
-                    "rho_0" : X_plot[:,1],
-                    "mean" : f_plot[:,0],
-                    "std_dev" : std_dev[:,0]
+                    "rho_0": X_plot[:, 1],
+                    "mean": f_plot[:, 0],
+                    "std_dev": std_dev[:, 0],
                 }
                 model_df = pd.DataFrame(model_dict)
-                model_df_filename = os.path.join(GP_folder, f"slender{ibin}-model-fit_model.csv")
+                model_df_filename = os.path.join(
+                    GP_folder, f"slender{ibin}-model-fit_model.csv"
+                )
                 print(f"writing model df filename {model_df_filename}")
                 model_df.to_csv(model_df_filename)
                 data_dict = {
-                    "AR" : AR_in_range,
-                    "lam" : Y_in_range[:,0],
+                    "AR": AR_in_range,
+                    "lam": Y_in_range[:, 0],
                 }
                 data_df = pd.DataFrame(data_dict)
-                data_df_filename = os.path.join(GP_folder, f"slender{ibin}-model-fit_data.csv")
+                data_df_filename = os.path.join(
+                    GP_folder, f"slender{ibin}-model-fit_data.csv"
+                )
                 print(f"writing data df filename {data_df_filename}")
                 data_df.to_csv(data_df_filename)
 
@@ -347,19 +354,19 @@ if _plot:
                 # plot the raw data and the model in this range
                 # plot ax fill between
                 ax.fill_between(
-                    x=X_plot[:,1],
-                    y1=f_plot[:,0] - 3 * std_dev[:,0],
-                    y2=f_plot[:,0] + 3 * std_dev[:,0],
-                    label='3-sigma'
+                    x=X_plot[:, 1],
+                    y1=f_plot[:, 0] - 3 * std_dev[:, 0],
+                    y2=f_plot[:, 0] + 3 * std_dev[:, 0],
+                    label="3-sigma",
                 )
                 ax.fill_between(
-                    x=X_plot[:,1],
-                    y1=f_plot[:,0] - std_dev[:,0],
-                    y2=f_plot[:,0] + std_dev[:,0],
-                    label='1-sigma'
+                    x=X_plot[:, 1],
+                    y1=f_plot[:, 0] - std_dev[:, 0],
+                    y2=f_plot[:, 0] + std_dev[:, 0],
+                    label="1-sigma",
                 )
                 ax.plot(
-                    X_plot[:,1], f_plot[:,0], "k", label="mean"
+                    X_plot[:, 1], f_plot[:, 0], "k", label="mean"
                 )  # , label=f"D*-[{Dstar_bin[0]},{Dstar_bin[1]}]""
                 ax.plot(
                     AR_in_range, Y_in_range, "mo", markersize=4, label="train-data"
@@ -375,7 +382,9 @@ if _plot:
             # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
             # # Put a legend to the right of the current axis
             # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-            plt.savefig(os.path.join(GP_folder, f"slender{ibin}-model-fit.png"), dpi=400)
+            plt.savefig(
+                os.path.join(GP_folder, f"slender{ibin}-model-fit.png"), dpi=400
+            )
             plt.close("check model")
 
     if _plot_3d:
@@ -388,14 +397,14 @@ if _plot:
             if np.sum(mask1) == 0:
                 continue
 
-            fig = plt.figure("3d-GP", figsize =(14, 9))
-            ax = plt.axes(projection ='3d',computed_zorder=False)
+            fig = plt.figure("3d-GP", figsize=(14, 9))
+            ax = plt.axes(projection="3d", computed_zorder=False)
 
             # plot data in certain range of the training set
             for iDstar, Dstar_bin in enumerate(Dstar_bins):
                 mask2 = np.logical_and(Dstar_bin[0] <= X[:, 0], X[:, 0] <= Dstar_bin[1])
                 avg_Dstar = 0.5 * (Dstar_bin[0] + Dstar_bin[1])
-                mask3 = Y[:,0] < 10.0
+                mask3 = Y[:, 0] < 10.0
 
                 mask = np.logical_and(mask1, mask2)
                 mask = np.logical_and(mask, mask3)
@@ -403,17 +412,26 @@ if _plot:
                     continue
                 X_in_range = X[mask, :]
                 Y_in_range = Y[mask, :]
-                ax.scatter(X_in_range[:,0], X_in_range[:,1], Y_in_range[:,0], s=40, edgecolors='black', zorder=1+iDstar)
+                ax.scatter(
+                    X_in_range[:, 0],
+                    X_in_range[:, 1],
+                    Y_in_range[:, 0],
+                    s=40,
+                    edgecolors="black",
+                    zorder=1 + iDstar,
+                )
 
             n_plot = 3000
-            X_plot_mesh = np.zeros((30,100))
+            X_plot_mesh = np.zeros((30, 100))
             X_plot = np.zeros((n_plot, 3))
             ct = 0
             Dstar_vec = np.linspace(0.25, 1.75, 30)
             AR_vec = np.linspace(0.1, 10.0, 100)
             for iDstar in range(30):
                 for iAR in range(100):
-                    X_plot[ct,:] = np.array([Dstar_vec[iDstar], AR_vec[iAR], avg_log_slender])
+                    X_plot[ct, :] = np.array(
+                        [Dstar_vec[iDstar], AR_vec[iAR], avg_log_slender]
+                    )
                     ct += 1
 
             Kplot = np.array(
@@ -426,20 +444,28 @@ if _plot:
 
             # make meshgrid of outputs
             DSTAR = np.zeros((30, 100))
-            AR = np.zeros((30,100))
-            KMIN = np.zeros((30,100))
+            AR = np.zeros((30, 100))
+            KMIN = np.zeros((30, 100))
             ct = 0
             for iDstar in range(30):
                 for iAR in range(100):
-                    DSTAR[iDstar,iAR] = Dstar_vec[iDstar]
-                    AR[iDstar,iAR] = AR_vec[iAR]
-                    KMIN[iDstar,iAR] = f_plot[ct]
+                    DSTAR[iDstar, iAR] = Dstar_vec[iDstar]
+                    AR[iDstar, iAR] = AR_vec[iAR]
+                    KMIN[iDstar, iAR] = f_plot[ct]
                     ct += 1
 
-            # plot the model curve            
+            # plot the model curve
             # Creating plot
-            face_colors = cm.jet(KMIN/10.0)
-            ax.plot_surface(DSTAR, AR, KMIN, antialiased=False, facecolors = face_colors, alpha=0.4, zorder=1)
+            face_colors = cm.jet(KMIN / 10.0)
+            ax.plot_surface(
+                DSTAR,
+                AR,
+                KMIN,
+                antialiased=False,
+                facecolors=face_colors,
+                alpha=0.4,
+                zorder=1,
+            )
 
             # save the figure
             ax.set_xlabel(r"$\xi$")
@@ -450,47 +476,64 @@ if _plot:
             ax.view_init(elev=20, azim=20, roll=0)
             plt.gca().invert_xaxis()
             plt.title(f"b/h in [{bin[0]},{bin[1]}]")
-            #plt.show()
+            # plt.show()
             plt.savefig(os.path.join(GP_folder, f"3d-slender-{ibin}.png"), dpi=400)
             plt.close("3d-GP")
 
             # plot comparison of TACS implemented buckling surface and GP one
             # ---------------------------------------------------------------
             if BC == "SS":
-                fig = plt.figure("3d-GP2", figsize =(14, 9))
-                ax = plt.axes(projection ='3d',computed_zorder=True)
+                fig = plt.figure("3d-GP2", figsize=(14, 9))
+                ax = plt.axes(projection="3d", computed_zorder=True)
 
                 # plot the GP Model again
                 DSTAR = np.zeros((30, 100))
-                AR = np.zeros((30,100))
-                KMIN = np.zeros((30,100))
+                AR = np.zeros((30, 100))
+                KMIN = np.zeros((30, 100))
                 ct = 0
                 for iDstar in range(30):
                     for iAR in range(100):
-                        DSTAR[iDstar,iAR] = Dstar_vec[iDstar]
-                        AR[iDstar,iAR] = AR_vec[iAR]
-                        KMIN[iDstar,iAR] = f_plot[ct]
+                        DSTAR[iDstar, iAR] = Dstar_vec[iDstar]
+                        AR[iDstar, iAR] = AR_vec[iAR]
+                        KMIN[iDstar, iAR] = f_plot[ct]
                         ct += 1
 
-                # plot the model curve 
-                face_colors = cm.jet(KMIN/10.0)
-                ax.plot_surface(DSTAR, AR, KMIN, antialiased=False, facecolors = face_colors, alpha=0.4, zorder=1)
+                # plot the model curve
+                face_colors = cm.jet(KMIN / 10.0)
+                ax.plot_surface(
+                    DSTAR,
+                    AR,
+                    KMIN,
+                    antialiased=False,
+                    facecolors=face_colors,
+                    alpha=0.4,
+                    zorder=1,
+                )
 
                 # plot the TACS model
                 if load == "Nx":
                     KMIN_CF_TACS = 2.0 * (1.0 + DSTAR)
                 elif load == "Nxy":
-                    KMIN_CF_TACS = np.zeros((30,100))
+                    KMIN_CF_TACS = np.zeros((30, 100))
                     for i1 in range(30):
                         for i2 in range(100):
-                            xi = 1.0/DSTAR[i1,i2]
+                            xi = 1.0 / DSTAR[i1, i2]
                             if xi > 1.0:
-                                KMIN_CF_TACS[i1,i2] = 4.0/np.pi**2 * (8.125 + 5.045 / xi)
+                                KMIN_CF_TACS[i1, i2] = (
+                                    4.0 / np.pi ** 2 * (8.125 + 5.045 / xi)
+                                )
                             else:
-                                KMIN_CF_TACS[i1,i2] = 4.0/np.pi**2 * xi**0.5 * (11.7 + 0.532 * xi + 0.938 * xi**2)
+                                KMIN_CF_TACS[i1, i2] = (
+                                    4.0
+                                    / np.pi ** 2
+                                    * xi ** 0.5
+                                    * (11.7 + 0.532 * xi + 0.938 * xi ** 2)
+                                )
                 else:
-                    raise AssertionError("TACS Closed-form not implemented for other cases.")
-                
+                    raise AssertionError(
+                        "TACS Closed-form not implemented for other cases."
+                    )
+
                 ax.plot_wireframe(DSTAR, AR, KMIN_CF_TACS, zorder=2)
 
                 ax.set_xlabel(r"$\xi$")
@@ -501,8 +544,11 @@ if _plot:
                 ax.view_init(elev=10, azim=50, roll=0)
                 plt.gca().invert_xaxis()
                 plt.title(f"b/h in [{bin[0]},{bin[1]}]")
-                #plt.show()
-                plt.savefig(os.path.join(GP_folder, f"3d-slender-{ibin}-tacs-compare.png"), dpi=400)
+                # plt.show()
+                plt.savefig(
+                    os.path.join(GP_folder, f"3d-slender-{ibin}-tacs-compare.png"),
+                    dpi=400,
+                )
                 plt.close("3d-GP2")
 
     if _plot_slender_2d:
@@ -590,7 +636,9 @@ if _plot:
             for ibin, bin in enumerate(slender_bins):
                 slender_bin = [np.log(bin[0]), np.log(bin[1])]
                 avg_log_slender = 0.5 * (slender_bin[0] + slender_bin[1])
-                mask1 = np.logical_and(slender_bin[0] <= X[:, 2], X[:, 2] <= slender_bin[1])
+                mask1 = np.logical_and(
+                    slender_bin[0] <= X[:, 2], X[:, 2] <= slender_bin[1]
+                )
 
                 mask = np.logical_and(mask1, mask2)
                 if np.sum(mask) == 0:

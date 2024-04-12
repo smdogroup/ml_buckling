@@ -55,11 +55,11 @@ while accepted_ct < N:  # until has generated this many samples
     # TODO : change this to randomly selecting a material from a material database
     log_Emax = np.log10(200e9)
     log_E11 = np.random.uniform(9, log_Emax)
-    E11 = 10**log_E11
+    E11 = 10 ** log_E11
     log_E22 = np.random.uniform(9, log_Emax)
-    E22 = 10**log_E22
+    E22 = 10 ** log_E22
     log_G12 = np.random.uniform(9, log_Emax)
-    G12 = 10**log_G12
+    G12 = 10 ** log_G12
     nu12 = np.random.uniform(
         0.1, 0.4
     )  # was [-0.95, 0.45] before which meant a lot of the data was wacky (non-realistic with nu12<0)
@@ -68,11 +68,11 @@ while accepted_ct < N:  # until has generated this many samples
     # TODO : change this to selecting affine_AR => computing AR
     # select slenderness, scale b such that h > 0.01 (since below that is usually bad for eigenvalue solver)
     log_a = np.random.uniform(-1, 1)
-    a = 10**log_a
+    a = 10 ** log_a
     log_b = np.random.uniform(-1, 1)
-    b = 10**log_b
+    b = 10 ** log_b
     log_h = np.random.uniform(-3, -2)
-    h = 10**log_h
+    h = 10 ** log_h
 
     # make the flat plate
     flat_plate = mlb.UnstiffenedPlateAnalysis(

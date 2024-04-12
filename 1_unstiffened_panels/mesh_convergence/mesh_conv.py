@@ -26,7 +26,7 @@ for AR in [5.0]:  # [1.0, 3.0, 5.0]
     # max # elems about 150x150 grid or 22,500 elements
 
     for log10_scale in np.linspace(0.0, max_scale, 10):
-        scale = 10**log10_scale
+        scale = 10 ** log10_scale
         _start_time = time.time()
 
         flat_plate = mlb.UnstiffenedPlateAnalysis(

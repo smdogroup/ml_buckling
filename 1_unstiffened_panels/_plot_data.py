@@ -5,9 +5,13 @@ import niceplots, os
 import argparse
 from matplotlib import cm
 import shutil
-from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)#The OffsetBox is a simple container artist.
+from matplotlib.offsetbox import (
+    OffsetImage,
+    AnnotationBbox,
+)  # The OffsetBox is a simple container artist.
 import matplotlib.image as image
-#The child artists are meant to be drawn at a relative position to its #parent.
+
+# The child artists are meant to be drawn at a relative position to its #parent.
 
 
 """
@@ -17,8 +21,8 @@ Output: k_x0
 """
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument('--load', type=str)
-parent_parser.add_argument('--BC', type=str)
+parent_parser.add_argument("--load", type=str)
+parent_parser.add_argument("--BC", type=str)
 
 args = parent_parser.parse_args()
 
@@ -70,11 +74,13 @@ aff_AR_bins = (
 data_folder = os.path.join(os.getcwd(), "_plots")
 sub_data_folder = os.path.join(data_folder, csv_filename)
 sub_sub_data_folder = os.path.join(sub_data_folder, "data")
-for ifolder,folder in enumerate([
-    data_folder,
-    sub_data_folder,
-    sub_sub_data_folder,
-]):
+for ifolder, folder in enumerate(
+    [
+        data_folder,
+        sub_data_folder,
+        sub_sub_data_folder,
+    ]
+):
     if not os.path.exists(folder):
         os.mkdir(folder)
 
@@ -88,9 +94,11 @@ _image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
 
 colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
 
-for islender,slender_bin in enumerate(slender_bins):
-    fig, ax = plt.subplots(figsize = (10, 7))
-    slender_mask = np.logical_and(slender_bin[0] <= np.exp(slenderness), np.exp(slenderness) <= slender_bin[1])
+for islender, slender_bin in enumerate(slender_bins):
+    fig, ax = plt.subplots(figsize=(10, 7))
+    slender_mask = np.logical_and(
+        slender_bin[0] <= np.exp(slenderness), np.exp(slenderness) <= slender_bin[1]
+    )
 
     text = "Axial" if args.load == "Nx" else "Shear"
     text += ", "
@@ -103,10 +111,10 @@ for islender,slender_bin in enumerate(slender_bins):
         dx += 0.5
         dy += 1.1
 
-    plt.text(2+dx, 18+dy, text, horizontalalignment="center")
-    imagebox = OffsetImage(_image, zoom = 0.15)#Annotation box for solar pv logo
-    #Container for the imagebox referring to a specific position *xy*.
-    ab = AnnotationBbox(imagebox, (2+dx, 13+dy), frameon = False)
+    plt.text(2 + dx, 18 + dy, text, horizontalalignment="center")
+    imagebox = OffsetImage(_image, zoom=0.15)  # Annotation box for solar pv logo
+    # Container for the imagebox referring to a specific position *xy*.
+    ab = AnnotationBbox(imagebox, (2 + dx, 13 + dy), frameon=False)
     ax.add_artist(ab)
 
     # get xy coords of point at rho0 = 1.0
@@ -116,15 +124,29 @@ for islender,slender_bin in enumerate(slender_bins):
     lam_near = np.exp(lam[mask][0])
     rho0_near = np.exp(rho0[mask][0])
 
-    plt.arrow(x=2+dx, y=13+dy, dx=-1.0-dx, dy=lam_near - 13-dy, width=0.01, facecolor="k")
+    plt.arrow(
+        x=2 + dx,
+        y=13 + dy,
+        dx=-1.0 - dx,
+        dy=lam_near - 13 - dy,
+        width=0.01,
+        facecolor="k",
+    )
 
     for ixi, xi_bin in enumerate(xi_bins[::-1]):
         xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi), np.exp(xi) <= xi_bin[1])
-        
-        mask = np.logical_and(xi_mask, slender_mask)
-        if np.sum(mask) == 0: continue
 
-        plt.plot(np.exp(rho0[mask]), np.exp(lam[mask]), "o", color=colors[ixi], label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$")
+        mask = np.logical_and(xi_mask, slender_mask)
+        if np.sum(mask) == 0:
+            continue
+
+        plt.plot(
+            np.exp(rho0[mask]),
+            np.exp(lam[mask]),
+            "o",
+            color=colors[ixi],
+            label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
+        )
 
     plt.legend()
     plt.xlabel(r"$\rho_0$")
@@ -132,6 +154,6 @@ for islender,slender_bin in enumerate(slender_bins):
     plt.margins(x=0.02, y=0.02)
     plt.xlim(0.0, 5.0)
     plt.ylim(0.0, 20.0)
-    #plt.show()
+    # plt.show()
     plt.savefig(os.path.join(sub_sub_data_folder, f"sl{islender}.png"), dpi=400)
-    plt.close('all')
+    plt.close("all")

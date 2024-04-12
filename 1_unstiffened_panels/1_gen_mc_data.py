@@ -18,8 +18,8 @@ comm = MPI.COMM_WORLD
 
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument('--load', type=str)
-parent_parser.add_argument('--BC', type=str)
+parent_parser.add_argument("--load", type=str)
+parent_parser.add_argument("--BC", type=str)
 
 args = parent_parser.parse_args()
 
@@ -138,7 +138,7 @@ for foo in range(N):  # until has generated this many samples
         # select number of elements
         # in order to preserve element AR based on overall AR
         _nelems = 1000
-        AR_g1 = aspect_ratio if aspect_ratio > 1 else 1.0/aspect_ratio
+        AR_g1 = aspect_ratio if aspect_ratio > 1 else 1.0 / aspect_ratio
         min_elem = int(np.sqrt(_nelems / AR_g1))
         max_elem = int(min_elem * AR_g1)
         if aspect_ratio > 1.0:
@@ -185,7 +185,7 @@ for foo in range(N):  # until has generated this many samples
             kmin = new_eigvals[0]
             error_0 = errors[0]
 
-            if loading == "Nxy": # can have negative lowest eigenvalue (+- for each)
+            if loading == "Nxy":  # can have negative lowest eigenvalue (+- for each)
                 kmin = np.abs(kmin)
 
         else:  # just do a model parameter check

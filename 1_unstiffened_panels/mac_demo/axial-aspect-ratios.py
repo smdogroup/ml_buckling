@@ -69,6 +69,4 @@ tacs_eigvals, _ = axial_plate2.run_buckling_analysis(
 
 # perform modal assurance criterion between these two buckling analyses
 # ---------------------------------------------------------------------
-mlb.UnstiffenedPlateAnalysis.mac_permutation(
-    axial_plate1, axial_plate2, num_modes=6
-)
+mlb.UnstiffenedPlateAnalysis.mac_permutation(axial_plate1, axial_plate2, num_modes=6)

@@ -17,24 +17,24 @@ comm = MPI.COMM_WORLD
 # to prevent low thickness problems => just make overall plate size smaller
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=0.3, 
+    a=0.3,
     b=0.1,
     h=5e-3,
     num_stiff=1,
     w_b=6e-3,
     t_b=0.0,
     h_w=15e-3,
-    t_w=8e-3, # if the wall thickness is too low => stiffener crimping failure happens
+    t_w=8e-3,  # if the wall thickness is too low => stiffener crimping failure happens
 )
 
 material = mlb.CompositeMaterial(
-    E11=138e9, #Pa
+    E11=138e9,  # Pa
     E22=8.96e9,
     G12=7.1e9,
     nu12=0.30,
-    ply_angles=[0,90,0,90],
+    ply_angles=[0, 90, 0, 90],
     ply_fractions=[0.25, 0.25, 0.25, 0.25],
-    ref_axis=[1,0,0],
+    ref_axis=[1, 0, 0],
 )
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
@@ -56,11 +56,11 @@ if not os.path.exists(data_folder):
 
 log10_hw = np.linspace(-3, -1, 10)
 hw_vec = np.power(10, log10_hw)
-for i,h_w in enumerate(hw_vec):
+for i, h_w in enumerate(hw_vec):
     stiff_analysis.geometry.h_w = h_w
     stiff_analysis.geometry.w_b = h_w / stiff_AR
 
-    _make_rbe = True # False
+    _make_rbe = True  # False
 
     stiff_analysis.pre_analysis(
         global_mesh_size=0.03,
@@ -69,12 +69,14 @@ for i,h_w in enumerate(hw_vec):
         clamped=False,
         edge_pt_min=5,
         edge_pt_max=40,
-        _make_rbe=_make_rbe, 
+        _make_rbe=_make_rbe,
     )
 
     # predict the actual eigenvalue
     pred_lambda = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
-    _tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+    _tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
+        sigma=10.0, num_eig=20, write_soln=True
+    )
     stiff_analysis.post_analysis()
 
     if _make_rbe:
@@ -87,14 +89,17 @@ for i,h_w in enumerate(hw_vec):
     rel_err = (pred_lambda - np.real(eigval)) / pred_lambda
     rel_errors += [rel_err]
 
-
     df_dict = {
-        "h_w" : [h_w],
-        "tacs_eig" : [tacs_eigvals[-1]],
-        "CF_eig" : [CF_eigvals[-1]],
-        "rel_err" : [rel_errors[-1]]
+        "h_w": [h_w],
+        "tacs_eig": [tacs_eigvals[-1]],
+        "CF_eig": [CF_eigvals[-1]],
+        "rel_err": [rel_errors[-1]],
     }
     df = pd.DataFrame(df_dict)
-    df.to_csv(os.path.join(data_folder, "1_hstudy.csv"), mode='a' if i != 0 else 'w', header = i == 0)
+    df.to_csv(
+        os.path.join(data_folder, "1_hstudy.csv"),
+        mode="a" if i != 0 else "w",
+        header=i == 0,
+    )
 
     stiff_analysis.post_analysis()

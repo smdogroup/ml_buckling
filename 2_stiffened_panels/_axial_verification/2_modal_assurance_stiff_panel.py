@@ -17,24 +17,24 @@ comm = MPI.COMM_WORLD
 # to prevent low thickness problems => just make overall plate size smaller
 
 nom_geometry = mlb.StiffenedPlateGeometry(
-    a=0.3, 
+    a=0.3,
     b=0.1,
     h=5e-3,
     num_stiff=3,
     w_b=6e-3,
     t_b=0.0,
     h_w=5e-3,
-    t_w=8e-3, # if the wall thickness is too low => stiffener crimping failure happens
+    t_w=8e-3,  # if the wall thickness is too low => stiffener crimping failure happens
 )
 
 material = mlb.CompositeMaterial(
-    E11=138e9, #Pa
+    E11=138e9,  # Pa
     E22=8.96e9,
     G12=7.1e9,
     nu12=0.30,
-    ply_angles=[0,90,0,90],
+    ply_angles=[0, 90, 0, 90],
     ply_fractions=[0.25, 0.25, 0.25, 0.25],
-    ref_axis=[1,0,0],
+    ref_axis=[1, 0, 0],
 )
 
 nom_panel = mlb.StiffenedPlateAnalysis(
@@ -42,7 +42,7 @@ nom_panel = mlb.StiffenedPlateAnalysis(
     geometry=nom_geometry,
     stiffener_material=material,
     plate_material=material,
-    name="nominal"
+    name="nominal",
 )
 
 # initial panel analysis for MAC
@@ -53,12 +53,14 @@ nom_panel.pre_analysis(
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
-    _make_rbe=False # TODO : would like to change this to True
+    _make_rbe=False,  # TODO : would like to change this to True
 )
 
 # predict the actual eigenvalue
-#pred_lambda = nom_panel.predict_crit_load(exx=nom_panel.affine_exx)
-_tacs_eigvals, errors = nom_panel.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+# pred_lambda = nom_panel.predict_crit_load(exx=nom_panel.affine_exx)
+_tacs_eigvals, errors = nom_panel.run_buckling_analysis(
+    sigma=10.0, num_eig=20, write_soln=True
+)
 nom_panel.post_analysis()
 
 
@@ -76,14 +78,18 @@ new_panel.pre_analysis(
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
-    _make_rbe=False # TODO : would like to change this to True
+    _make_rbe=False,  # TODO : would like to change this to True
 )
 
 # predict the actual eigenvalue
-#pred_lambda = new_panel.predict_crit_load(exx=new_panel.affine_exx)
-_tacs_eigvals, errors = new_panel.run_buckling_analysis(sigma=10.0, num_eig=100, write_soln=True)
+# pred_lambda = new_panel.predict_crit_load(exx=new_panel.affine_exx)
+_tacs_eigvals, errors = new_panel.run_buckling_analysis(
+    sigma=10.0, num_eig=100, write_soln=True
+)
 new_panel.post_analysis()
 
-eigvals, permutation = mlb.StiffenedPlateAnalysis.mac_permutation(nom_panel, new_panel, num_modes=20)
+eigvals, permutation = mlb.StiffenedPlateAnalysis.mac_permutation(
+    nom_panel, new_panel, num_modes=20
+)
 print(f"eigvals = {eigvals}")
 print(f"permutation = {permutation}")

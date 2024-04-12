@@ -14,7 +14,7 @@ comm = MPI.COMM_WORLD
 
 # argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument('--load', type=str)
+parent_parser.add_argument("--load", type=str)
 
 args = parent_parser.parse_args()
 
@@ -35,9 +35,7 @@ inner_ct = 0
 for material in mlb.CompositeMaterial.get_materials():
     for ply_angle in np.linspace(0.0, 90.0, 8):
         plate_material = material(
-            ply_angles=[ply_angle],
-            ply_fractions=[1.0],
-            ref_axis=[1,0,0]
+            ply_angles=[ply_angle], ply_fractions=[1.0], ref_axis=[1, 0, 0]
         )
         stiff_material = plate_material
 
@@ -48,20 +46,20 @@ for material in mlb.CompositeMaterial.get_materials():
             # choose plate height is 0.01
             h = 0.01
             b = h * SR
-            
+
             # stiffener heights and spacing
-            log_SHR = np.linspace(np.log(0.05), np.log(0.4), 5)
+            log_SHR = np.linspace(np.log(0.001), np.log(0.4), 5)
             SHR_vec = np.exp(log_SHR)
-            #SHR_vec = SHR_vec[::-1]
+            # SHR_vec = SHR_vec[::-1]
 
             for SHR in SHR_vec:
 
                 # use stiffener height ratio to determine the stiffener height
                 h_w = b * SHR
-                stiff_AR = 3.0
+                stiff_AR = 1.0
                 t_w = h_w / stiff_AR
 
-                for num_stiff in [1,3,5]:
+                for num_stiff in [1, 3, 5]:
 
                     log_AR_vec = np.linspace(np.log(0.2), np.log(5.0), 15)
                     AR_vec = np.exp(log_AR_vec)
@@ -69,12 +67,11 @@ for material in mlb.CompositeMaterial.get_materials():
                     for AR in AR_vec:
 
                         # temporarily set AR to reasonable value
-                        AR = 1.0
-                        
-                        a = b * AR
+                        AR = 3.0
+
                         geometry = mlb.StiffenedPlateGeometry(
-                            a= AR*SR*h,
-                            b=SR*h,
+                            a=AR * SR * h,
+                            b=SR * h,
                             h=h,
                             num_stiff=num_stiff,
                             w_b=1.0,
@@ -88,49 +85,79 @@ for material in mlb.CompositeMaterial.get_materials():
                             geometry=geometry,
                             stiffener_material=stiff_material,
                             plate_material=plate_material,
-                            name="mc"
+                            name="mc",
                         )
 
-                        valid_affine_AR = 0.05 <= stiffened_plate.affine_aspect_ratio <= 20.0
-                        if not valid_affine_AR: continue
+                        valid_affine_AR = (
+                            0.05 <= stiffened_plate.affine_aspect_ratio <= 20.0
+                        )
+                        if not valid_affine_AR:
+                            continue
+
+                        # choose a number of elements
+                        # nelem = 2000
+                        # global_mesh_size = np.sqrt(geometry.a * (geometry.b + geometry.num_stiff * geometry.h_w) / nelem) * 4
+                        global_mesh_size = 0.01
+                        print(f"global mesh size = {global_mesh_size}")
 
                         stiffened_plate.pre_analysis(
-                            global_mesh_size=b/10,
-                            exx=stiffened_plate.affine_exx if args.load == "Nx" else 0.0,
-                            exy=stiffened_plate.affine_exy if args.load == "Nxy" else 0.0,
+                            global_mesh_size=global_mesh_size,
+                            exx=stiffened_plate.affine_exx
+                            if args.load == "Nx"
+                            else 0.0,
+                            exy=stiffened_plate.affine_exy
+                            if args.load == "Nxy"
+                            else 0.0,
                             clamped=False,
                             edge_pt_min=5,
                             edge_pt_max=50,
-                            _make_rbe=True # True
+                            _make_rbe=False,  # True
                         )
 
                         print(stiffened_plate)
-                        #exit()
+                        # exit()
 
-                        tacs_eigvals,errors = stiffened_plate.run_buckling_analysis(sigma=10.0, num_eig=50, write_soln=True)
+                        lam_min, mode_type = stiffened_plate.predict_crit_load(
+                            exx=stiffened_plate.affine_exx
+                            if args.load == "Nx"
+                            else 0.0,
+                            exy=stiffened_plate.affine_exy
+                            if args.load == "Nxy"
+                            else 0.0,
+                        )
+
+                        print(f"lam min predicted = {lam_min} of type {mode_type}")
+
+                        tacs_eigvals, errors = stiffened_plate.run_buckling_analysis(
+                            sigma=10.0, num_eig=50, write_soln=True
+                        )
                         stiffened_plate.post_analysis()
 
                         if comm.rank == 0:
                             stiffened_plate.print_mode_classification()
 
-                        #if abs(errors[0]) > 1e-7: continue
+                        # if abs(errors[0]) > 1e-7: continue
 
                         global_lambda_star = stiffened_plate.min_global_mode_eigenvalue
-                        if global_lambda_star is None: continue # no global modes appeared
+                        if global_lambda_star is None:
+                            continue  # no global modes appeared
 
-                        if not(0.5 <= global_lambda_star <= 50.0): 
-                            print(f"Warning global mode eigenvalue {global_lambda_star} not in [0.5, 50.0]")
-                            continue 
+                        if not (0.5 <= global_lambda_star <= 50.0):
+                            print(
+                                f"Warning global mode eigenvalue {global_lambda_star} not in [0.5, 50.0]"
+                            )
+                            continue
 
                         # save data to csv file otherwise because this data point is good
                         # record the model parameters
                         data_dict = {
                             # training parameter section
-                            "rho_0" : [stiffened_plate.affine_aspect_ratio],
-                            "xi" : [stiffened_plate.xi_plate],
-                            "gamma" : [stiffened_plate.gamma],
-                            "zeta" : [stiffened_plate.zeta_plate],
-                            "lambda_star" : [np.real(global_lambda_star)],
+                            "rho_0": [stiffened_plate.affine_aspect_ratio],
+                            "xi": [stiffened_plate.xi_plate],
+                            "gamma": [stiffened_plate.gamma],
+                            "zeta": [stiffened_plate.zeta_plate],
+                            "lambda_star": [np.real(global_lambda_star)],
+                            "pred_lam": [lam_min],
                         }
 
                         # write to the training csv file
@@ -138,12 +165,16 @@ for material in mlb.CompositeMaterial.get_materials():
                         if comm.rank == 0:
                             df = pd.DataFrame(data_dict)
                             if inner_ct == 1 and not (os.path.exists(train_csv_path)):
-                                df.to_csv(train_csv_path, mode="w", index=False, header=True)
+                                df.to_csv(
+                                    train_csv_path, mode="w", index=False, header=True
+                                )
                             else:
-                                df.to_csv(train_csv_path, mode="a", index=False, header=False)
+                                df.to_csv(
+                                    train_csv_path, mode="a", index=False, header=False
+                                )
 
                         comm.Barrier()
-                    
+
                         # add raw data section
                         data_dict["material"] = [plate_material.material_name]
                         data_dict["ply_angle"] = [ply_angle]
@@ -158,12 +189,16 @@ for material in mlb.CompositeMaterial.get_materials():
                         if comm.rank == 0:
                             df = pd.DataFrame(data_dict)
                             if inner_ct == 1 and not (os.path.exists(raw_csv_path)):
-                                df.to_csv(raw_csv_path, mode="w", index=False, header=True)
+                                df.to_csv(
+                                    raw_csv_path, mode="w", index=False, header=True
+                                )
                             else:
-                                df.to_csv(raw_csv_path, mode="a", index=False, header=False)
+                                df.to_csv(
+                                    raw_csv_path, mode="a", index=False, header=False
+                                )
 
                         # MPI COMM Barrier in case running with multiple procs
                         comm.Barrier()
 
-                        #if inner_ct == 1:
+                        # if inner_ct == 1:
                         #    exit() # temporary debug exit()

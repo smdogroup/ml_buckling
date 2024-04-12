@@ -5,9 +5,13 @@ import niceplots, os
 import argparse
 from matplotlib import cm
 import shutil
-from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)#The OffsetBox is a simple container artist.
+from matplotlib.offsetbox import (
+    OffsetImage,
+    AnnotationBbox,
+)  # The OffsetBox is a simple container artist.
 import matplotlib.image as image
-#The child artists are meant to be drawn at a relative position to its #parent.
+
+# The child artists are meant to be drawn at a relative position to its #parent.
 
 
 """
@@ -57,11 +61,13 @@ aff_AR_bins = (
 data_folder = os.path.join(os.getcwd(), "_plots")
 sub_data_folder = os.path.join(data_folder, csv_filename)
 sub_sub_data_folder = os.path.join(sub_data_folder, "data")
-for ifolder,folder in enumerate([
-    data_folder,
-    sub_data_folder,
-    sub_sub_data_folder,
-]):
+for ifolder, folder in enumerate(
+    [
+        data_folder,
+        sub_data_folder,
+        sub_sub_data_folder,
+    ]
+):
     if not os.path.exists(folder):
         os.mkdir(folder)
 
@@ -77,25 +83,31 @@ slender_bins = slender_bins[::-1]
 
 # now plot by xi
 for ixi, xi_bin in enumerate(xi_bins):
-    fig, ax = plt.subplots(figsize = (10, 7))
+    fig, ax = plt.subplots(figsize=(10, 7))
     xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi), np.exp(xi) <= xi_bin[1])
 
     plt.arrow(x=1.4, y=14, dx=0, dy=-6, facecolor="b", width=0.01)
     plt.text(x=1.4, y=14.5, s="Mode#", horizontalalignment="center")
 
-    for iAR in range(1,4):
-        plt.arrow(x=iAR,y=7, dx=0, dy=-1.8, facecolor="k", width=0.01)
-        plt.text(x=iAR, y=14, s=r"$\rho = " + str(iAR) + r"$", horizontalalignment="center")
-        for imode in range(1,4):
+    for iAR in range(1, 4):
+        plt.arrow(x=iAR, y=7, dx=0, dy=-1.8, facecolor="k", width=0.01)
+        plt.text(
+            x=iAR, y=14, s=r"$\rho = " + str(iAR) + r"$", horizontalalignment="center"
+        )
+        for imode in range(1, 4):
             _image = image.imread(f"images/NxSS-{iAR}_{imode}.png")
 
-            #plt.text(2+dx, 18+dy, text, horizontalalignment="center")
+            # plt.text(2+dx, 18+dy, text, horizontalalignment="center")
             zoom = 0.05
             if iAR == 3:
                 zoom = 0.1
-            imagebox = OffsetImage(_image, zoom = zoom)#Annotation box for solar pv logo
-            #Container for the imagebox referring to a specific position *xy*.
-            ab = AnnotationBbox(imagebox, (iAR,8+4.6-2.4*(imode-1)), frameon = False)
+            imagebox = OffsetImage(
+                _image, zoom=zoom
+            )  # Annotation box for solar pv logo
+            # Container for the imagebox referring to a specific position *xy*.
+            ab = AnnotationBbox(
+                imagebox, (iAR, 8 + 4.6 - 2.4 * (imode - 1)), frameon=False
+            )
             ax.add_artist(ab)
 
     # get xy coords of point at rho0 = 1.0
@@ -105,15 +117,25 @@ for ixi, xi_bin in enumerate(xi_bins):
     lam_near = np.exp(lam[mask][0])
     rho0_near = np.exp(rho0[mask][0])
 
-    #plt.arrow(x=2+dx, y=13+dy, dx=-1.0-dx, dy=lam_near - 13-dy, width=0.01, facecolor="k")
+    # plt.arrow(x=2+dx, y=13+dy, dx=-1.0-dx, dy=lam_near - 13-dy, width=0.01, facecolor="k")
 
-    for islender,slender_bin in enumerate(slender_bins):
-        slender_mask = np.logical_and(slender_bin[0] <= np.exp(slenderness), np.exp(slenderness) <= slender_bin[1])
-        
+    for islender, slender_bin in enumerate(slender_bins):
+        slender_mask = np.logical_and(
+            slender_bin[0] <= np.exp(slenderness), np.exp(slenderness) <= slender_bin[1]
+        )
+
         mask = np.logical_and(xi_mask, slender_mask)
-        if np.sum(mask) == 0: continue
+        if np.sum(mask) == 0:
+            continue
 
-        plt.plot(np.exp(rho0[mask]), np.exp(lam[mask]), "o", color=colors[islender], zorder=len(slender_bins)-islender, label=r"$b/h\ in\ [" + f"{slender_bin[0]},{slender_bin[1]}" + r"]$")
+        plt.plot(
+            np.exp(rho0[mask]),
+            np.exp(lam[mask]),
+            "o",
+            color=colors[islender],
+            zorder=len(slender_bins) - islender,
+            label=r"$b/h\ in\ [" + f"{slender_bin[0]},{slender_bin[1]}" + r"]$",
+        )
 
     plt.legend()
     plt.xlabel(r"$\rho_0$")
@@ -121,6 +143,6 @@ for ixi, xi_bin in enumerate(xi_bins):
     plt.margins(x=0.02, y=0.02)
     plt.xlim(0.0, 4.0)
     plt.ylim(0.0, 15.0)
-    #plt.show()
+    # plt.show()
     plt.savefig(os.path.join(sub_sub_data_folder, f"xi{ixi}.png"), dpi=400)
-    plt.close('all')
+    plt.close("all")

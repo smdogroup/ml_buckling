@@ -75,14 +75,8 @@ for AR in [0.7, 1.0, 1.3]:
         # "Generic Buckling Curves For Specially Orthotropic Rectangular Plates"
         # but only works in thin plate limit (very thin)
         kmin = np.abs(np.real(tacs_eigvals[0]))
-        
 
-        data_dict = {
-            "AR": [AR],
-            "SR" : [SR],
-            "kmin" : [kmin],
-            "b" : b
-        }
+        data_dict = {"AR": [AR], "SR": [SR], "kmin": [kmin], "b": b}
         # write the data to a file
         if comm.rank == 0:
             df = pandas.DataFrame(data_dict)

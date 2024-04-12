@@ -2,24 +2,26 @@ __all__ = ["StiffenedPlateGeometry"]
 
 import numpy as np
 
+
 class StiffenedPlateGeometry:
     def __init__(
         self,
         a,
         b,
         h,
-        num_stiff, # num stiffeners
-        w_b, # width of base
-        t_b, # thickness of base
-        h_w, # height of stiffener wall
-        t_w, # thickness of stiffener wall
-        rib_h=2e-3, # thickness of rib
+        num_stiff,  # num stiffeners
+        w_b,  # width of base
+        t_b,  # thickness of base
+        h_w,  # height of stiffener wall
+        t_w,  # thickness of stiffener wall
+        rib_h=2e-3,  # thickness of rib
     ):
         self.a = a
         self.b = b
         self.h = h
         self.num_stiff = num_stiff
-        
+        self.N = num_stiff + 1
+
         # not implemented in closed-form yet so ignore this
         assert t_b == 0.0
 
@@ -33,50 +35,50 @@ class StiffenedPlateGeometry:
     @property
     def s_p(self) -> float:
         """stiffener pitch"""
-        return self.a / self.num_stiff
-    
+        return self.b / self.N
+
     @property
     def area_w(self) -> float:
         return self.t_w * self.h_w
-    
+
     @property
     def area_b(self) -> float:
         return self.w_b * self.t_b
-    
+
     @property
     def area_S(self) -> float:
         return self.area_w + self.area_b
-    
+
     @property
     def area_P(self) -> float:
         return self.b * self.h
-    
-    @property
-    def I_S(self) -> float:
-        return self.h_w**3 / 12.0
-    
-    @property
-    def I_P(self) -> float:
-        return self.h**3 / 12.0
 
     @property
-    def num_local(self): 
-        # number of whole number, 
+    def I_S(self) -> float:
+        return self.h_w ** 3 / 12.0
+
+    @property
+    def I_P(self) -> float:
+        return self.h ** 3 / 12.0
+
+    @property
+    def num_local(self):
+        # number of whole number,
         # local sections bounded by stiffeners
         return self.num_stiff
-    
+
     @property
     def AR(self) -> float:
         return self.a / self.b
-    
+
     @property
     def SR(self) -> float:
         return self.b / self.h
-    
+
     @property
     def stiff_AR(self) -> float:
         return self.h_w / self.t_w
-    
+
     @classmethod
     def copy(cls, geometry):
         return cls(
@@ -97,6 +99,7 @@ class StiffenedPlateGeometry:
         mystr += f"\tb = {self.b}\n"
         mystr += f"\th = {self.h}\n"
         mystr += f"\tnum_stiff = {self.num_stiff}\n"
+        mystr += f"\tspar pitch = {self.s_p}\n"
         mystr += f"\tw_b = {self.w_b}\n"
         mystr += f"\tt_b = {self.t_b}\n"
         mystr += f"\th_w = {self.h_w}\n"

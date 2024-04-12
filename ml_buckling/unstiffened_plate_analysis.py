@@ -12,7 +12,7 @@ dtype = utilities.BaseUI.dtype
 
 def exp_kernel1(xp, xq, sigma_f, L):
     # xp, xq are Nx1, Nx1 vectors
-    return sigma_f**2 * np.exp(-0.5 * (xp - xq).T @ (xp - xq) / L**2)
+    return sigma_f ** 2 * np.exp(-0.5 * (xp - xq).T @ (xp - xq) / L ** 2)
 
 
 class UnstiffenedPlateAnalysis:
@@ -149,13 +149,13 @@ class UnstiffenedPlateAnalysis:
             cls.hexcelIM7,
             cls.victrexAE,
         ]
-    
+
     @classmethod
-    def get_material_from_str(cls, mat_name:str):
+    def get_material_from_str(cls, mat_name: str):
         method_names = [_.__qualname__ for _ in cls.get_materials()]
         materials = cls.get_materials()
         _method = None
-        for i,method_name in enumerate(method_names):
+        for i, method_name in enumerate(method_names):
             if mat_name in method_name:
                 _method = materials[i]
         assert _method is not None
@@ -332,12 +332,12 @@ class UnstiffenedPlateAnalysis:
     @property
     def D11(self) -> float:
         """1-axial bending stiffness"""
-        return self.E11 * self.h**3 / 12.0 / (1 - self.nu12 * self.nu21)
+        return self.E11 * self.h ** 3 / 12.0 / (1 - self.nu12 * self.nu21)
 
     @property
     def D22(self) -> float:
         """2-axial bending stiffness"""
-        return self.E22 * self.h**3 / 12.0 / (1 - self.nu12 * self.nu21)
+        return self.E22 * self.h ** 3 / 12.0 / (1 - self.nu12 * self.nu21)
 
     @property
     def D12(self) -> float:
@@ -345,7 +345,7 @@ class UnstiffenedPlateAnalysis:
 
     @property
     def D66(self) -> float:
-        return self.G12 * self.h**3 / 12.0
+        return self.G12 * self.h ** 3 / 12.0
 
     @property
     def affine_exx(self):
@@ -354,7 +354,7 @@ class UnstiffenedPlateAnalysis:
         out of the buckling analysis!
         """
         exx_T = (
-            np.pi**2 * np.sqrt(self.D11 * self.D22) / self.b**2 / self.h / self.E11
+            np.pi ** 2 * np.sqrt(self.D11 * self.D22) / self.b ** 2 / self.h / self.E11
         )
         return exx_T
 
@@ -372,13 +372,20 @@ class UnstiffenedPlateAnalysis:
         option = 2
         # option 1 - based on self derivation (but didn't match data well)
         if option == 1:
-            exy_T = np.pi**2 * (self.D11 * self.D22)**0.5 / self.a / self.b / self.h / self.G12
+            exy_T = (
+                np.pi ** 2
+                * (self.D11 * self.D22) ** 0.5
+                / self.a
+                / self.b
+                / self.h
+                / self.G12
+            )
         # option 2 - based on NASA non-dimensional buckling parameter derivation (much better)
         elif option == 2:
             exy_T = (
-                np.pi**2
-                * (self.D11 * self.D22**3) ** 0.25
-                / self.b**2
+                np.pi ** 2
+                * (self.D11 * self.D22 ** 3) ** 0.25
+                / self.b ** 2
                 / self.h
                 / self.G12
             )
@@ -401,7 +408,7 @@ class UnstiffenedPlateAnalysis:
         TODO : may need to add isotropic case to this with Dstar = 1.0
         """
         return (self.D12 + 2 * self.D66) / np.sqrt(self.D11 * self.D22)
-    
+
     @property
     def xi(self):
         """equivalent to Dstar (just different variable name)"""
@@ -470,7 +477,7 @@ class UnstiffenedPlateAnalysis:
         sigma_f = 1.0
         L = 0.4
         _kernel = lambda xp, xq: exp_kernel1(xp, xq, sigma_f=sigma_f, L=L)
-        K_train = sigma_n**2 * np.eye(num_train) + np.array(
+        K_train = sigma_n ** 2 * np.eye(num_train) + np.array(
             [
                 [_kernel(X_train[i, :], X_train[j, :]) for i in range(num_train)]
                 for j in range(num_train)
@@ -547,7 +554,9 @@ class UnstiffenedPlateAnalysis:
         """number of eigenvalues or modes that were recorded"""
         return self._num_modes
 
-    def generate_bdf(self, nx=30, ny=30, exx=0.0, eyy=0.0, exy=0.0, clamped=True, one_free=False):
+    def generate_bdf(
+        self, nx=30, ny=30, exx=0.0, eyy=0.0, exy=0.0, clamped=True, one_free=False
+    ):
         """
         # Generate a plate mesh with CQUAD4 elements
         create pure axial, pure shear, or combined loading displacement control
@@ -646,7 +655,7 @@ class UnstiffenedPlateAnalysis:
                                 % ("SPC", 1, nodes[i, j], "3456", 0.0)
                             )  # w = theta_x = theta_y = theta_z = 0
                         else:
-                            write_SS_BC = (one_free and not(j == ny)) or (not one_free)
+                            write_SS_BC = (one_free and not (j == ny)) or (not one_free)
                             if write_SS_BC:
                                 fp.write(
                                     "%-8s%8d%8d%8s%8.6f\n"
@@ -771,12 +780,12 @@ class UnstiffenedPlateAnalysis:
 
                     # check on boundary
                     if i == 0 or j == 0 or i == nx or j == ny:
-                        if (i == 0 and j == 0): #  or (i == nx and j == 0):
+                        if i == 0 and j == 0:  #  or (i == nx and j == 0):
                             fp.write(
                                 "%-8s%8d%8d%8s%8.6f\n"
                                 % ("SPC", 1, nodes[i, j], "3456", 0.0)
                             )  # w = theta_x = theta_y = theta_z = 0
-                        elif j == 0 or i == 0 or i == nx: #SSSF BCs
+                        elif j == 0 or i == 0 or i == nx:  # SSSF BCs
                             fp.write(
                                 "%-8s%8d%8d%8s%8.6f\n"
                                 % ("SPC", 1, nodes[i, j], "36", 0.0)
@@ -888,6 +897,7 @@ class UnstiffenedPlateAnalysis:
             # Add scale for thickness dv
             scale = [100.0]
             return elemList, scale
+
         return elemCallBack
 
     def run_static_analysis(self, base_path=None, write_soln=False):
@@ -903,7 +913,7 @@ class UnstiffenedPlateAnalysis:
         FEAAssembler.initialize(self._elemCallback())
 
         # set complex step Gmatrix into all elements through assembler
-        #FEAAssembler.assembler.setComplexStepGmatrix(True)
+        # FEAAssembler.assembler.setComplexStepGmatrix(True)
 
         # debug the static problem first
         SP = FEAAssembler.createStaticProblem(name="static")
@@ -941,7 +951,7 @@ class UnstiffenedPlateAnalysis:
         FEAAssembler.initialize(self._elemCallback())
 
         # set complex step Gmatrix into all elements through assembler
-        #FEAAssembler.assembler.setComplexStepGmatrix(True)
+        # FEAAssembler.assembler.setComplexStepGmatrix(True)
 
         # Setup buckling problem
         bucklingProb = FEAAssembler.createBucklingProblem(

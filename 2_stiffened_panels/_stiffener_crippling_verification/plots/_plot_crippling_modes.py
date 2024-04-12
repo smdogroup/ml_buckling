@@ -5,11 +5,11 @@ import niceplots
 import os
 
 df = pd.read_csv("../data/stiffener_crippling.csv")
-xi = df['xi'].to_numpy()
-slenderness = np.log(df['b/h'].to_numpy())
-gen_eps = df['gen_eps'].to_numpy()
-affine_AR = df['a0/b0'].to_numpy()
-kmin = df['kmin'].to_numpy()
+xi = df["xi"].to_numpy()
+slenderness = np.log(df["b/h"].to_numpy())
+gen_eps = df["gen_eps"].to_numpy()
+affine_AR = df["a0/b0"].to_numpy()
+kmin = df["kmin"].to_numpy()
 
 slender_bins = [
     [10.0, 20.0],
@@ -56,7 +56,7 @@ for ibin, bin in enumerate(slender_bins):
             X_in_range,
             Y_in_range,
             "o",
-            #markersize=3,
+            # markersize=3,
             color=colors[iDstar],
             label=r"$\xi" + f"-[{Dstar_bin[0]},{Dstar_bin[1]}]" + r"$",
         )
@@ -65,8 +65,8 @@ for ibin, bin in enumerate(slender_bins):
     plt.xlabel(r"$\rho_0$")
     plt.ylabel(r"$\lambda_{min}^*$")
     plt.legend()
-    plt.xscale('log')
-    plt.yscale('log')
+    plt.xscale("log")
+    plt.yscale("log")
     # plt.xlim(0.0, 10.0)
     # plt.ylim(0.0, 5.0)
     # box = ax.get_position()

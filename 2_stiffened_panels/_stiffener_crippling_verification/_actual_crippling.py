@@ -18,24 +18,24 @@ comm = MPI.COMM_WORLD
 # to prevent low thickness problems => just make overall plate size smaller
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=0.3, 
+    a=0.3,
     b=0.1,
     h=5e-3,
     num_stiff=1,
     w_b=6e-3,
     t_b=0.0,
     h_w=20e-3,
-    t_w=2e-3, # if the wall thickness is too low => stiffener crimping failure happens
+    t_w=2e-3,  # if the wall thickness is too low => stiffener crimping failure happens
 )
 
 material = mlb.CompositeMaterial(
-    E11=138e9, #Pa
+    E11=138e9,  # Pa
     E22=8.96e9,
     G12=7.1e9,
     nu12=0.30,
-    ply_angles=[0,90,0,90],
-    ply_fractions=[0.25]*4,#*4), #[0.4, 0.1, 0.4, 0.1]
-    ref_axis=[1,0,0],
+    ply_angles=[0, 90, 0, 90],
+    ply_fractions=[0.25] * 4,  # *4), #[0.4, 0.1, 0.4, 0.1]
+    ref_axis=[1, 0, 0],
 )
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
@@ -57,7 +57,7 @@ stiff_analysis.pre_analysis(
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
-    _make_rbe=True
+    _make_rbe=True,
 )
 
 print(f"exx = {stiff_analysis.affine_exx}")
@@ -69,7 +69,9 @@ pred_lambda = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 # exit()
 
 avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
-tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
+    sigma=10.0, num_eig=20, write_soln=True
+)
 stiff_analysis.post_analysis()
 
 print(f"avg stresses = {avg_stresses}")
@@ -77,11 +79,16 @@ print(f"tacs eigvals = {tacs_eigvals}")
 print(f"errors = {errors}")
 
 # predicted stiffener crippling eigenvalue
-Nx_stiff = 3.7e4 # from linear static analysis (need to change average stresses routine to extract by component now since we don't have the stresses, just in-plane loads)
-lambda_norm = 0.47 * stiff_analysis.xi_stiff # since stiff_analysis.gen_poisson_stiff approx 0.2
+Nx_stiff = 3.7e4  # from linear static analysis (need to change average stresses routine to extract by component now since we don't have the stresses, just in-plane loads)
+lambda_norm = (
+    0.47 * stiff_analysis.xi_stiff
+)  # since stiff_analysis.gen_poisson_stiff approx 0.2
 Darray = stiff_analysis.Darray_stiff
-D11 = Darray[0]; D12 = Darray[1]; D22 = Darray[2]; D66 = Darray[3]
-Nxcrit_stiff = np.pi**2 * np.sqrt(D11 * D22) / geometry.h_w**2 * lambda_norm
+D11 = Darray[0]
+D12 = Darray[1]
+D22 = Darray[2]
+D66 = Darray[3]
+Nxcrit_stiff = np.pi ** 2 * np.sqrt(D11 * D22) / geometry.h_w ** 2 * lambda_norm
 pred_eigval = Nxcrit_stiff / Nx_stiff
 act_eigval = tacs_eigvals[0]
 rel_err = (act_eigval - pred_eigval) / pred_eigval

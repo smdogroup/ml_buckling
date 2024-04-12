@@ -18,7 +18,7 @@ h = 1.0
 SR = 59.556
 
 # AR_vec = [11.7210]
-AR_vec = [0.2, 1, 2,4,6,8,10]
+AR_vec = [0.2, 1, 2, 4, 6, 8, 10]
 rel_errs = []
 for AR in AR_vec:
 
@@ -34,8 +34,8 @@ for AR in AR_vec:
         ply_angle=67.317,
     )
 
-    AR_g1 = AR if AR > 1 else 1.0/AR
-    _nelems = 3000 # need at least 3000 elements to achieve mesh convergence for this case, ~2000 or less is not converged and has high eigvalue
+    AR_g1 = AR if AR > 1 else 1.0 / AR
+    _nelems = 3000  # need at least 3000 elements to achieve mesh convergence for this case, ~2000 or less is not converged and has high eigvalue
     min_elem = int(np.sqrt(_nelems / AR_g1))
     max_elem = int(min_elem * AR_g1)
     if AR > 1.0:
@@ -54,7 +54,7 @@ for AR in AR_vec:
         ny=ny,
         exx=flat_plate.affine_exx * load_factor,
         eyy=0.0,
-        exy=0.0, # flat_plate.affine_exy,
+        exy=0.0,  # flat_plate.affine_exy,
     )
 
     print(f"xi = {flat_plate.Dstar}")
@@ -67,7 +67,7 @@ for AR in AR_vec:
 
     tacs_eigvals, errors = flat_plate.run_buckling_analysis(
         sigma=5.0, num_eig=40, write_soln=False
-    ) # num_eig = 12 (before) => somehow this change might be affecting soln?
+    )  # num_eig = 12 (before) => somehow this change might be affecting soln?
 
     # compare to exact eigenvalue
     tacs_eigval = tacs_eigvals[0] * load_factor

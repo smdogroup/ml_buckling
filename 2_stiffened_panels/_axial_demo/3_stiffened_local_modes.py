@@ -23,17 +23,18 @@ To exaggarate: have really thick stiffener (non-physically thick)
 # then the 4th and 5th modes are local buckling!
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=0.1, 
+    a=0.1,
     b=0.1,
     h=3e-3,
     num_stiff=3,
     w_b=6e-3,
     t_b=3e-3,
     h_w=1e-2,
-    t_w=27*8e-2, # if the wall thickness is too low => stiffener crimping failure happens
+    t_w=27
+    * 8e-2,  # if the wall thickness is too low => stiffener crimping failure happens
 )
 
-material = mlb.CompositeMaterial.solvay5320(ref_axis=np.array([1,0,0]))
+material = mlb.CompositeMaterial.solvay5320(ref_axis=np.array([1, 0, 0]))
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
     comm=comm,
@@ -50,7 +51,9 @@ stiff_analysis.pre_analysis(
     edge_pt_min=5,
     edge_pt_max=40,
 )
-tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(sigma=10.0, num_eig=20, write_soln=True)
+tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
+    sigma=10.0, num_eig=20, write_soln=True
+)
 stiff_analysis.post_analysis()
 
 print(f"tacs eigvals = {tacs_eigvals}")

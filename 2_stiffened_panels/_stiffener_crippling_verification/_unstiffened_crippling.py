@@ -29,7 +29,7 @@ flat_plate.generate_tripping_bdf(
     ny=20,
     exx=flat_plate.affine_exx * load_factor,
     eyy=0.0,
-    exy=0.0, # flat_plate.affine_exy,
+    exy=0.0,  # flat_plate.affine_exy,
 )
 
 print(f"xi = {flat_plate.Dstar}")

@@ -82,11 +82,11 @@ nom_eigvals, _ = nominal_plate.run_buckling_analysis(
 )
 
 N = _materials.shape[0]
-#N = 1
+# N = 1
 for row in range(N):
     # current criterion
     if _AR[row] < 1.0:
-        pass # redo this data point (low AR)
+        pass  # redo this data point (low AR)
     else:
         continue
 
@@ -126,7 +126,7 @@ for row in range(N):
     # select number of elements
     # in order to preserve element AR based on overall AR
     _nelems = 1000
-    AR_g1 = aspect_ratio if aspect_ratio > 1 else 1.0/aspect_ratio
+    AR_g1 = aspect_ratio if aspect_ratio > 1 else 1.0 / aspect_ratio
     min_elem = int(np.sqrt(_nelems / AR_g1))
     max_elem = int(min_elem * AR_g1)
     if aspect_ratio > 1.0:
@@ -185,19 +185,21 @@ for row in range(N):
         )
 
         # update the model parameters in the original dataframe
-        df.loc[row,"kmin"] = np.real(kmin)
-        df.loc[row,"error"] = np.real(error_0)
-        df.loc[row,"nx"] = nx
-        df.loc[row,"ny"] = ny
-        df.loc[row,"Dstar"] = new_plate.Dstar
-        df.loc[row,"a0/b0"] = new_plate.affine_aspect_ratio
-        df.loc[row,"a/b"] = new_plate.aspect_ratio
-        df.loc[row,"material"] = new_plate.material_name
-        df.loc[row,"ply_angle"] = new_plate.ply_angle
+        df.loc[row, "kmin"] = np.real(kmin)
+        df.loc[row, "error"] = np.real(error_0)
+        df.loc[row, "nx"] = nx
+        df.loc[row, "ny"] = ny
+        df.loc[row, "Dstar"] = new_plate.Dstar
+        df.loc[row, "a0/b0"] = new_plate.affine_aspect_ratio
+        df.loc[row, "a/b"] = new_plate.aspect_ratio
+        df.loc[row, "material"] = new_plate.material_name
+        df.loc[row, "ply_angle"] = new_plate.ply_angle
 
         # add the tracked eigenvalues
         for imode, tracked_eigval in enumerate(tracked_eigvals):
-            df.loc[row,f"k_{imode+1}"] = np.real(tracked_eigval) if tracked_eigval else None
+            df.loc[row, f"k_{imode+1}"] = (
+                np.real(tracked_eigval) if tracked_eigval else None
+            )
 
         # rewrite the data frame in there
         df.to_csv(csv_file, index=False, mode="w")

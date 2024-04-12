@@ -14,14 +14,14 @@ comm = MPI.COMM_WORLD
 # to prevent low thickness problems => just make overall plate size smaller
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=0.1, 
+    a=0.1,
     b=0.1,
     h=5e-3,
     num_stiff=3,
     w_b=6e-3,
     t_b=2e-3,
     h_w=1e-2,
-    t_w=1e-3, # if the wall thickness is too low => stiffener crimping failure happens
+    t_w=1e-3,  # if the wall thickness is too low => stiffener crimping failure happens
 )
 
 material = mlb.CompositeMaterial.solvay5320(ply_angle=0)
@@ -31,7 +31,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    compress_stiff=False, # need to figure this out with linear static analysis
+    compress_stiff=False,  # need to figure this out with linear static analysis
 )
 
 stiff_analysis.pre_analysis(

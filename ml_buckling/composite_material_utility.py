@@ -45,16 +45,16 @@ class CompositeMaterialUtility:
         C2 = np.cos(2 * angle_rad)
         S2 = np.sin(2 * angle_rad)
         self.E11 = (
-            C**4 / E11 + S**4 / E22 + 0.25 * (1.0 / G12 - 2 * nu12 / E11) * S2**2
+            C ** 4 / E11 + S ** 4 / E22 + 0.25 * (1.0 / G12 - 2 * nu12 / E11) * S2 ** 2
         ) ** (-1)
         self.E22 = (
-            S**4 / E11 + C**4 / E22 + 0.25 * (1.0 / G12 - 2 * nu12 / E11) * S2**2
+            S ** 4 / E11 + C ** 4 / E22 + 0.25 * (1.0 / G12 - 2 * nu12 / E11) * S2 ** 2
         ) ** (-1)
         _temp1 = 1.0 / E11 + 2.0 * nu12 / E11 + 1.0 / E22
-        self.G12 = (_temp1 - (_temp1 - 1.0 / G12) * C2**2) ** (-1)
-        self.nu12 = self.E11 * (nu12 / E11 - 0.25 * (_temp1 - 1.0 / G12) * S2**2)
+        self.G12 = (_temp1 - (_temp1 - 1.0 / G12) * C2 ** 2) ** (-1)
+        self.nu12 = self.E11 * (nu12 / E11 - 0.25 * (_temp1 - 1.0 / G12) * S2 ** 2)
         return self
-    
+
     @property
     def nu21(self):
         return self.nu12 * self.E22 / self.E11

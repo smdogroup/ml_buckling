@@ -18,7 +18,7 @@ comm = MPI.COMM_WORLD
 
 h = 1.0
 
- # AR_vec = [11.7210]
+# AR_vec = [11.7210]
 # AR_vec = [0.2, 1, 2,4,6,8,10,20]
 log_AR_vec = np.linspace(-1, 1.2, 15)
 AR_vec = np.power(10.0, log_AR_vec)
@@ -50,8 +50,8 @@ for material in materials:
                     ply_angle=ply_angle,
                 )
 
-                AR_g1 = AR if AR > 1 else 1.0/AR
-                _nelems = 3000 # need at least 3000 elements to achieve mesh convergence for this case, ~2000 or less is not converged and has high eigvalue
+                AR_g1 = AR if AR > 1 else 1.0 / AR
+                _nelems = 3000  # need at least 3000 elements to achieve mesh convergence for this case, ~2000 or less is not converged and has high eigvalue
                 min_elem = int(np.sqrt(_nelems / AR_g1))
                 max_elem = int(min_elem * AR_g1)
                 if AR > 1.0:
@@ -70,7 +70,7 @@ for material in materials:
                     ny=ny,
                     exx=flat_plate.affine_exx * load_factor,
                     eyy=0.0,
-                    exy=0.0, # flat_plate.affine_exy,
+                    exy=0.0,  # flat_plate.affine_exy,
                 )
 
                 print(f"xi = {flat_plate.Dstar}")
@@ -83,7 +83,7 @@ for material in materials:
 
                 tacs_eigvals, errors = flat_plate.run_buckling_analysis(
                     sigma=5.0, num_eig=40, write_soln=False
-                ) # num_eig = 12 (before) => somehow this change might be affecting soln?
+                )  # num_eig = 12 (before) => somehow this change might be affecting soln?
 
                 # compare to exact eigenvalue
                 tacs_eigval = tacs_eigvals[0] * load_factor
@@ -99,12 +99,12 @@ for material in materials:
                     data_dict = {
                         # model parameter section
                         "xi": [flat_plate.xi],
-                        "gen_eps" : [flat_plate.generalized_poisson],
+                        "gen_eps": [flat_plate.generalized_poisson],
                         "a0/b0": [flat_plate.affine_aspect_ratio],
                         "a/b": [flat_plate.aspect_ratio],
                         "b/h": [flat_plate.slenderness],
                         "kmin": [np.real(tacs_eigval)],
-                        "CF_err" : [np.real(rel_err)],
+                        "CF_err": [np.real(rel_err)],
                         "error": [np.real(error_0)],
                         # other parameter section
                         "material": [flat_plate.material_name],
@@ -116,10 +116,22 @@ for material in materials:
 
                     if comm.rank == 0:
                         df = pd.DataFrame(data_dict)
-                        if inner_ct == 1 and not (os.path.exists("stiffener_crippling.csv")):
-                            df.to_csv("data/stiffener_crippling.csv", mode="w", index=False, header=True)
+                        if inner_ct == 1 and not (
+                            os.path.exists("stiffener_crippling.csv")
+                        ):
+                            df.to_csv(
+                                "data/stiffener_crippling.csv",
+                                mode="w",
+                                index=False,
+                                header=True,
+                            )
                         else:
-                            df.to_csv("data/stiffener_crippling.csv", mode="a", index=False, header=False)
+                            df.to_csv(
+                                "data/stiffener_crippling.csv",
+                                mode="a",
+                                index=False,
+                                header=False,
+                            )
 
                     # MPI COMM Barrier in case running with multiple procs
                     comm.Barrier()
