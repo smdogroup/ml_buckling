@@ -14,12 +14,23 @@ comm = MPI.COMM_WORLD
 # I think what happens when h becomes very low for large a,b the norm of K is too small and that affects the soln
 # to prevent low thickness problems => just make overall plate size smaller
 
+case = 1
+assert case in [1,2]
+if case == 1:
+    h_w = 10e-3
+elif case == 2:
+    h_w = 1e-3
+# very short stiffener with bad element AR leads to lower eigenvalue (easier to buckle?)
+# think this is an artifact of the FEA solution.
+elif case == 3: 
+    h_w = 1e-4
+
 geometry = mlb.StiffenedPlateGeometry(
     a=0.3,
     b=0.1,
     h=5e-3,
     num_stiff=1,
-    h_w=15e-3,
+    h_w=h_w,
     t_w=8e-3,  # if the wall thickness is too low => stiffener crimping failure happens
 )
 
@@ -47,13 +58,10 @@ stiff_analysis.pre_analysis(
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
-    _make_rbe=False,  # True
+    _make_rbe=True,  # True
 )
 
 comm.Barrier()
-
-# predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 
 # avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
@@ -63,20 +71,17 @@ stiff_analysis.post_analysis()
 
 global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
-if comm.rank == 0:
-    stiff_analysis.print_mode_classification()
+# predict the actual eigenvalue
+pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 
-# print(f"avg stresses = {avg_stresses}")
-# print(f"tacs eigvals = {tacs_eigvals}")
-# print(f"errors = {errors}")
+if comm.rank == 0:
+    print(stiff_analysis)
+    stiff_analysis.print_mode_classification()
 
 min_eigval = tacs_eigvals[0]
 rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
-    print(f"pred min lambda = {pred_lambda}")
-    print(f"FEA min lambda = {global_lambda_star}")
-    print(f"rel err = {abs(rel_err)}")
-
-    for imode in range(9):
-        is_non_crip = stiff_analysis.is_non_crippling_mode(imode)
-        print(f"mode {imode} is non crippling? {is_non_crip}")
+    print(f"Mode type predicted as {mode_type}")
+    print(f"\tpred min lambda = {pred_lambda}")
+    print(f"\tFEA min lambda = {global_lambda_star}")
+    print(f"\trel err = {abs(rel_err)}")

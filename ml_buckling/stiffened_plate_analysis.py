@@ -853,13 +853,13 @@ class StiffenedPlateAnalysis:
 
             if self.comm.rank == 0:
                 xi_list = [xi for xi in all_xi if xi is not None]
-                self._xi = np.concatenate(xi_list)
+                self._xi = np.concatenate(xi_list) / self.geometry.a
 
                 eta_list = [eta for eta in all_eta if eta is not None]
-                self._eta = np.concatenate(eta_list)
+                self._eta = np.concatenate(eta_list) / self.geometry.b
 
                 zeta_list = [zeta for zeta in all_zeta if zeta is not None]
-                self._zeta = np.concatenate(zeta_list)
+                self._zeta = np.concatenate(zeta_list) / self.geometry.h_w
 
                 self.num_nodes = sum([num_nodes for num_nodes in all_num_nodes if num_nodes is not None])
 
@@ -948,11 +948,6 @@ class StiffenedPlateAnalysis:
 
                 # make sure it is a symmetric laminate by doing the symmetric number of plies
                 # right now assume it is symmetric
-
-                # print(f"num plies = {material.num_plies}")
-                # print(f"ply thicknesses = {material.get_ply_thicknesses(thickness)}")
-                # print(f"ply angles = {material.rad_ply_angles}")
-                # exit()
 
                 # how to make sure it is a symmetric laminate?
                 con = constitutive.CompositeShellConstitutive(
@@ -1105,7 +1100,6 @@ class StiffenedPlateAnalysis:
         A_B = self.geometry.area_b
         wb = self.geometry.w_b
         tb = self.geometry.t_b
-        # print(f"tb = {tb}")
         tw = self.geometry.t_w
         hw = self.geometry.h_w
         a = self.geometry.a
@@ -1125,7 +1119,6 @@ class StiffenedPlateAnalysis:
         D22 = self.plate_material.Q22 * I_P
         D12 = self.plate_material.Q12 * I_P
         D66 = self.plate_material.Q66 * I_P
-        # print(f"D11 = {D11}, D22 = {D22}, D12 = {D12}")
 
         delta = A_S / A_P
 
@@ -1168,8 +1161,6 @@ class StiffenedPlateAnalysis:
                     * (1.0 / b * (D12 / 2.0 + D66) + m1_star ** 2 / 2.0 / a ** 2 * EI_s)
                 )
             )
-
-        # print(f"N11 crit global = {N11_crit_global}")
 
         # local mode
         if mode_loop:
@@ -1223,7 +1214,6 @@ class StiffenedPlateAnalysis:
 
     def get_eigenvector(self, imode, uvw=False):
         # convert eigenvectors to w coordinates only, 6 dof per shell
-        # print(f"ndof in eigenvector = {self._eigenvectors[imode].shape[0]}")
         eigvector = self._eigenvectors[imode]
         if uvw:
             uvw_subvector = np.concatenate(
@@ -1301,7 +1291,6 @@ class StiffenedPlateAnalysis:
         w_mag = np.sqrt(np.dot(w_subvector, w_subvector))
         full_mag = np.sqrt(np.dot(uvw_subvector, uvw_subvector))
         mag_frac = w_mag / full_mag
-        # print(f"w_mag {w_mag}, full mag {full_mag}, mag frac {mag_frac}")
         return mag_frac > 0.9
 
     def _in_tol(self, val1, val2, tol=1e-5):
