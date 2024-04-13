@@ -33,7 +33,7 @@ b = h * SR
 SHR = 0.01
 num_stiff = 1
 # AR_vec = [0.2, 0.3, 0.5, 0.8, 1.0, 1.2, 1.4, 1.6]
-AR = 0.5
+AR = 1.3
 a = AR * b
 
 # use stiffener height ratio to determine the stiffener height
@@ -146,4 +146,5 @@ data_dict["SAR"] = [stiff_AR]
 data_dict["delta"] = [stiffened_plate.delta]
 data_dict["n_stiff"] = [num_stiff]
 
-print(f"data dict = {data_dict}")
+if comm.rank == 0:
+    print(f"data dict = {data_dict}")
