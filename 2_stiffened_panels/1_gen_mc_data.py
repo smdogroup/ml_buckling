@@ -105,15 +105,16 @@ for material in mlb.CompositeMaterial.get_materials():
 
                         # choose a number of elements in each direction
                         _nelems = 4000
+                        MIN_Z = 100 #5
                         N = geometry.num_local
                         AR_s = geometry.a / geometry.h_w
                         #print(f"AR = {AR}, AR_s = {AR_s}")
                         nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
                         ny = np.ceil(nx / AR / N)
-                        nz = max(np.ceil(nx / AR_s),5)
+                        nz = max(np.ceil(nx / AR_s),MIN_Z)
 
-                        if nz < 5: # need at least this many elements through the stiffener for good aspect ratio
-                            nz = 5
+                        if nz < MIN_Z: # need at least this many elements through the stiffener for good aspect ratio
+                            nz = MIN_Z
                             nx = np.ceil(AR_s * nz)
                             ny = np.ceil(nx / AR / N)
 
@@ -219,7 +220,7 @@ for material in mlb.CompositeMaterial.get_materials():
                         data_dict["delta"] = [stiffened_plate.delta]
                         data_dict["n_stiff"] = [num_stiff]
                         data_dict["elem_list"] = [[int(nx),int(ny),int(nz)]]
-                        data_dict["nelem"] = [check_nelems]
+                        data_dict["nelem"] = [int(check_nelems)]
 
                         # write to the csv file for raw data
                         if comm.rank == 0:
