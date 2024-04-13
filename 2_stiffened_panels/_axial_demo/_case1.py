@@ -55,7 +55,7 @@ stiff_analysis.pre_analysis(
 comm.Barrier()
 
 # predict the actual eigenvalue
-pred_lambda = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 # exit()
 
 avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)

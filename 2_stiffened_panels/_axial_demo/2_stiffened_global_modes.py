@@ -45,5 +45,6 @@ tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
 )
 stiff_analysis.post_analysis()
 
-print(f"tacs eigvals = {tacs_eigvals}")
-print(f"errors = {errors}")
+if comm.rank == 0:
+    print(f"tacs eigvals = {tacs_eigvals}")
+    print(f"errors = {errors}")
