@@ -840,6 +840,51 @@ class StiffenedPlateAnalysis:
             if self._use_caps and os.path.exists(self.caps_lock):
                 os.remove(self.caps_lock)
 
+        if not self._use_caps:
+            Xpts = self.bucklingProb.Xpts.getArray()
+            _xi = Xpts[0::3]
+            _eta = Xpts[1::3]
+            _zeta = Xpts[2::3]
+
+            all_xi = self.comm.gather(_xi, root=0)
+            all_eta = self.comm.gather(_eta, root=0)
+            all_zeta = self.comm.gather(_zeta, root=0)
+            all_num_nodes = self.comm.gather(_xi.shape[0], root=0)
+
+            if self.comm.rank == 0:
+                xi_list = [xi for xi in all_xi if xi is not None]
+                self._xi = np.concatenate(xi_list)
+
+                eta_list = [eta for eta in all_eta if eta is not None]
+                self._eta = np.concatenate(eta_list)
+
+                zeta_list = [zeta for zeta in all_zeta if zeta is not None]
+                self._zeta = np.concatenate(zeta_list)
+
+                self.num_nodes = sum([num_nodes for num_nodes in all_num_nodes if num_nodes is not None])
+
+            else:
+                self._xi = None
+                self._eta = None
+                self._zeta = None
+                self.num_nodes = None
+
+            # broadcast across all processors
+            self._xi = self.comm.bcast(self._xi, root=0)
+            self._eta = self.comm.bcast(self._eta, root=0)
+            self._zeta = self.comm.bcast(self._zeta, root=0)
+            self.num_nodes = self.comm.bcast(self.num_nodes, root=0)
+
+            # save eigenvectors that are aggregated across all modes
+            for imode in range(self.num_modes):
+                all_eigvecs = self.comm.gather(self._eigenvectors[imode], root=0)
+                if self.comm.rank == 0:
+                    eigvec_list = [eigvec for eigvec in all_eigvecs if eigvec is not None]
+                    self._eigenvectors[imode] = np.concatenate(eigvec_list)
+                else:
+                    self._eigenvectors[imode] = None
+                self._eigenvectors[imode] = self.comm.bcast(self._eigenvectors[imode], root=0)
+
     def _elemCallback(self):
         """element callback to set the stiffener, base, panel material properties"""
 
@@ -1002,27 +1047,27 @@ class StiffenedPlateAnalysis:
         # FEAAssembler.assembler.setComplexStepGmatrix(True)
 
         # Setup buckling problem
-        bucklingProb = FEAAssembler.createBucklingProblem(
+        self.bucklingProb = FEAAssembler.createBucklingProblem(
             name="buckle", sigma=sigma, numEigs=num_eig
         )
-        bucklingProb.setOption("printLevel", 2)
+        self.bucklingProb.setOption("printLevel", 2)
 
         # exit()
 
         # solve and evaluate functions/sensitivities
         funcs = {}
         funcsSens = {}
-        bucklingProb.solve()
-        bucklingProb.evalFunctions(funcs)
+        self.bucklingProb.solve()
+        self.bucklingProb.evalFunctions(funcs)
         if derivatives:
-            bucklingProb.evalFunctionsSens(funcsSens)
+            self.bucklingProb.evalFunctionsSens(funcsSens)
         if write_soln:
             if base_path is None:
                 base_path = os.getcwd()
             buckling_folder = os.path.join(base_path, self.buckling_folder_name)
             if not os.path.exists(buckling_folder) and self.comm.rank == 0:
                 os.mkdir(buckling_folder)
-            bucklingProb.writeSolution(outputDir=buckling_folder)
+            self.bucklingProb.writeSolution(outputDir=buckling_folder)
 
         # save the eigenvectors for MAC and return errors from function
         self._eigenvectors = []
@@ -1030,10 +1075,10 @@ class StiffenedPlateAnalysis:
         self._num_modes = num_eig
         errors = []
         for imode in range(num_eig):
-            eigval, eigvec = bucklingProb.getVariables(imode)
+            eigval, eigvec = self.bucklingProb.getVariables(imode)
             self._eigenvectors += [eigvec]
             self._eigenvalues += [eigval]
-            error = bucklingProb.getModalError(imode)
+            error = self.bucklingProb.getModalError(imode)
             errors += [error]
 
         if self.comm.rank == 0:
@@ -1422,7 +1467,6 @@ class StiffenedPlateAnalysis:
                     for m1 in range(1, 50)
                 ]
             )
-            print(f"lam star global = {lam_star_global}")
             N11_cr_global = (
                 np.pi ** 2
                 * np.sqrt(D11 * D22)
@@ -1440,7 +1484,6 @@ class StiffenedPlateAnalysis:
                     for m1 in range(1, 50)
                 ]
             )
-            print(f"lam star local = {lam_star_local}")
             N11_cr_local = (
                 np.pi ** 2
                 * np.sqrt(D11 * D22)
@@ -1464,9 +1507,10 @@ class StiffenedPlateAnalysis:
             )
             lam_crippling = N11_cr_crippling / N11_stiffener
 
-            print(
-                f"min eigenvalues predicted [crippling, global, local] = {[lam_crippling, lam_global, lam_local]}"
-            )
+            if self.comm.rank == 0:
+                print(
+                    f"min eigenvalues predicted [crippling, global, local] = {[lam_crippling, lam_global, lam_local]}"
+                )
 
             # determine which mode is the minimum mode
             lam_min = min([lam_crippling, lam_global, lam_local])
