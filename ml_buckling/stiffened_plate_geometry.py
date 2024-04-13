@@ -25,8 +25,8 @@ class StiffenedPlateGeometry:
         # not implemented in closed-form yet so ignore this
         assert t_b is None or t_b is 0.0
 
-        self.w_b = w_b
-        self.t_b = t_b
+        self.w_b = w_b if w_b is not None else 0.0
+        self.t_b = t_b if t_b is not None else 0.0
         self.h_w = h_w
         self.t_w = t_w
 
@@ -43,7 +43,10 @@ class StiffenedPlateGeometry:
 
     @property
     def area_b(self) -> float:
-        return self.w_b * self.t_b
+        if self.w_b is None or self.t_b is None:
+            return 0.0
+        else:
+            return self.w_b * self.t_b
 
     @property
     def area_S(self) -> float:

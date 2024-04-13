@@ -19,8 +19,6 @@ geometry = mlb.StiffenedPlateGeometry(
     b=0.1,
     h=5e-3,
     num_stiff=1,
-    w_b=6e-3,
-    t_b=0.0,
     h_w=15e-3,
     t_w=8e-3,  # if the wall thickness is too low => stiffener crimping failure happens
 )
@@ -43,12 +41,12 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 )
 
 stiff_analysis.pre_analysis(
-    global_mesh_size=0.03,
+    nx_plate=30,
+    ny_plate=30,
+    nz_stiff=20,
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
-    edge_pt_min=5,
-    edge_pt_max=40,
     _make_rbe=False,  # True
 )
 
@@ -56,24 +54,29 @@ comm.Barrier()
 
 # predict the actual eigenvalue
 pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
-# exit()
 
-avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
+# avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-    sigma=10.0, num_eig=20, write_soln=True
+    sigma=10.0, num_eig=50, write_soln=True
 )
 stiff_analysis.post_analysis()
 
-print(f"avg stresses = {avg_stresses}")
-print(f"tacs eigvals = {tacs_eigvals}")
-print(f"errors = {errors}")
+global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+
+if comm.rank == 0:
+    stiff_analysis.print_mode_classification()
+
+# print(f"avg stresses = {avg_stresses}")
+# print(f"tacs eigvals = {tacs_eigvals}")
+# print(f"errors = {errors}")
 
 min_eigval = tacs_eigvals[0]
-rel_err = (pred_lambda - min_eigval) / pred_lambda
-print(f"pred min lambda = {pred_lambda}")
-print(f"act min lambda = {min_eigval}")
-print(f"rel err = {abs(rel_err)}")
+rel_err = (pred_lambda - global_lambda_star) / pred_lambda
+if comm.rank == 0:
+    print(f"pred min lambda = {pred_lambda}")
+    print(f"FEA min lambda = {global_lambda_star}")
+    print(f"rel err = {abs(rel_err)}")
 
-for imode in range(9):
-    is_non_crip = stiff_analysis.is_non_crippling_mode(imode)
-    print(f"mode {imode} is non crippling? {is_non_crip}")
+    for imode in range(9):
+        is_non_crip = stiff_analysis.is_non_crippling_mode(imode)
+        print(f"mode {imode} is non crippling? {is_non_crip}")
