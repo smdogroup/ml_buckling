@@ -66,6 +66,10 @@ AR_s = geometry.a / geometry.h_w
 nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
 ny = np.ceil(nx / AR / N)
 nz = max(np.ceil(nx / AR_s),5)
+if nz < 5: # need at least this many elements through the stiffener for good aspect ratio
+    nz = 5
+    nx = np.ceil(AR_s * nz)
+    ny = np.ceil(nx / AR / N)
 
 #check_nelems = N * nx * ny + (N-1) * nx * nz
 #print(f"check nelems = {check_nelems}")
@@ -84,7 +88,7 @@ stiffened_plate.pre_analysis(
     # global_mesh_size=global_mesh_size,
     # edge_pt_min=5,
     # edge_pt_max=50,
-    _make_rbe=False,  # True
+    _make_rbe=True,  # True
 )
 
 print(stiffened_plate)

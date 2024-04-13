@@ -112,7 +112,12 @@ for material in mlb.CompositeMaterial.get_materials():
                         ny = np.ceil(nx / AR / N)
                         nz = max(np.ceil(nx / AR_s),5)
 
-                        #check_nelems = N * nx * ny + (N-1) * nx * nz
+                        if nz < 5: # need at least this many elements through the stiffener for good aspect ratio
+                            nz = 5
+                            nx = np.ceil(AR_s * nz)
+                            ny = np.ceil(nx / AR / N)
+
+                        check_nelems = N * nx * ny + (N-1) * nx * nz
                         #print(f"check nelems = {check_nelems}")
 
                         stiffened_plate.pre_analysis(
@@ -129,7 +134,7 @@ for material in mlb.CompositeMaterial.get_materials():
                             # global_mesh_size=global_mesh_size,
                             # edge_pt_min=5,
                             # edge_pt_max=50,
-                            _make_rbe=False,  # True
+                            _make_rbe=True,  # True
                         )
 
                         print(stiffened_plate)
@@ -213,6 +218,8 @@ for material in mlb.CompositeMaterial.get_materials():
                         data_dict["SAR"] = [stiff_AR]
                         data_dict["delta"] = [stiffened_plate.delta]
                         data_dict["n_stiff"] = [num_stiff]
+                        data_dict["elem_list"] = [[int(nx),int(ny),int(nz)]]
+                        data_dict["nelem"] = [check_nelems]
 
                         # write to the csv file for raw data
                         if comm.rank == 0:
