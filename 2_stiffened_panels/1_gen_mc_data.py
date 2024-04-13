@@ -3,6 +3,8 @@ Sean Engelstad
 April 2024, GT SMDO Lab
 Goal is to generate a dataset for pure uniaxial and pure shear compression for stiffener crippling data.
 Simply supported only and stiffener crippling modes are rejected.
+
+NOTE : copy u*iHat+v*jHat+w*kHat for paraview
 """
 
 import ml_buckling as mlb
@@ -15,6 +17,7 @@ comm = MPI.COMM_WORLD
 # argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str)
+parent_parser.add_argument("--clear", type=bool, default=False)
 
 args = parent_parser.parse_args()
 
@@ -30,6 +33,13 @@ if not os.path.exists(data_folder) and comm.rank == 0:
 train_csv_path = os.path.join(data_folder, train_csv)
 raw_csv_path = os.path.join(data_folder, raw_csv)
 
+if args.clear and comm.rank == 0:
+    if os.path.exists(train_csv_path):
+        os.remove(train_csv_path)
+    if os.path.exists(raw_csv_path):
+        os.remove(raw_csv_path)
+comm.Barrier()
+
 inner_ct = 0
 
 for material in mlb.CompositeMaterial.get_materials():
@@ -41,23 +51,18 @@ for material in mlb.CompositeMaterial.get_materials():
 
         log_SR_vec = np.linspace(np.log(10.0), np.log(200.0), 5)
         SR_vec = np.exp(log_SR_vec)
-        for SR in SR_vec:
+        for SR in SR_vec[::-1]:
 
             # choose plate height is 0.01
-            h = 0.01
+            h = 1.0
             b = h * SR
 
             # stiffener heights and spacing
-            log_SHR = np.linspace(np.log(0.001), np.log(0.4), 5)
+            log_SHR = np.linspace(np.log(0.01), np.log(0.1), 5)
             SHR_vec = np.exp(log_SHR)
             # SHR_vec = SHR_vec[::-1]
 
             for SHR in SHR_vec:
-
-                # use stiffener height ratio to determine the stiffener height
-                h_w = b * SHR
-                stiff_AR = 1.0
-                t_w = h_w / stiff_AR
 
                 for num_stiff in [1, 3, 5]:
 
@@ -67,15 +72,19 @@ for material in mlb.CompositeMaterial.get_materials():
                     for AR in AR_vec:
 
                         # temporarily set AR to reasonable value
-                        AR = 3.0
+                        #AR = 3.0
+                        a = AR * b
+
+                        # use stiffener height ratio to determine the stiffener height
+                        h_w = a * SHR
+                        stiff_AR = 1.0
+                        t_w = h_w / stiff_AR
 
                         geometry = mlb.StiffenedPlateGeometry(
-                            a=AR * SR * h,
-                            b=SR * h,
+                            a=a,
+                            b=b,
                             h=h,
                             num_stiff=num_stiff,
-                            w_b=1.0,
-                            t_b=0.0,
                             h_w=h_w,
                             t_w=t_w,
                         )
@@ -94,14 +103,19 @@ for material in mlb.CompositeMaterial.get_materials():
                         if not valid_affine_AR:
                             continue
 
-                        # choose a number of elements
-                        # nelem = 2000
-                        # global_mesh_size = np.sqrt(geometry.a * (geometry.b + geometry.num_stiff * geometry.h_w) / nelem) * 4
-                        global_mesh_size = 0.005
-                        print(f"global mesh size = {global_mesh_size}")
+                        # choose a number of elements in each direction
+                        _nelems = 4000
+                        N = geometry.num_local
+                        AR_s = geometry.a / geometry.h_w
+                        #print(f"AR = {AR}, AR_s = {AR_s}")
+                        nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
+                        ny = np.ceil(nx / AR / N)
+                        nz = max(np.ceil(nx / AR_s),5)
+
+                        #check_nelems = N * nx * ny + (N-1) * nx * nz
+                        #print(f"check nelems = {check_nelems}")
 
                         stiffened_plate.pre_analysis(
-                            global_mesh_size=global_mesh_size,
                             exx=stiffened_plate.affine_exx
                             if args.load == "Nx"
                             else 0.0,
@@ -109,8 +123,12 @@ for material in mlb.CompositeMaterial.get_materials():
                             if args.load == "Nxy"
                             else 0.0,
                             clamped=False,
-                            edge_pt_min=5,
-                            edge_pt_max=50,
+                            nx_plate=int(nx),
+                            ny_plate=int(ny),
+                            nz_stiff=int(nz),
+                            # global_mesh_size=global_mesh_size,
+                            # edge_pt_min=5,
+                            # edge_pt_max=50,
                             _make_rbe=False,  # True
                         )
 
@@ -124,12 +142,20 @@ for material in mlb.CompositeMaterial.get_materials():
                             exy=stiffened_plate.affine_exy
                             if args.load == "Nxy"
                             else 0.0,
+                            output_global=True,
+                        )
+                        lam_min2 = stiffened_plate.predict_crit_load_old(
+                            exx=stiffened_plate.affine_exx
+                            if args.load == "Nx"
+                            else 0.0,
+                            exy=stiffened_plate.affine_exy
+                            if args.load == "Nxy"
+                            else 0.0,
+                            output_global=True,
                         )
 
-                        print(f"lam min predicted = {lam_min} of type {mode_type}")
-
                         tacs_eigvals, errors = stiffened_plate.run_buckling_analysis(
-                            sigma=10.0, num_eig=50, write_soln=True
+                            sigma=5.0, num_eig=50, write_soln=True
                         )
                         stiffened_plate.post_analysis()
 
@@ -158,6 +184,8 @@ for material in mlb.CompositeMaterial.get_materials():
                             "zeta": [stiffened_plate.zeta_plate],
                             "lambda_star": [np.real(global_lambda_star)],
                             "pred_lam": [lam_min],
+                            "pred_type" : [mode_type],
+                            "pred_lam_old" : [lam_min2],
                         }
 
                         # write to the training csv file
@@ -183,6 +211,7 @@ for material in mlb.CompositeMaterial.get_materials():
                         data_dict["h"] = [h]
                         data_dict["SHR"] = [SHR]
                         data_dict["SAR"] = [stiff_AR]
+                        data_dict["delta"] = [stiffened_plate.delta]
                         data_dict["n_stiff"] = [num_stiff]
 
                         # write to the csv file for raw data

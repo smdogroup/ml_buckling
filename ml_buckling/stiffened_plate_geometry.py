@@ -23,7 +23,7 @@ class StiffenedPlateGeometry:
         self.N = num_stiff + 1
 
         # not implemented in closed-form yet so ignore this
-        assert t_b is None or t_b is 0.0
+        assert t_b is None or t_b == 0.0
 
         self.w_b = w_b if w_b is not None else 0.0
         self.t_b = t_b if t_b is not None else 0.0
