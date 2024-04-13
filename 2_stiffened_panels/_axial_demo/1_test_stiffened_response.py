@@ -19,28 +19,32 @@ geometry = mlb.StiffenedPlateGeometry(
     h=5e-3,
     num_stiff=3,
     w_b=6e-3,
-    t_b=2e-3,
+    t_b=0.0,
     h_w=1e-2,
     t_w=1e-3,  # if the wall thickness is too low => stiffener crimping failure happens
 )
 
-material = mlb.CompositeMaterial.solvay5320(ply_angle=0)
+material = mlb.CompositeMaterial.solvay5320(
+    ply_angles=[0],
+    ply_fractions=[1.0],
+    ref_axis=[1,0,0],
+)
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
     comm=comm,
     geometry=geometry,
     stiffener_material=material,
     plate_material=material,
-    compress_stiff=False,  # need to figure this out with linear static analysis
 )
 
 stiff_analysis.pre_analysis(
-    global_mesh_size=0.03,
+    nx_plate=30,
+    ny_plate=30,
+    nz_stiff=20,
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
-    edge_pt_min=5,
-    edge_pt_max=40,
+    _make_rbe=False,
 )
 avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
 stiff_analysis.post_analysis()

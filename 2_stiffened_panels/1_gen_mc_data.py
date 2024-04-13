@@ -97,7 +97,7 @@ for material in mlb.CompositeMaterial.get_materials():
                         # choose a number of elements
                         # nelem = 2000
                         # global_mesh_size = np.sqrt(geometry.a * (geometry.b + geometry.num_stiff * geometry.h_w) / nelem) * 4
-                        global_mesh_size = 0.01
+                        global_mesh_size = 0.005
                         print(f"global mesh size = {global_mesh_size}")
 
                         stiffened_plate.pre_analysis(

@@ -85,12 +85,19 @@ class StiffenedPlateAnalysis:
 
     @property
     def dat_file(self):
-        return self._tacs_aim.root_dat_file
+        if self._use_caps:
+            return self._tacs_aim.root_dat_file
+        else:
+            return self.bdf_file
 
     @property
     def bdf_file(self):
-        tacs_dir = self._tacs_aim.root_analysis_dir
-        return os.path.join(tacs_dir, "tacs.bdf")
+        if self._use_caps:
+            tacs_dir = self._tacs_aim.root_analysis_dir
+            return os.path.join(tacs_dir, "tacs.bdf")
+        else:
+            cwd = os.getcwd()
+            return os.path.join(cwd, "stiffened_panel.bdf")
 
     @property
     def Darray_stiff(self) -> float:
@@ -349,14 +356,18 @@ class StiffenedPlateAnalysis:
 
     def pre_analysis(
         self,
-        global_mesh_size=0.1,
+        nx_plate=30,
+        ny_plate=30,
+        nz_stiff=10,
         exx=0.0,
         eyy=0.0,
         exy=0.0,
         clamped=False,
+        _make_rbe=True,
+        use_caps=False,
+        global_mesh_size=0.1, # caps settings
         edge_pt_min=5,
         edge_pt_max=40,
-        _make_rbe=True,
     ):
         """
         Generate a stiffened plate mesh with CQUAD4 elements
@@ -369,53 +380,204 @@ class StiffenedPlateAnalysis:
 
         self._test_broadcast()
 
-        # use caps2tacs to generate a stiffened panel
-        tacs_model = caps2tacs.TacsModel.build(
-            csm_file=self.csm_file, comm=self.comm, active_procs=[0]
-        )
-        tacs_aim = tacs_model.tacs_aim
-        self._tacs_aim = tacs_aim
+        self._use_caps = use_caps
 
-        tacs_model.mesh_aim.set_mesh(
-            edge_pt_min=edge_pt_min,
-            edge_pt_max=edge_pt_max,
-            global_mesh_size=global_mesh_size,
-            max_surf_offset=0.01,
-            max_dihedral_angle=15,
-        ).register_to(tacs_model)
+        if use_caps:
+            # use caps2tacs to generate a stiffened panel
+            tacs_model = caps2tacs.TacsModel.build(
+                csm_file=self.csm_file, comm=self.comm, active_procs=[0]
+            )
+            tacs_aim = tacs_model.tacs_aim
+            self._tacs_aim = tacs_aim
 
-        null_mat = caps2tacs.Isotropic.null().register_to(tacs_model)
+            tacs_model.mesh_aim.set_mesh(
+                edge_pt_min=edge_pt_min,
+                edge_pt_max=edge_pt_max,
+                global_mesh_size=global_mesh_size,
+                max_surf_offset=0.01,
+                max_dihedral_angle=15,
+            ).register_to(tacs_model)
 
-        # set Stiffened plate geometry class into the CSM geometry
-        tacs_aim.set_config_parameter("stiff_base", 0)
-        tacs_aim.set_design_parameter("a", self.geometry.a)
-        tacs_aim.set_design_parameter("b", self.geometry.b)
-        tacs_aim.set_design_parameter("num_stiff", self.geometry.num_stiff)
-        # tacs_aim.set_design_parameter("w_b", self.geometry.w_b)
-        tacs_aim.set_design_parameter("h_w", self.geometry.h_w)
+            null_mat = caps2tacs.Isotropic.null().register_to(tacs_model)
 
-        # set shell properties with CompDescripts
-        # auto makes shell properties (need thickDVs so that the compDescripts get written out from tacsAIM)
-        caps2tacs.ThicknessVariable(
-            caps_group="panel", value=self.geometry.h, material=null_mat
-        ).register_to(tacs_model)
-        # caps2tacs.ThicknessVariable(caps_group="rib", value=self.geometry.rib_h, material=null_mat).register_to(tacs_model)
-        # caps2tacs.ThicknessVariable(caps_group="base", value=self.geometry.h+self.geometry.t_b, material=null_mat).register_to(tacs_model)
-        caps2tacs.ThicknessVariable(
-            caps_group="stiff", value=self.geometry.t_w, material=null_mat
-        ).register_to(tacs_model)
+            # set Stiffened plate geometry class into the CSM geometry
+            tacs_aim.set_config_parameter("stiff_base", 0)
+            tacs_aim.set_design_parameter("a", self.geometry.a)
+            tacs_aim.set_design_parameter("b", self.geometry.b)
+            tacs_aim.set_design_parameter("num_stiff", self.geometry.num_stiff)
+            # tacs_aim.set_design_parameter("w_b", self.geometry.w_b)
+            tacs_aim.set_design_parameter("h_w", self.geometry.h_w)
 
-        # add v,theta_z constraint to stiffener corner nodes - since they are tied off here to ribs
-        # hope to produce more realistic shear modes, TODO : figure out whether this should be here
-        # this isn't compatible with BCs for the
-        # caps2tacs.PinConstraint(caps_constraint="stCorner", dof_constraint=26).register_to(tacs_model)
+            # set shell properties with CompDescripts
+            # auto makes shell properties (need thickDVs so that the compDescripts get written out from tacsAIM)
+            caps2tacs.ThicknessVariable(
+                caps_group="panel", value=self.geometry.h, material=null_mat
+            ).register_to(tacs_model)
+            # caps2tacs.ThicknessVariable(caps_group="rib", value=self.geometry.rib_h, material=null_mat).register_to(tacs_model)
+            # caps2tacs.ThicknessVariable(caps_group="base", value=self.geometry.h+self.geometry.t_b, material=null_mat).register_to(tacs_model)
+            caps2tacs.ThicknessVariable(
+                caps_group="stiff", value=self.geometry.t_w, material=null_mat
+            ).register_to(tacs_model)
 
-        self._test_broadcast()
+            # add v,theta_z constraint to stiffener corner nodes - since they are tied off here to ribs
+            # hope to produce more realistic shear modes, TODO : figure out whether this should be here
+            # this isn't compatible with BCs for the
+            # caps2tacs.PinConstraint(caps_constraint="stCorner", dof_constraint=26).register_to(tacs_model)
 
-        # run the pre analysis to build tacs input files
-        tacs_aim._no_constr_override = True
-        tacs_model.setup(include_aim=True)
-        tacs_model.pre_analysis()
+            self._test_broadcast()
+
+            # run the pre analysis to build tacs input files
+            tacs_aim._no_constr_override = True
+            tacs_model.setup(include_aim=True)
+            tacs_model.pre_analysis()
+
+        elif self.comm.rank == 0: # make the bdf file without CAPS
+            if os.path.exists(self.bdf_file):
+                os.remove(self.bdf_file)
+
+            fp = open(self.bdf_file, "w")
+            fp.write("$ Input file for a square axial/shear-disp BC plate\n")
+            fp.write("SOL 103\nCEND\nBEGIN BULK\n")
+
+            nodes_dict = []
+            written_nodes = []
+            elem_dicts = []
+            node_id = 0
+            elem_id = 0
+
+            N = self.geometry.num_local
+            #print(f"N = {N}")
+            # make each local section and stiffener
+            for ilocal in range(N):
+                ystart = ilocal * self.geometry.s_p
+                Ly = self.geometry.s_p
+                Lx = self.geometry.a
+                Lz_stiff = self.geometry.h_w
+
+                # make the local section of the plate
+                for iy in range(ny_plate):
+                    y = iy / (ny_plate - 1) * Ly + ystart
+                    if iy == 1 and ilocal > 0: # increase nodes back to not conflict with the stiffer node count
+                        node_id -= nx_plate
+                        node_id += nx_plate * nz_stiff
+                    for ix in range(nx_plate):
+                        node_id += 1
+                        x = ix / (nx_plate - 1) * Lx
+                        # Write the nodal data
+                        spc = " "
+                        coord_disp = 0
+                        coord_id = 0
+                        seid = 0
+
+                        nodes_dict += [{
+                            "id" : node_id,
+                            "x" : x,
+                            "y" : y,
+                            "z" : 0.0
+                        }]
+                        #print(f"local {ilocal} id {node_id} x {x} y {y}")
+
+
+                        if ix < nx_plate-1 and iy < ny_plate - 1: # normal condition for making plate elements
+                            elem_id += 1
+                            elem_dicts += [{
+                                "id" : elem_id,
+                                "part_id" : 1,
+                                "n1" : node_id,
+                                "n2" : node_id+1,
+                                "n3" : node_id+nx_plate+1,
+                                "n4" : node_id+nx_plate,
+                            }]
+                        if ilocal > 0 and iy == 0 and ix < nx_plate-1: # first row of plate in new stiffener
+                            elem_id += 1
+                            #print(f"CHECK : nids {node_id},{node_id+1},{node_id+nx_plate*nz_stiff+1},{node_id+nx_plate*nz_stiff}")
+                            elem_dicts += [{
+                                "id" : elem_id,
+                                "part_id" : 1,
+                                "n1" : node_id,
+                                "n2" : node_id+1,
+                                "n3" : node_id+nx_plate*nz_stiff+1,
+                                "n4" : node_id+nx_plate*nz_stiff,
+                            }]
+
+                        if not(node_id in written_nodes):
+                            fp.write(
+                                "%-8s%16d%16d%16.9e%16.9e*       \n"
+                                % ("GRID*", node_id, coord_id, x, y)
+                            )
+                            fp.write(
+                                "*       %16.9e%16d%16s%16d        \n"
+                                % (0.0, coord_disp, spc, seid)
+                            )
+                            written_nodes += [node_id]
+                    #print(f"final node {node_id} of iy {iy} local section {ilocal}")
+
+                # make the stiffener if not the last local section
+                if ilocal == N-1: continue
+
+                #print(f"Ly {Ly} sp {self.geometry.s_p} ystart {ystart}")
+                ystiffener = ystart + Ly
+
+                # step back nx_plate nodes so the stiffener is attached
+                node_id -= nx_plate
+                for iz in range(nz_stiff):
+                    z = iz / (nz_stiff - 1) * Lz_stiff
+                    for ix in range(nx_plate):
+                        node_id += 1
+                        x = ix / (nx_plate - 1) * Lx
+                        # Write the nodal data
+                        spc = " "
+                        coord_disp = 0
+                        coord_id = 0
+                        seid = 0
+
+                        nodes_dict += [{
+                            "id" : node_id,
+                            "x" : x,
+                            "y" : ystiffener,
+                            "z" : z,
+                        }]
+
+                        if ix < nx_plate-1 and iz < nz_stiff - 1:
+                            elem_id += 1
+                            elem_dicts += [{
+                                "id" : elem_id,
+                                "part_id" : 2,
+                                "n1" : node_id,
+                                "n2" : node_id+1,
+                                "n3" : node_id+nx_plate+1,
+                                "n4" : node_id+nx_plate,
+                            }]
+
+                        if not(node_id in written_nodes):
+                            fp.write(
+                            "%-8s%16d%16d%16.9e%16.9e*       \n"
+                                % ("GRID*", node_id, coord_id, x, ystiffener)
+                            )
+                            fp.write(
+                                "*       %16.9e%16d%16s%16d        \n"
+                                % (z, coord_disp, spc, seid)
+                            )
+                            written_nodes += [node_id]
+
+                # step back the number of stiffener nodes amount
+                node_id -= nx_plate * nz_stiff
+
+            # use the nodes_dict to write the CQUAD4 elements
+            for elem_dict in elem_dicts:
+                fp.write(
+                    "%-8s%8d%8d%8d%8d%8d%8d\n"
+                    % (
+                        "CQUAD4",
+                        elem_dict["id"],
+                        elem_dict["part_id"],
+                        elem_dict["n1"],
+                        elem_dict["n2"],
+                        elem_dict["n3"],
+                        elem_dict["n4"],
+                    )
+                )
+            #fp.close()
 
         self._test_broadcast()
 
@@ -433,26 +595,29 @@ class StiffenedPlateAnalysis:
 
         if self.comm.rank == 0:
 
-            for line in lines:
-                chunks = line.split(" ")
-                non_null_chunks = [_ for _ in chunks if not (_ == "" or _ == "\n")]
-                if next_line:
-                    next_line = False
-                    z_chunk = non_null_chunks[1].strip("\n")
-                    node_dict["z"] = float(z_chunk)
-                    nodes += [node_dict]
-                    continue
+            if self._use_caps:
+                for line in lines:
+                    chunks = line.split(" ")
+                    non_null_chunks = [_ for _ in chunks if not (_ == "" or _ == "\n")]
+                    if next_line:
+                        next_line = False
+                        z_chunk = non_null_chunks[1].strip("\n")
+                        node_dict["z"] = float(z_chunk)
+                        nodes += [node_dict]
+                        continue
 
-                if "GRID*" in line:
-                    next_line = True
-                    y_chunk = non_null_chunks[3].strip("*")
+                    if "GRID*" in line:
+                        next_line = True
+                        y_chunk = non_null_chunks[3].strip("*")
 
-                    node_dict = {
-                        "id": int(non_null_chunks[1]),
-                        "x": float(non_null_chunks[2]),
-                        "y": float(y_chunk),
-                        "z": None,
-                    }
+                        node_dict = {
+                            "id": int(non_null_chunks[1]),
+                            "x": float(non_null_chunks[2]),
+                            "y": float(y_chunk),
+                            "z": None,
+                        }
+            else:
+                nodes = nodes_dict # copy the list
 
             # make nodes dict for nodes on the boundary
             boundary_nodes = []
@@ -489,9 +654,10 @@ class StiffenedPlateAnalysis:
             # then append write the SPC cards to it
             # Set up the plate BCs so that it has u = uhat, for shear disp control
             # u = eps * y, v = eps * x, w = 0
-            fp = open(self.dat_file, "r")
-            dat_lines = fp.readlines()
-            fp.close()
+            if self._use_caps:
+                fp = open(self.dat_file, "r")
+                dat_lines = fp.readlines()
+                fp.close()
 
         self._test_broadcast()
 
@@ -524,16 +690,17 @@ class StiffenedPlateAnalysis:
 
         if self.comm.rank == 0:
 
-            post = False
-            pre_lines = []
-            post_lines = []
-            for line in dat_lines:
-                if "MAT" in line:
-                    post = True
-                if post:
-                    post_lines += [line]
-                else:
-                    pre_lines += [line]
+            if self._use_caps:
+                post = False
+                pre_lines = []
+                post_lines = []
+                for line in dat_lines:
+                    if "MAT" in line:
+                        post = True
+                    if post:
+                        post_lines += [line]
+                    else:
+                        pre_lines += [line]
 
             # make RBE2 elements
             all_rbe_control_nodes = []
@@ -548,7 +715,7 @@ class StiffenedPlateAnalysis:
                         chunks = line.split(" ")
                         no_empty_chunks = [_ for _ in chunks if not (_ == "")]
                         # print(no_empty_chunks)
-                        _eid = float(no_empty_chunks[1])
+                        _eid = int(no_empty_chunks[1])
                         if _eid > eid:
                             eid = _eid
 
@@ -575,17 +742,19 @@ class StiffenedPlateAnalysis:
                         # write the RBE element
                         eid += 1
                         # also could do 123456 or 123 (but I don't really want no rotation here I don't think)
+                        #print(f"eid {eid},{type(eid)}; rbe control node {rbe_control_node},{type(rbe_control_node)}")
                         fp1.write(
-                            "%-8s%8d%8d%8d" % ("RBE2", eid, rbe_control_node, 23)
+                            "%-8s%8d%8d%8d" % ("RBE2", int(eid), rbe_control_node, 23)
                         )  # 123456
                         for rbe_node in rbe_nodes:
                             fp1.write("%8d" % (rbe_node))
                         fp1.write("\n")
                 fp1.close()
 
-            fp = open(self.dat_file, "w")
-            for line in pre_lines:
-                fp.write(line)
+            if self._use_caps:
+                fp = open(self.dat_file, "w")
+                for line in pre_lines:
+                    fp.write(line)
 
             # add displacement control boundary conditions
             for node_dict in boundary_nodes:
@@ -593,9 +762,12 @@ class StiffenedPlateAnalysis:
                 # if not node_dict["xy_plane"]: continue
                 x = node_dict["x"]
                 y = node_dict["y"]
+                z = node_dict["z"]
                 nid = node_dict["id"]
                 u = exy * y
                 v = exy * x
+
+                #print(f"boundary node = {nid}, x {x}, y {y}, z {x}")
 
                 # only enforce compressive displacements to plate, not stiffeners
                 # TODO : maybe I need to do this for the stiffener too, but unclear
@@ -640,17 +812,33 @@ class StiffenedPlateAnalysis:
                         "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "2", v)
                     )  # v = eps_xy * x
 
-            for line in post_lines:
-                fp.write(line)
-            fp.close()
+            if self._use_caps:
+                for line in post_lines:
+                    fp.write(line)
+                fp.close()
+            else: # not use caps
+                # write material and property cards
+                fp.write("MAT1*                 1              0.                              0. *0      \n")
+                fp.write("*0                   0.                                                 *1      \n")
+                fp.write("*1                   1.              0.              0. \n")
+                fp.write("$ Femap Property  : panel\n")
+                fp.write("PSHELL*               1               1           1.E-2               1 *0      \n")
+                fp.write("*0                   1.               1 0.8333333333333 \n")
+                fp.write("$ Femap Property  : stiff\n")
+                fp.write("PSHELL*               2               1  4.472135955E-4               1 *0      \n")
+                fp.write("*0                   1.               1 0.8333333333333 \n")
+
+                fp.write("ENDDATA\n")
+                fp.close()
 
         self.comm.Barrier()
 
     def post_analysis(self):
         """no derivatives here so just clear capsLock file"""
         # remove the capsLock file after done with analysis
-        if self.comm.rank == 0 and os.path.exists(self.caps_lock):
-            os.remove(self.caps_lock)
+        if self.comm.rank == 0:
+            if self._use_caps and os.path.exists(self.caps_lock):
+                os.remove(self.caps_lock)
 
     def _elemCallback(self):
         """element callback to set the stiffener, base, panel material properties"""

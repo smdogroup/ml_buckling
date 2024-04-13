@@ -19,8 +19,6 @@ geometry = mlb.StiffenedPlateGeometry(
     b=0.1,
     h=5e-3,
     num_stiff=3,
-    w_b=6e-3,
-    t_b=2e-3,
     h_w=1e-2,
     t_w=1e-3,  # if the wall thickness is too low => stiffener crimping failure happens
 )
@@ -35,12 +33,12 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 )
 
 stiff_analysis.pre_analysis(
-    global_mesh_size=0.03,
+    nx_plate=30,
+    ny_plate=10,
+    nz_stiff=10,
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
-    edge_pt_min=5,
-    edge_pt_max=40,
 )
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
     sigma=10.0, num_eig=20, write_soln=True

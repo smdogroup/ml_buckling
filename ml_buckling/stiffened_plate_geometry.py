@@ -10,10 +10,10 @@ class StiffenedPlateGeometry:
         b,
         h,
         num_stiff,  # num stiffeners
-        w_b,  # width of base
-        t_b,  # thickness of base
         h_w,  # height of stiffener wall
         t_w,  # thickness of stiffener wall
+        w_b=None,  # width of base
+        t_b=None,  # thickness of base
         rib_h=2e-3,  # thickness of rib
     ):
         self.a = a
@@ -23,7 +23,7 @@ class StiffenedPlateGeometry:
         self.N = num_stiff + 1
 
         # not implemented in closed-form yet so ignore this
-        assert t_b == 0.0
+        assert t_b is None or t_b is 0.0
 
         self.w_b = w_b
         self.t_b = t_b
@@ -65,7 +65,7 @@ class StiffenedPlateGeometry:
     def num_local(self):
         # number of whole number,
         # local sections bounded by stiffeners
-        return self.num_stiff
+        return self.num_stiff + 1
 
     @property
     def AR(self) -> float:
