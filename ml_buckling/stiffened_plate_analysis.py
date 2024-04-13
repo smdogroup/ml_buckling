@@ -102,7 +102,7 @@ class StiffenedPlateAnalysis:
     @property
     def Darray_stiff(self) -> float:
         """array [D11,D12,D22,D66] for the stiffener"""
-        zL = 0
+        zL = -self.geometry.t_w / 2.0 # symmetric about 0
         _Darray = np.zeros((4,))
         ply_thicknesses = self.stiffener_material.get_ply_thicknesses(self.geometry.t_w)
         for iply, ply_angle in enumerate(self.stiffener_material.ply_angles):
@@ -149,7 +149,7 @@ class StiffenedPlateAnalysis:
     @property
     def Darray_plate(self) -> float:
         """array [D11,D12,D22,D66] for the stiffener"""
-        zL = 0
+        zL = -self.geometry.h / 2.0 # symmetric about 0
         _Darray = np.zeros((4,))
         ply_thicknesses = self.plate_material.get_ply_thicknesses(self.geometry.h)
         for iply, ply_angle in enumerate(self.plate_material.ply_angles):
@@ -179,7 +179,7 @@ class StiffenedPlateAnalysis:
     @property
     def Aarray_plate(self) -> float:
         """array [A11,A12,A22,A66] for the plate"""
-        zL = 0
+        zL = -self.geometry.h / 2.0 # symmetric about 0
         _Aarray = np.zeros((4,))
         ply_thicknesses = self.plate_material.get_ply_thicknesses(self.geometry.h)
         for iply, ply_angle in enumerate(self.plate_material.ply_angles):
@@ -209,7 +209,7 @@ class StiffenedPlateAnalysis:
     @property
     def Aarray_stiff(self) -> float:
         """array [A11,A12,A22,A66] for the stiffener"""
-        zL = 0
+        zL = -self.geometry.t_w / 2.0 # symmetric about 0
         _Aarray = np.zeros((4,))
         ply_thicknesses = self.stiffener_material.get_ply_thicknesses(self.geometry.t_w)
         for iply, ply_angle in enumerate(self.stiffener_material.ply_angles):
@@ -250,16 +250,15 @@ class StiffenedPlateAnalysis:
         _Darray = self.Darray_plate
         D11 = _Darray[0]
         D22 = _Darray[2]
-        return self.geometry.a / self.geometry.b * (D22 / D11) ** 0.5
+        return self.geometry.a / self.geometry.b * (D22 / D11) ** 0.25
 
     @property
     def delta(self) -> float:
         """area ratio parameter extended to N stiffener case"""
-        A_stiff = self.geometry.h_w * self.geometry.t_w
         return (
-            self.stiffener_material.E11
-            * A_stiff
-            / (self.plate_material.E11 * self.geometry.s_p * self.geometry.h)
+            self.stiffener_material.E_eff # E_eff for composite laminate case (multi-ply)
+            * self.geometry.area_S
+            / (self.plate_material.E_eff * self.geometry.s_p * self.geometry.h)
         )
 
     @property
@@ -295,7 +294,7 @@ class StiffenedPlateAnalysis:
             / self.geometry.b ** 2
             / (1 + self.delta)
             / self.geometry.h
-            / self.plate_material.E11
+            / self.plate_material.E_eff
         )
         return exx_T
 
@@ -1115,16 +1114,22 @@ class StiffenedPlateAnalysis:
         I_S = (wb ** 3 * tb + tw * hw ** 3) / 12.0
         EI_s = E_S * I_S + E_S * A_S * (z_s - z_cen) ** 2
 
+        if self.comm.rank == 0:
+            print(f"Old Q11 = {self.plate_material.Q11}")
+
         D11 = self.plate_material.Q11 * I_P
         D22 = self.plate_material.Q22 * I_P
         D12 = self.plate_material.Q12 * I_P
         D66 = self.plate_material.Q66 * I_P
 
-        delta = A_S / A_P
+        delta = E_S * A_S / A_P / E_P
+        if self.comm.rank == 0:
+            print(f"delta 1 = {delta}")
 
         # global mode
         if mode_loop:
             N11_crit_global = 1e10
+            _m1_star = None
             for m1_star in range(1, 51):
                 _N11_crit_global = (
                     2
@@ -1145,6 +1150,27 @@ class StiffenedPlateAnalysis:
                 )
                 if _N11_crit_global < N11_crit_global:
                     N11_crit_global = _N11_crit_global
+                    _m1_star = m1_star
+
+            
+            # compare term 1
+
+            term1 = (
+                    2
+                    * a
+                    * np.pi ** 2
+                    / _m1_star ** 2
+                    / b
+                    / (0.5 + delta)
+                    * (
+                        0.25 * (D11 * _m1_star ** 4 * b / a ** 3)
+                    )
+                )
+            if self.comm.rank == 0:
+                print(f"Old : m1 star = {_m1_star}")
+                print(f"Old : D11 {D11:.4e} D22 {D22:.4e}")
+                print(f"Old : term 1 dim = {term1:.4e}")
+
         else:
             m1_star = a / b * (D22 / (D11 + 2 * EI_s / b)) ** 0.25
             N11_crit_global = (
@@ -1188,10 +1214,11 @@ class StiffenedPlateAnalysis:
 
         s11_app = exx * E_P
 
-        # compute current N11, should it be effective E11 here?
-        # N11 = exx * self.plate_material.E11 * self.geometry.h
-        N11 = exx * E_P * self.geometry.h
+        # alternative way to get N11_crit smeared stiffener approach
+        # smeared stiffener model is awful for small stiffnesses
+        #N11_crit = np.pi**2 * EI_s / self.geometry.s_p / self.geometry.a**2
 
+        N11 = self.N11_plate(exx)
         _lambda = N11_crit / N11
         return _lambda
 
@@ -1426,14 +1453,12 @@ class StiffenedPlateAnalysis:
 
         return eigenvalues, permutation
 
-        exx_T = (
-            np.pi ** 2
-            * np.sqrt(D11 * D22)
-            / self.geometry.b ** 2
-            / (1 + self.delta)
-            / self.geometry.h
-            / self.plate_material.E11
-        )
+    def N11_plate(self, exx) -> float:
+        """axial load carried by plate, need to account for composite lamiante  case with E_eff"""
+        return exx * self.plate_material.E_eff * self.geometry.h
+
+    def N11_stiffener(self, exx) -> float:
+        return exx * self.stiffener_material.E_eff * self.geometry.t_w
 
     def predict_crit_load(self, exx=0.0, exy=0.0):
 
@@ -1441,13 +1466,18 @@ class StiffenedPlateAnalysis:
         assert exx == 0.0 or exy == 0.0
 
         if exx != 0.0:
-            N11_plate = exx * self.plate_material.E11 * self.geometry.h
+            N11_plate = self.N11_plate(exx)
             _Darray = self.Darray_plate
-            D11 = _Darray[0]
-            D12 = _Darray[1]
-            D22 = _Darray[2]
+            D11 = _Darray[0]; D22 = _Darray[2]
 
             # predict the axial global mode
+            # _temp = [
+            #     (1 + self.gamma) * m1 ** 2 / self.affine_aspect_ratio ** 2
+            #     + self.affine_aspect_ratio ** 2 / m1 ** 2
+            #     + 2 * self.xi_plate
+            #     for m1 in range(1, 51)
+            # ]
+            # m1_star = np.argmin(np.array(_temp))
             lam_star_global = min(
                 [
                     (1 + self.gamma) * m1 ** 2 / self.affine_aspect_ratio ** 2
@@ -1456,6 +1486,20 @@ class StiffenedPlateAnalysis:
                     for m1 in range(1, 50)
                 ]
             )
+
+            # temporarily overwrite m1 star = 2
+            # m1_star = 1
+            # term1 = m1_star ** 2 / self.affine_aspect_ratio ** 2
+            # term1_dim = np.pi ** 2 * np.sqrt(D11 * D22) \
+            #     / self.geometry.b ** 2  / (1 + self.delta) * term1
+
+            # if self.comm.rank == 0: 
+            #     print(f"New : m1 star = {m1_star}")
+            #     print(f"New : delta = {self.delta}")
+            #     print(f"New : D11 {D11:.4e} D22 {D22:.4e}")
+            #     print(f"New : term 1 dim = {term1_dim:.4e}")
+            #     print(f"New : lam star global = {lam_star_global}")
+
             N11_cr_global = (
                 np.pi ** 2
                 * np.sqrt(D11 * D22)
@@ -1482,7 +1526,7 @@ class StiffenedPlateAnalysis:
             lam_local = N11_cr_local / N11_plate
 
             # predict the stiffener crippling mode
-            N11_stiffener = exx * self.stiffener_material.E11 * self.geometry.t_w
+            N11_stiffener = self.N11_stiffener(exx)
             lam_crippling = 0.45 * self.xi_stiff
             _Darray2 = self.Darray_stiff
             D11s = _Darray2[0]
