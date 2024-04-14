@@ -1336,9 +1336,9 @@ class StiffenedPlateAnalysis:
         # compute max w displacement in overlal plate
         w_max = max([np.max(np.abs(w)), 1e-13])
         if just_check_local:
-            return w_stiff_max / w_max < 0.05
+            return w_stiff_max / w_max < 0.20
         else:  # also checks for non stiffener crippling modes
-            return (w_stiff_max / w_max < 0.05) and self.is_non_crippling_mode(imode)
+            return (w_stiff_max / w_max < 0.20) and self.is_non_crippling_mode(imode)
 
     def is_global_mode(self, imode, just_check_global=False):
         """check that the mode is global i.e. the max w displacement occurs in the"""

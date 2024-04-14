@@ -58,7 +58,7 @@ for material in mlb.CompositeMaterial.get_materials():
             b = h * SR
 
             # stiffener heights and spacing
-            log_SHR = np.linspace(np.log(0.1), np.log(8.0), 8)
+            log_SHR = np.linspace(np.log(1.0), np.log(8.0), 8)
             SHR_vec = np.exp(log_SHR)
             SHR_vec = SHR_vec[::-1]
 
