@@ -1451,7 +1451,7 @@ class StiffenedPlateAnalysis:
     def N11_stiffener(self, exx) -> float:
         return exx * self.stiffener_material.E_eff * self.geometry.t_w
 
-    def predict_crit_load(self, exx=0.0, exy=0.0, output_global=False):
+    def predict_crit_load(self, exx=0.0, exy=0.0, output_global=False, return_all=False):
 
         # haven't treated the combined case yet
         assert exx == 0.0 or exy == 0.0
@@ -1537,6 +1537,9 @@ class StiffenedPlateAnalysis:
                     f"min eigenvalues predicted [crippling, global, local] = {[lam_crippling, lam_global, lam_local]}"
                 )
 
+            if return_all:
+                return [lam_crippling, lam_global, lam_local]
+
             # determine which mode is the minimum mode
             lam_min = min([lam_crippling, lam_global, lam_local])
             if lam_min == lam_crippling:
@@ -1575,6 +1578,20 @@ class StiffenedPlateAnalysis:
             #     return lam_min, "global"
             # else: # local
             #     return lam_min, "local"
+
+    def size_stiffener(self, gamma, nx, nz, safety_factor=10, shear=False):
+        lam_stiff0,lam_global0,_ = self.predict_crit_load(
+            exx=(not shear) * self.affine_exx,
+            exy=shear * self.affine_exy,
+        )
+
+        gamma0 = self.gamma; hw = self.geometry.h_w; tw = self.geometry.t_w
+        SAR0 = self.geometry.stiff_AR
+        factor1 = (gamma / gamma0 * tw * hw**3) **2
+        factor2 = SAR0**2 * lam_stiff0 / safety_factor / lam_global0
+        hw_max = np.power(factor1 * factor2, 0.125)
+        tw_new = tw * gamma / gamma0 * hw**3 / hw_max**3
+        return hw_max, tw_new
 
     def __str__(self):
         mystr = f"Stiffened panel analysis object '{self._name}':\n"

@@ -105,13 +105,12 @@ for material in mlb.CompositeMaterial.get_materials():
 
                         # choose a number of elements in each direction
                         _nelems = 8000
-                        MIN_Y = 20
-                        MIN_Z = 15 #5
+                        MIN_Z = 6 #5
                         N = geometry.num_local
                         AR_s = geometry.a / geometry.h_w
                         #print(f"AR = {AR}, AR_s = {AR_s}")
                         nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
-                        ny = max(np.ceil(nx / AR / N), MIN_Y)
+                        ny = np.ceil(nx / AR / N)
                         nz = max(np.ceil(nx / AR_s), MIN_Z)
                         print(f"Stage 1 : nx {nx}, ny {ny}, nz {nz}")
 
