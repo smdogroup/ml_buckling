@@ -105,7 +105,7 @@ for material in mlb.CompositeMaterial.get_materials():
 
                         # choose a number of elements in each direction
                         _nelems = 8000
-                        MIN_Y = 20
+                        MIN_Y = 30 / geometry.num_local
                         MIN_Z = 15 #5
                         N = geometry.num_local
                         AR_s = geometry.a / geometry.h_w
