@@ -42,8 +42,8 @@ comm.Barrier()
 
 inner_ct = 0
 
-for material in mlb.CompositeMaterial.get_materials():
-    for ply_angle in np.linspace(0.0, 90.0, 8):
+for material in [mlb.CompositeMaterial.solvay5320]: #mlb.CompositeMaterial.get_materials()
+    for ply_angle in [0.0]: #np.linspace(0.0, 90.0, 8)
         plate_material = material(
             ply_angles=[ply_angle], ply_fractions=[1.0], ref_axis=[1, 0, 0]
         )
@@ -51,7 +51,7 @@ for material in mlb.CompositeMaterial.get_materials():
 
         log_SR_vec = np.linspace(np.log(10.0), np.log(200.0), 5)
         SR_vec = np.exp(log_SR_vec)
-        for SR in SR_vec[::-1]:
+        for SR in [200.0]:
 
             # choose plate height is 0.01
             h = 1.0
@@ -62,11 +62,9 @@ for material in mlb.CompositeMaterial.get_materials():
             SHR_vec = np.exp(log_SHR)
             SHR_vec = SHR_vec[::-1]
 
-            for SHR in SHR_vec:
+            for SHR in [1.0, 1.2]:
 
-                SHR = 1.2
-
-                for num_stiff in [1, 3, 5]:
+                for num_stiff in [1]:
 
                     log_AR_vec = np.linspace(np.log(0.2), np.log(5.0), 15)
                     AR_vec = np.exp(log_AR_vec)
