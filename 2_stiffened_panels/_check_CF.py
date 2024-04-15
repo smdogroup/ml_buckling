@@ -62,7 +62,7 @@ for material in [mlb.CompositeMaterial.solvay5320]: #mlb.CompositeMaterial.get_m
             SHR_vec = np.exp(log_SHR)
             SHR_vec = SHR_vec[::-1]
 
-            for SHR in [1.0, 1.2]:
+            for SHR in [0.1, 1.0, 1.2]:
 
                 for num_stiff in [1]:
 
