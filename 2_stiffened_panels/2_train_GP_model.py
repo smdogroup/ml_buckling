@@ -47,7 +47,7 @@ zeta_bins = [
     [50.0, 100.0],
     [100.0, 200.0],
 ]
-xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(7)]
+xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1,7)]
 log_xi_bins = [list(np.log(np.array(xi_bin))) for xi_bin in xi_bins]
 # added smaller and larger bins here cause we miss some of the outliers near the higher a0/b0 with less data
 aff_AR_bins = (
@@ -55,6 +55,7 @@ aff_AR_bins = (
     + [[1.0 * i, 1.0 * (i + 1)] for i in range(2, 5)]
     + [[2.0, 10.0]]
 )
+log_gamma_bins = [[-7, -4], [-4, -2], [-2, -1], [-1, 0], [0, 1], [1,4]]
 
 _plot = True
 _plot_Dstar_2d = False
@@ -186,4 +187,99 @@ if _plot:
 
     plt.style.use(niceplots.get_style())
 
-    
+    # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
+    xi_bin = [-1.2, -0.8]
+    xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
+    avg_xi = -1.0
+    zeta_bin = [6.0, 8.0]
+    zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
+    avg_zeta = 7.0
+    xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
+
+    plt.figure(f"3d rho_0, gamma, lam_star")
+    ax = plt.axes(projection="3d", computed_zorder=False)
+
+    colors = plt.cm.jet(np.linspace(0.0, 1.0, len(log_gamma_bins)))
+
+    for igamma,gamma_bin in enumerate(log_gamma_bins):
+
+        gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
+        mask = np.logical_and(xi_zeta_mask, gamma_mask)
+
+        X_in_range = X[mask,:]
+        Y_in_range = Y[mask,:]
+
+
+        ax.scatter(
+            X_in_range[:,3],
+            X_in_range[:,1],
+            Y_in_range[:,0],
+            s=40,
+            color=colors[igamma],
+            edgecolors="black",
+            zorder=1+igamma
+        )
+
+    # plot the scatter plot
+    n_plot = 3000
+    X_plot_mesh = np.zeros((30, 100))
+    X_plot = np.zeros((n_plot, 4))
+    ct = 0
+    gamma_vec = np.linspace(-7, 4.0, 30)
+    AR_vec = np.log(np.linspace(0.1, 10.0, 100))
+    for igamma in range(30):
+        for iAR in range(100):
+            X_plot[ct, :] = np.array(
+                [avg_xi, gamma_vec[igamma], AR_vec[iAR], avg_zeta]
+            )
+            ct += 1
+
+    Kplot = np.array(
+        [
+            [
+                kernel(X_train[i, :], X_plot[j, :], theta0)
+                for i in range(n_train)
+            ]
+            for j in range(n_plot)
+        ]
+    )
+    f_plot = Kplot @ alpha
+
+    # make meshgrid of outputs
+    GAMMA = np.zeros((30, 100))
+    AR = np.zeros((30, 100))
+    KMIN = np.zeros((30, 100))
+    ct = 0
+    for igamma in range(30):
+        for iAR in range(100):
+            GAMMA[igamma, iAR] = gamma_vec[igamma]
+            AR[igamma, iAR] = AR_vec[iAR]
+            KMIN[igamma, iAR] = f_plot[ct]
+            ct += 1
+
+    # plot the model curve
+    # Creating plot
+    face_colors = cm.jet((KMIN - 0.8) / np.log(10.0))
+    ax.plot_surface(
+        GAMMA,
+        AR,
+        KMIN,
+        antialiased=False,
+        facecolors=face_colors,
+        alpha=0.4,
+        zorder=1,
+    )
+
+    # save the figure
+    ax.set_xlabel(r"$\log(\gamma)$")
+    ax.set_ylabel(r"$log(\rho_0)$")
+    ax.set_zlabel(r"$log(\lambda_{min}^*)$")
+    ax.set_ylim3d(np.log(0.1), np.log(10.0))
+    ax.set_zlim3d(0.0, np.log(50.0))
+    ax.view_init(elev=20, azim=20, roll=0)
+    plt.gca().invert_xaxis()
+    # plt.title(f"")
+    # plt.show()
+    plt.savefig(os.path.join(GP_folder, f"gamma-3d"), dpi=400)
+    plt.close("3d-GP")
+
