@@ -6,6 +6,10 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil
+from mpi4py import MPI
+import ml_buckling as mlb
+
+comm = MPI.COMM_WORLD
 
 """
 This time I'll try a Gaussian Process model to fit the axial critical load surrogate model
@@ -49,6 +53,35 @@ N_data = X.shape[0]
 
 n_train = int(0.9 * N_data)
 
+
+# for each data point in the raw data add a new parameter
+# zeta = A66/A11 * (b/h)^2
+materials = df["material"].to_numpy()
+zeta = np.zeros((materials.shape[0],))
+ply_angles = df["ply_angle"].to_numpy()
+
+for i in range(materials.shape[0]):
+    material_name = materials[i]
+    ply_angle = ply_angles[i]
+    h = 1.0
+    b = (
+        h * X[i,2]
+    )  # verified that different b values don't influence non-dim buckling load
+    AR = 1.0
+    a = b * AR
+    material = mlb.UnstiffenedPlateAnalysis.get_material_from_str(material_name)
+    new_plate: mlb.UnstiffenedPlateAnalysis = material(
+        comm,
+        bdf_file="plate.bdf",
+        a=a,
+        b=b,
+        h=h,
+        ply_angle=ply_angle,
+    )
+
+    zeta[i] = new_plate.zeta
+
+
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
 slender_bins = [
@@ -78,7 +111,6 @@ for ifolder, folder in enumerate(
         sub_plots_folder,
         wo_outliers_folder,
         w_outliers_folder,
-        GP_folder,
     ]
 ):
     if ifolder > 0 and os.path.exists(folder):
@@ -244,6 +276,10 @@ for ibin, bin in enumerate(slender_bins):
 # print(f"global outlier mask = {global_outlier_mask}")
 print(f"num outliers = {np.sum(global_outlier_mask)}")
 # exit()
+
+# replace X[2] the b/h slenderness column with zeta
+X[:,2] = zeta[:]
+
 # remove the outliers from the dataset
 keep_mask = np.logical_not(global_outlier_mask)
 X = X[keep_mask, :]

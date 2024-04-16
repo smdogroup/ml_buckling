@@ -346,6 +346,18 @@ class UnstiffenedPlateAnalysis:
     @property
     def D66(self) -> float:
         return self.G12 * self.h ** 3 / 12.0
+    
+    @property
+    def A11(self) -> float:
+        return self.D11 * 12.0 / self.h**2
+    
+    @property
+    def A66(self) -> float:
+        return self.D66 * 12.0 / self.h**2
+    
+    @property
+    def zeta(self) -> float:
+        return self.A66 / self.A11 * (self.b / self.h)**2
 
     @property
     def affine_exx(self):

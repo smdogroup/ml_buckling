@@ -26,7 +26,7 @@ assert args.load in ["Nx", "Nxy"]
 train_csv = args.load + "_stiffened.csv"
 raw_csv = args.load + "_raw_stiffened.csv"
 cpath = os.path.dirname(__file__)
-data_folder = os.path.join(cpath, "data")
+data_folder = os.path.join(cpath, "raw_data")
 if not os.path.exists(data_folder) and comm.rank == 0:
     os.mkdir(data_folder)
 
