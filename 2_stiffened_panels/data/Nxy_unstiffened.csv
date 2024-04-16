@@ -1,4 +1,4 @@
-Unstiffened data : x=(log(rho_0), log(xi), log(zeta)), y = log(lam_star)
+Unstiffened data : x=(log(xi), log(rho_0), log(zeta)), y = log(lam_star)
 ,x0,x1,x2,y
 0,-0.10730262846678174,-1.3152331610947734,5.392070513405681,3.039294992313835
 1,-0.10730262846678174,-0.835660080832887,5.392070513405681,2.437273481915885
