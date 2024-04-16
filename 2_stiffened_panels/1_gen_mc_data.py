@@ -68,7 +68,7 @@ for material in mlb.CompositeMaterial.get_materials():
 
                 for num_stiff in [1, 3, 5]:
 
-                    log_AR_vec = np.linspace(np.log(0.2), np.log(5.0), 15)
+                    log_AR_vec = np.linspace(np.log(0.2), np.log(8.0), 15)
                     AR_vec = np.exp(log_AR_vec)
 
                     for AR in AR_vec:
