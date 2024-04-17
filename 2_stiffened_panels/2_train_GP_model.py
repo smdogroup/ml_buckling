@@ -156,7 +156,8 @@ def kernel(xp, xq, theta):
     kernel2 = np.exp(-0.5 * d2 ** 2 / L2 ** 2)
     # log(gamma) direction
     kernel3 = S6 * np.exp(-0.5 * d3 **2 / L3 ** 2)
-    return kernel0 * kernel1 * kernel2 + kernel3
+    # TODO : should this be + kernel3 or * kernel3 ?
+    return kernel0 * kernel1 * kernel2 * kernel3
 
 _compute = True
 if _compute:
@@ -318,7 +319,7 @@ if _plot:
         ax.view_init(elev=20, azim=20, roll=0)
         plt.gca().invert_xaxis()
         # plt.title(f"")
-        plt.show()
+        # plt.show()
         plt.savefig(os.path.join(GP_folder, f"gamma-3d.png"), dpi=400)
         plt.close(f"3d rho_0, gamma, lam_star")
 
