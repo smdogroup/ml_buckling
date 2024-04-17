@@ -23,14 +23,13 @@ assert args.load in ["Nx", "Nxy"]
 load = args.load
 
 # load the Nxcrit dataset
-load_prefix = "Nx_stiffened" if load == "Nx" else "Nxy"
-csv_filename = f"{load}_stiffened"
-df = pd.read_csv("data/" + csv_filename + ".csv")
+csv_filename = f"{load}_unstiffened"
+df = pd.read_csv(csv_filename + ".csv")
 
 # extract only the model columns
 # TODO : if need more inputs => could maybe try adding log(E11/E22) in as a parameter?
 # or also log(E11/G12)
-X = df[["log(rho_0)", "log(xi)", "log(zeta)", "log(gamma)"]].to_numpy()
+X = df[["x0", "x1", "x2"]].to_numpy()
 Y = df["log(lam_star)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
@@ -76,8 +75,8 @@ for ifolder, folder in enumerate(
         os.mkdir(folder)
 
 plt.style.use(niceplots.get_style())
-xi = X[:, 1]
-affine_AR = X[:, 0]
+xi = X[:, 0]
+affine_AR = X[:, 1]
 zeta = X[:, 2]
 gamma = X[:, 3]
 lam_star = Y[:, 0]
@@ -157,7 +156,7 @@ def kernel(xp, xq, theta):
     kernel3 = np.exp(-0.5 * d3 **2 / L3 ** 2)
     return kernel0 * kernel1 * kernel2 * kernel3
 
-_compute = True
+_compute = False
 if _compute:
     # compute the training kernel matrix
     K_y = np.array(
@@ -186,7 +185,7 @@ if _plot:
     if _plot_gamma:
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
         xi_bin = [-1.2, -0.8]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,1], X[:,1] <= xi_bin[1])
+        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
         avg_xi = -1.0
         zeta_bin = [6.0, 8.0]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
@@ -210,7 +209,7 @@ if _plot:
 
 
             plt.plot(
-                X_in_range[:,0],
+                X_in_range[:,1],
                 Y_in_range[:,0],
                 "o",
                 color=colors[igamma],
@@ -223,7 +222,7 @@ if _plot:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
         xi_bin = [-1.2, -0.8]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,1], X[:,1] <= xi_bin[1])
+        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
         avg_xi = -1.0
         zeta_bin = [6.0, 8.0]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
@@ -249,7 +248,7 @@ if _plot:
 
             ax.scatter(
                 X_in_range[:,3],
-                X_in_range[:,0],
+                X_in_range[:,1],
                 Y_in_range[:,0],
                 s=20,
                 color=colors[igamma],
