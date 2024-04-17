@@ -110,7 +110,7 @@ y = Y_train
 # update the local hyperparameter variables
 # initial hyperparameter vector
 # sigma_n, sigma_f, L1, L2, L3
-theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.3, 2, 1.0])
+theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.3, 2, 1.0, 2.0])
 sigma_n = 1e-2
 
 
@@ -134,6 +134,7 @@ def kernel(xp, xq, theta):
     L2 = theta[6]
     alpha_1 = theta[7]
     L3 = theta[8]
+    S6 = theta[9]
 
     d1 = vec[1]  # first two entries
     d2 = vec[2]
@@ -154,8 +155,8 @@ def kernel(xp, xq, theta):
     # log(zeta) direction
     kernel2 = np.exp(-0.5 * d2 ** 2 / L2 ** 2)
     # log(gamma) direction
-    kernel3 = np.exp(-0.5 * d3 **2 / L3 ** 2)
-    return kernel0 * kernel1 * kernel2 * kernel3
+    kernel3 = S6 * np.exp(-0.5 * d3 **2 / L3 ** 2)
+    return kernel0 * kernel1 * kernel2 + kernel3
 
 _compute = True
 if _compute:
