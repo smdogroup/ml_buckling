@@ -1098,7 +1098,8 @@ class StiffenedPlateAnalysis:
         return np.array([funcs[key] for key in funcs]), np.array(errors)
 
     def predict_crit_load_old(self, exx=0, exy=0, eyy=0, mode_loop=True, output_global=False):
-        assert exy == 0 and eyy == 0  # haven't written these yet
+        if exy == 0:  # haven't written these yet
+            return None
 
         # axial mode case
         # -----------------------------
@@ -1559,7 +1560,8 @@ class StiffenedPlateAnalysis:
             D12 = _Darray[1]
             D22 = _Darray[2]
 
-            raise RuntimeError("Haven't implemented the shear critical loads yet.")
+            return None, None
+            #raise RuntimeError("Haven't implemented the shear critical loads yet.")
             # # predict the axial global mode
             # lam_star_global =
             # N11_cr_global = np.pi**2 * np.sqrt(D11 * D22) / self.geometry.b**2 / (1 + self.delta) * lam_star_global
