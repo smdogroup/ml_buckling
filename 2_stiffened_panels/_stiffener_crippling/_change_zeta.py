@@ -5,7 +5,7 @@ from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
 
-df = pd.read_csv("raw_data/stiffened_crippling.csv")
+df = pd.read_csv("raw_data/stiffener_crippling.csv")
 
 # for each data point in the raw data add a new parameter
 # zeta = A66/A11 * (b/h)^2
@@ -22,10 +22,10 @@ for i in range(materials.shape[0]):
     material_name = materials[i]
     ply_angle = ply_angles[i]
     h = 1.0
-    b = h * SR
+    b = h * SR[i]
     AR = 1.0 # doesn't affect zeta..
     a = b * AR
-    material = mlb.CompositeMaterial.get_material_from_str(material_name)
+    material = mlb.UnstiffenedPlateAnalysis.get_material_from_str(material_name)
     new_plate: mlb.UnstiffenedPlateAnalysis = material(
         comm,
         bdf_file="plate.bdf",
@@ -34,7 +34,7 @@ for i in range(materials.shape[0]):
         h=h,
         ply_angle=ply_angle,
     )
-
+    
     zeta[i] = new_plate.zeta
 
 data_dict = {
@@ -44,3 +44,6 @@ data_dict = {
     "zeta" : list(zeta),
     "lam" : list(kmin)
 }
+
+new_df = pd.DataFrame(data_dict)
+new_df.to_csv("data/stiffener_crippling.csv")
