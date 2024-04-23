@@ -41,12 +41,6 @@ n_train = int(0.9 * N_data)
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
-zeta_bins = [
-    [10.0, 20.0],
-    [20.0, 50.0],
-    [50.0, 100.0],
-    [100.0, 200.0],
-]
 xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1,7)]
 log_xi_bins = [list(np.log(np.array(xi_bin))) for xi_bin in xi_bins]
 log_gamma_bins = [[-7, -4], [-4, -2], [-2, -1], [-1, 0], [0, 1], [1,4]]
@@ -110,7 +104,7 @@ y = Y_train
 # update the local hyperparameter variables
 # initial hyperparameter vector
 # sigma_n, sigma_f, L1, L2, L3
-theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.3, 2, 1.0, 2.0])
+theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.3, 2, 4.0, 1.0])
 sigma_n = 1e-2
 
 
