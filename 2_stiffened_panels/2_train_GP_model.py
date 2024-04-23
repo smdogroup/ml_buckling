@@ -220,6 +220,7 @@ if _plot:
             )
 
         plt.savefig(os.path.join(GP_folder, f"2d-unstiffened.png"), dpi=400)
+        plt.close(f"3d rho_0, gamma, lam_star")
 
     if _plot_3d:
 

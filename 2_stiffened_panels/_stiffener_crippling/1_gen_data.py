@@ -120,14 +120,14 @@ for material in materials:
                             os.path.exists("stiffener_crippling.csv")
                         ):
                             df.to_csv(
-                                "data/stiffener_crippling.csv",
+                                "raw_data/stiffener_crippling.csv",
                                 mode="w",
                                 index=False,
                                 header=True,
                             )
                         else:
                             df.to_csv(
-                                "data/stiffener_crippling.csv",
+                                "raw_data/stiffener_crippling.csv",
                                 mode="a",
                                 index=False,
                                 header=False,
