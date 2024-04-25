@@ -105,7 +105,7 @@ y = Y_train
 # initial hyperparameter vector
 # sigma_n, sigma_f, L1, L2, L3
 theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.3, 2, 4.0, 1.0])
-sigma_n = 1e-2
+sigma_n = 1e-1
 
 
 def relu(x):
@@ -151,7 +151,7 @@ def kernel(xp, xq, theta):
     # log(gamma) direction
     kernel3 = S6 * np.exp(-0.5 * d3 **2 / L3 ** 2)
     # TODO : should this be + kernel3 or * kernel3 ?
-    return kernel0 * kernel1 * kernel2 * kernel3
+    return kernel0 * kernel1 * kernel2 + 2.0 * kernel3
 
 _compute = True
 if _compute:
@@ -168,6 +168,7 @@ if _compute:
     # print(f"\tlog detK = {log_detK}, sign = {sign}")
     # _start = time.time()
     alpha = np.linalg.solve(K_y, y)
+    print(f"alpha = {alpha}")
 
 # plot the model and some of the data near the model range in D*=1, AR from 0.5 to 5.0, b/h=100
 # ---------------------------------------------------------------------------------------------
@@ -310,7 +311,7 @@ if _plot:
         ax.set_zlabel(r"$log(\lambda_{min}^*)$")
         ax.set_ylim3d(np.log(0.1), np.log(10.0))
         #ax.set_zlim3d(0.0, np.log(50.0))
-        ax.set_zlim3d(1.0, 3.0)
+        #ax.set_zlim3d(1.0, 3.0)
         ax.view_init(elev=20, azim=20, roll=0)
         plt.gca().invert_xaxis()
         # plt.title(f"")
