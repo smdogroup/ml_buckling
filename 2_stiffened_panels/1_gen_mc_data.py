@@ -42,7 +42,7 @@ comm.Barrier()
 
 inner_ct = 0
 
-for material in mlb.CompositeMaterial.get_materials():
+for material in mlb.CompositeMaterial.get_materials()[1:]:
     for ply_angle in np.linspace(0.0, 90.0, 8):
         plate_material = material(
             ply_angles=[ply_angle], ply_fractions=[1.0], ref_axis=[1, 0, 0]
