@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import niceplots, os
 import argparse
+import ml_buckling as mlb
 from matplotlib import cm
 import shutil
 from matplotlib.offsetbox import (
@@ -43,12 +44,23 @@ n_train = int(0.9 * N_data)
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
-slender_bins = [
-    [10.0, 20.0],
-    [20.0, 50.0],
-    [50.0, 100.0],
-    [100.0, 200.0],
-]  # [5.0, 10.0],
+if BC == "CL":
+    slender_bins = [
+        [10.0, 20.0],
+        [20.0, 50.0],
+        [50.0, 100.0],
+        [100.0, 200.0],
+    ]  # [5.0, 10.0],
+else:
+    log_slender_bins = [
+        [2.0, 4.0],
+        [4.0, 6.0],
+        [6.0, 8.0],
+        [8.0, 10.0]
+    ]
+    slender_bins = [[np.exp(bin[0]), np.exp(bin[1])] for bin in log_slender_bins]
+
+
 xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1, 7)]
 # added smaller and larger bins here cause we miss some of the outliers near the higher a0/b0 with less data
 aff_AR_bins = (
@@ -77,7 +89,8 @@ rho0 = X[:, 1]
 slenderness = X[:, 2]
 lam = Y[:, 0]
 
-colors = plt.cm.jet(np.linspace(0, 1, len(slender_bins)))
+# colors = plt.cm.jet(np.linspace(0, 1, len(slender_bins)))
+colors = mlb.four_colors6
 
 slender_bins = slender_bins[::-1]
 
@@ -134,12 +147,14 @@ for ixi, xi_bin in enumerate(xi_bins):
             "o",
             color=colors[islender],
             zorder=len(slender_bins) - islender,
-            label=r"$b/h\ in\ [" + f"{slender_bin[0]},{slender_bin[1]}" + r"]$",
+            label=r"$\log \zeta\ in\ [" + f"{np.log(slender_bin[0]):.0f},{np.log(slender_bin[1]):.0f}" + r"]$",
         )
 
-    plt.legend()
-    plt.xlabel(r"$\rho_0$")
-    plt.ylabel(r"$\lambda_{min}^*$")
+    plt.legend(fontsize=18, loc='lower left')
+    plt.xlabel(r"$\rho_0$", fontsize=20)
+    plt.xticks(fontsize=18)
+    plt.ylabel(r"$\lambda_{min}^*$", fontsize=20)
+    plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)
     plt.xlim(0.0, 4.0)
     plt.ylim(0.0, 15.0)

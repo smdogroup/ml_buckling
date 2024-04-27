@@ -10,6 +10,7 @@ from matplotlib.offsetbox import (
     AnnotationBbox,
 )  # The OffsetBox is a simple container artist.
 import matplotlib.image as image
+import ml_buckling as mlb
 
 # The child artists are meant to be drawn at a relative position to its #parent.
 
@@ -56,12 +57,22 @@ n_train = int(0.9 * N_data)
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
-slender_bins = [
-    [10.0, 20.0],
-    [20.0, 50.0],
-    [50.0, 100.0],
-    [100.0, 200.0],
-]  # [5.0, 10.0],
+if BC == "CL":
+    slender_bins = [
+        [10.0, 20.0],
+        [20.0, 50.0],
+        [50.0, 100.0],
+        [100.0, 200.0],
+    ]  # [5.0, 10.0],
+else:
+    log_slender_bins = [
+        [2.0, 4.0],
+        [4.0, 6.0],
+        [6.0, 8.0],
+        [8.0, 10.0]
+    ]
+    slender_bins = [[np.exp(bin[0]), np.exp(bin[1])] for bin in log_slender_bins]
+
 xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1, 7)]
 # added smaller and larger bins here cause we miss some of the outliers near the higher a0/b0 with less data
 aff_AR_bins = (
@@ -92,7 +103,10 @@ lam = Y[:, 0]
 
 _image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
 
-colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
+#colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
+# five color custom color map
+#colors = mlb.five_colors9[::-1] + ["b"]
+colors = mlb.six_colors2#[::-1]
 
 for islender, slender_bin in enumerate(slender_bins):
     fig, ax = plt.subplots(figsize=(10, 7))
@@ -146,14 +160,18 @@ for islender, slender_bin in enumerate(slender_bins):
             "o",
             color=colors[ixi],
             label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
+            markersize=6.5
         )
 
-    plt.legend()
-    plt.xlabel(r"$\rho_0$")
-    plt.ylabel(r"$\lambda_{min}^*$")
+    plt.legend(fontsize=20)
+    plt.xlabel(r"$\rho_0$", fontsize=20)
+    plt.xticks(fontsize=18)
+    plt.ylabel(r"$\lambda_{min}^*$", fontsize=20)
+    plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)
     plt.xlim(0.0, 5.0)
     plt.ylim(0.0, 20.0)
     # plt.show()
     plt.savefig(os.path.join(sub_sub_data_folder, f"sl{islender}.png"), dpi=400)
+    filepath = os.path.join(sub_sub_data_folder, f"sl{islender}.png")
     plt.close("all")
