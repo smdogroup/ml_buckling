@@ -38,6 +38,8 @@ X = stiff_df[["xi", "rho_0", "zeta", "gamma", "lambda_star"]].to_numpy()
 pred_type = stiff_df["pred_type"].to_numpy()
 pred_mask = pred_type == "global"
 X = X[pred_mask,:]
+# convert gamma to 1 + gamma so that log(1+gamma) is taken later
+X[:,3] = 1.0 + X[:,3]
 # convert all to log scale
 X = np.log(X)
 Y_stiff = X[:,4:]
@@ -52,7 +54,7 @@ Y_unstiff = unstiff_df["y"].to_numpy().reshape((n_unstiff,1))
 
 # add gamma=0 parameter to the unstiff data
 # assume gamma=0 is approx exp(-6) => -6 log scale
-X_unstiff = np.concatenate([X_unstiff[:,:], -6 * np.ones((n_unstiff,1))], axis=1)
+X_unstiff = np.concatenate([X_unstiff[:,:], np.zeros((n_unstiff,1))], axis=1)
 
 # combine the unstiff and stiff data
 X_combined = np.concatenate([X_unstiff, X_stiff], axis=0)
@@ -63,7 +65,7 @@ new_df_dict = {
     "log(xi)" : list(X_combined[:,0]),
     "log(rho_0)" : list(X_combined[:,1]),
     "log(zeta)" : list(X_combined[:,2]),
-    "log(gamma)" : list(X_combined[:,3]),
+    "log(1+gamma)" : list(X_combined[:,3]),
     "log(lam_star)" : list(Y_combined[:,0]),
 }
 df = pd.DataFrame(new_df_dict)
