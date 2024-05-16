@@ -35,8 +35,11 @@ elif case == 4:
     h_w = 1.0
     num_stiff = 0
 
+num_stiff = 5
+h_w = 3e-3
+
 geometry = mlb.StiffenedPlateGeometry(
-    a=0.3,
+    a=0.2,
     b=0.1,
     h=5e-2,
     num_stiff=num_stiff,
@@ -110,9 +113,10 @@ if comm.rank == 0:
     print(f"avg stresses = {avg_stresses}")
 # exit()
 
-tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-    sigma=10.0, num_eig=50, write_soln=True
-)
+# tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
+#     sigma=10.0, num_eig=50, write_soln=True
+# )
+stiff_analysis.write_geom()
 stiff_analysis.post_analysis()
 
 global_lambda_star = stiff_analysis.min_global_mode_eigenvalue

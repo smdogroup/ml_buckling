@@ -1097,6 +1097,44 @@ class StiffenedPlateAnalysis:
         # return the eigenvalues here
         return np.array([funcs[key] for key in funcs]), np.array(errors)
 
+    def write_geom(
+        self,
+        base_path=None,
+    ):
+        """
+        run a linear buckling analysis on the flat plate with either isotropic or composite materials
+        return the sorted eigenvalues of the plate => would like to include M
+        """
+
+        # test bcast
+        self._test_broadcast()
+
+        # os.chdir(self._tacs_aim.root_analysis_dir)
+
+        # Instantiate FEAAssembler
+        FEAAssembler = pyTACS(self.dat_file, comm=self.comm)
+
+        # Set up constitutive objects and elements
+        FEAAssembler.initialize(self._elemCallback())
+
+        # set complex step Gmatrix into all elements through assembler
+        # FEAAssembler.assembler.setComplexStepGmatrix(True)
+
+        # Setup buckling problem
+        self.bucklingProb = FEAAssembler.createBucklingProblem(
+            name="buckle", sigma=10.0, numEigs=20
+        )
+        self.bucklingProb.setOption("printLevel", 2)
+
+        # exit()
+
+        if base_path is None:
+            base_path = os.getcwd()
+        buckling_folder = os.path.join(base_path, self.buckling_folder_name)
+        if not os.path.exists(buckling_folder) and self.comm.rank == 0:
+            os.mkdir(buckling_folder)
+        self.bucklingProb.writeSolution(outputDir=buckling_folder)
+
     def predict_crit_load_old(self, exx=0, exy=0, eyy=0, mode_loop=True, output_global=False):
         if exy == 0:  # haven't written these yet
             return None
