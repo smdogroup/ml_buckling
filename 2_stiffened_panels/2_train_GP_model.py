@@ -5,7 +5,7 @@ import niceplots, scipy, time, os
 import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
-import shutil
+import shutil, random
 
 """
 This time I'll try a Gaussian Process model to fit the axial critical load surrogate model
@@ -37,7 +37,12 @@ Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 print(f"Monte Carlo #data = {X.shape[0]}")
 N_data = X.shape[0]
 
-n_train = int(0.9 * N_data)
+#n_train = int(0.9 * N_data)
+n_train = 1000
+
+# randomly resort the arrays
+X = random.shuffle(X)
+Y = random.shuffle(Y)
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
