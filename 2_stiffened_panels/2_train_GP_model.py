@@ -30,7 +30,7 @@ df = pd.read_csv("data/" + csv_filename + ".csv")
 # extract only the model columns
 # TODO : if need more inputs => could maybe try adding log(E11/E22) in as a parameter?
 # or also log(E11/G12)
-X = df[["log(rho_0)", "log(xi)", "log(zeta)", "log(gamma)"]].to_numpy()
+X = df[["log(rho_0)", "log(xi)", "log(zeta)", "log(1+gamma)"]].to_numpy()
 Y = df["log(lam_star)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
