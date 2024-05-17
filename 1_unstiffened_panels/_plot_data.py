@@ -166,7 +166,10 @@ for islender, slender_bin in enumerate(slender_bins):
     plt.legend(fontsize=20)
     plt.xlabel(r"$\rho_0$", fontsize=20)
     plt.xticks(fontsize=18)
-    plt.ylabel(r"$\lambda_{min}^*$", fontsize=20)
+    if args.load == "Nx":
+        plt.ylabel(r"$N_{11,cr}^*$", fontsize=20)
+    else: # "Nxy"
+        plt.ylabel(r"$N_{12,cr}^*$", fontsize=20)
     plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)
     plt.xlim(0.0, 5.0)

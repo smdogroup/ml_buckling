@@ -153,7 +153,10 @@ for ixi, xi_bin in enumerate(xi_bins):
     plt.legend(fontsize=18, loc='lower left')
     plt.xlabel(r"$\rho_0$", fontsize=20)
     plt.xticks(fontsize=18)
-    plt.ylabel(r"$\lambda_{min}^*$", fontsize=20)
+    if load == "Nx":
+        plt.ylabel(r"$N_{11,cr}^*$", fontsize=20)
+    else: # "Nxy"
+        plt.ylabel(r"$N_{12,cr}^*$", fontsize=20)
     plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)
     plt.xlim(0.0, 4.0)

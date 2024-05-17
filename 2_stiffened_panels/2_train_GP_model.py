@@ -321,7 +321,10 @@ if _plot:
         # save the figure
         ax.set_xlabel(r"$\log(1+\gamma)$")
         ax.set_ylabel(r"$log(\rho_0)$")
-        ax.set_zlabel(r"$log(\lambda_{min}^*)$")
+        if args.load == "Nx":
+            ax.set_zlabel(r"$log(N_{11,cr}^*)$")
+        else:
+            ax.set_zlabel(r"$log(N_{12,cr}^*)$")
         ax.set_ylim3d(np.log(0.1), np.log(10.0))
         #ax.set_zlim3d(0.0, np.log(50.0))
         #ax.set_zlim3d(1.0, 3.0)
