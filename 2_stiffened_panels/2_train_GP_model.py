@@ -108,7 +108,7 @@ y = Y_train
 # update the local hyperparameter variables
 # initial hyperparameter vector
 # sigma_n, sigma_f, L1, L2, L3
-theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.5, 2, 0.8, 1.0, 0.3])
+theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.5, 2, 0.8, 1.0, 0.])
 sigma_n = 1e-2 #1e-1 was old value
 
 def relu(x):
