@@ -30,33 +30,37 @@ df = pd.read_csv("data/" + csv_filename + ".csv")
 # extract only the model columns
 # TODO : if need more inputs => could maybe try adding log(E11/E22) in as a parameter?
 # or also log(E11/G12)
-X = df[["log(rho_0)", "log(xi)", "log(zeta)", "log(1+gamma)"]].to_numpy()
+X = df[["log(xi)", "log(rho_0)", "log(zeta)", "log(1+gamma)"]].to_numpy()
 Y = df["log(lam_star)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
-print(f"Monte Carlo #data = {X.shape[0]}")
 N_data = X.shape[0]
 
-#n_train = int(0.9 * N_data)
+# n_train = int(0.9 * N_data)
 n_train = 1000
 
-# randomly resort the arrays
-X = random.shuffle(X)
-Y = random.shuffle(Y)
+print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
+
+# randomly permute the arrays
+rand_perm = np.random.permutation(N_data)
+X = X[rand_perm, :]
+Y = Y[rand_perm, :]
+
+# temporarily remove all gamma >= 0 data
+# just show xi in third axis
+# gamma_keep_mask = X[:,3] == 0.0
+# X = X[gamma_keep_mask,:]
+# Y = Y[gamma_keep_mask,:]
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
 xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1,7)]
 log_xi_bins = [list(np.log(np.array(xi_bin))) for xi_bin in xi_bins]
-log_gamma_bins = [[-7, -4], [-4, -2], [-2, -1], [-1, 0], [0, 1], [1,4]]
+log_gamma_bins = [[0,1], [1,2], [2,3], [3,4]]
 
 _plot = True
-_plot_gamma = True
-_plot_Dstar_2d = False
-_plot_slender_2d = False
+_plot_gamma = False
 _plot_3d = True
-_plot_model_fit = True
-_plot_model_fit_xi = True
 
 # make a folder for the model fitting
 plots_folder = os.path.join(os.getcwd(), "plots")
@@ -75,13 +79,8 @@ for ifolder, folder in enumerate(
         os.mkdir(folder)
 
 plt.style.use(niceplots.get_style())
-xi = X[:, 1]
-affine_AR = X[:, 0]
-zeta = X[:, 2]
-gamma = X[:, 3]
-lam_star = Y[:, 0]
 
-n_data = xi.shape[0]
+n_data = X.shape[0]
 
 # split into training and test datasets
 n_total = X.shape[0]
@@ -109,9 +108,8 @@ y = Y_train
 # update the local hyperparameter variables
 # initial hyperparameter vector
 # sigma_n, sigma_f, L1, L2, L3
-theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.3, 2, 4.0, 1.0])
-sigma_n = 1e-1
-
+theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.5, 2, 0.8, 1.0, 0.3])
+sigma_n = 1e-2 #1e-1 was old value
 
 def relu(x):
     return max([0.0, x])
@@ -134,6 +132,7 @@ def kernel(xp, xq, theta):
     alpha_1 = theta[7]
     L3 = theta[8]
     S6 = theta[9]
+    S7 = theta[10]
 
     d1 = vec[1]  # first two entries
     d2 = vec[2]
@@ -154,9 +153,10 @@ def kernel(xp, xq, theta):
     # log(zeta) direction
     kernel2 = np.exp(-0.5 * d2 ** 2 / L2 ** 2)
     # log(gamma) direction
-    kernel3 = S6 * np.exp(-0.5 * d3 **2 / L3 ** 2)
+    kernel3 = S6 * np.exp(-0.5 * d3 **2 / L3 ** 2) + S7 * xp[3] * xq[3]
     # TODO : should this be + kernel3 or * kernel3 ?
-    return kernel0 * kernel1 * kernel2 + 2.0 * kernel3
+    #return kernel0 * kernel1 * kernel2 + 2.0 * kernel3
+    return kernel0 * kernel1 * kernel2 * kernel3
 
 _compute = True
 if _compute:
@@ -173,7 +173,7 @@ if _compute:
     # print(f"\tlog detK = {log_detK}, sign = {sign}")
     # _start = time.time()
     alpha = np.linalg.solve(K_y, y)
-    print(f"alpha = {alpha}")
+    #print(f"alpha = {alpha}")
 
 # plot the model and some of the data near the model range in D*=1, AR from 0.5 to 5.0, b/h=100
 # ---------------------------------------------------------------------------------------------
@@ -187,12 +187,16 @@ if _plot:
 
     if _plot_gamma:
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-        xi_bin = [-1.2, -0.8]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,1], X[:,1] <= xi_bin[1])
-        avg_xi = -1.0
-        zeta_bin = [6.0, 8.0]
+        #xi_bin = [-1.2, -0.8]
+        xi_bin = [-0.5, 0.5]
+        # xi_bin = [-2.0, 2.0]
+        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
+        avg_xi = 0.0
+        #zeta_bin = [6.0, 8.0]
+        zeta_bin = [4.0, 8.0]
+        # zeta_bin = [0.0, 8.0]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
-        avg_zeta = 7.0
+        avg_zeta = 6.0
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
         plt.figure(f"3d rho_0, gamma, lam_star")
@@ -207,12 +211,12 @@ if _plot:
             X_in_range = X[mask,:]
             Y_in_range = Y[mask,:]
 
-            print(f"X in range = {X_in_range}")
-            print(f"Y in range = {Y_in_range}")
+            # print(f"X in range = {X_in_range}")
+            # print(f"Y in range = {Y_in_range}")
 
 
             plt.plot(
-                X_in_range[:,0],
+                X_in_range[:,1],
                 Y_in_range[:,0],
                 "o",
                 color=colors[igamma],
@@ -225,10 +229,14 @@ if _plot:
     if _plot_3d:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-        xi_bin = [-1.2, -0.8]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,1], X[:,1] <= xi_bin[1])
-        avg_xi = -1.0
-        zeta_bin = [6.0, 8.0]
+        # xi_bin = [-0.5, 0.5]
+        # smaller values of xi have higher gamma
+        xi_bin = [-1.15, -0.85]
+        # xi_bin = [-2.0, 2.0]
+        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
+        avg_xi = -1.15
+        # zeta_bin = [0.0, 8.0]
+        zeta_bin = [7.0, 8.0]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
         avg_zeta = 7.0
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
@@ -246,18 +254,18 @@ if _plot:
             X_in_range = X[mask,:]
             Y_in_range = Y[mask,:]
 
-            print(f"X in range = {X_in_range}")
-            print(f"Y in range = {Y_in_range}")
+            #print(f"X in range = {X_in_range}")
+            #print(f"Y in range = {Y_in_range}")
 
 
             ax.scatter(
                 X_in_range[:,3],
-                X_in_range[:,0],
+                X_in_range[:,1],
                 Y_in_range[:,0],
                 s=20,
                 color=colors[igamma],
                 edgecolors="black",
-                zorder=1+igamma
+                zorder=1+igamma+1
             )
 
         # plot the scatter plot
@@ -265,12 +273,12 @@ if _plot:
         X_plot_mesh = np.zeros((30, 100))
         X_plot = np.zeros((n_plot, 4))
         ct = 0
-        gamma_vec = np.linspace(-7, 4.0, 30)
+        gamma_vec = np.linspace(0.0, 4.0, 30)
         AR_vec = np.log(np.linspace(0.1, 10.0, 100))
         for igamma in range(30):
             for iAR in range(100):
                 X_plot[ct, :] = np.array(
-                    [avg_xi, gamma_vec[igamma], AR_vec[iAR], avg_zeta]
+                    [avg_xi, AR_vec[iAR], avg_zeta, gamma_vec[igamma]]
                 )
                 ct += 1
 
@@ -311,7 +319,7 @@ if _plot:
         )
 
         # save the figure
-        ax.set_xlabel(r"$\log(\gamma)$")
+        ax.set_xlabel(r"$\log(1+\gamma)$")
         ax.set_ylabel(r"$log(\rho_0)$")
         ax.set_zlabel(r"$log(\lambda_{min}^*)$")
         ax.set_ylim3d(np.log(0.1), np.log(10.0))
@@ -320,7 +328,7 @@ if _plot:
         ax.view_init(elev=20, azim=20, roll=0)
         plt.gca().invert_xaxis()
         # plt.title(f"")
-        # plt.show()
-        plt.savefig(os.path.join(GP_folder, f"gamma-3d.png"), dpi=400)
+        plt.show()
+        # plt.savefig(os.path.join(GP_folder, f"gamma-3d.png"), dpi=400)
         plt.close(f"3d rho_0, gamma, lam_star")
 
