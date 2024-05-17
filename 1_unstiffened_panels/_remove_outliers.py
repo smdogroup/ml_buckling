@@ -278,7 +278,7 @@ print(f"num outliers = {np.sum(global_outlier_mask)}")
 # exit()
 
 # replace X[2] the b/h slenderness column with zeta
-X[:,2] = zeta[:]
+X[:,2] = 1.0 + 1000.0 * zeta[:]
 
 # remove the outliers from the dataset
 keep_mask = np.logical_not(global_outlier_mask)

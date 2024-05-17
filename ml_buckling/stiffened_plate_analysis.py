@@ -269,7 +269,8 @@ class StiffenedPlateAnalysis:
         _Aarray = self.Aarray_plate
         A11 = _Aarray[0]
         A66 = _Aarray[3]
-        return A66 / A11 * (self.geometry.b / self.geometry.h) ** 2
+        old_zeta = A66 / A11 * (self.geometry.b / self.geometry.h) ** 2
+        return 1.0/old_zeta
 
     @property
     def zeta_stiff(self) -> float:
@@ -277,7 +278,8 @@ class StiffenedPlateAnalysis:
         _Aarray = self.Aarray_stiff
         A11 = _Aarray[0]
         A66 = _Aarray[3]
-        return A66 / A11 * (self.geometry.h_w / self.geometry.t_w) ** 2
+        old_zeta = A66 / A11 * (self.geometry.h_w / self.geometry.t_w) ** 2
+        return 1.0/old_zeta
 
     @property
     def affine_exx(self):

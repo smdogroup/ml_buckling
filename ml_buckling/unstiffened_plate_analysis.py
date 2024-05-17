@@ -357,7 +357,8 @@ class UnstiffenedPlateAnalysis:
     
     @property
     def zeta(self) -> float:
-        return self.A66 / self.A11 * (self.b / self.h)**2
+        old_zeta = self.A66 / self.A11 * (self.b / self.h)**2
+        return 1.0/old_zeta
 
     @property
     def affine_exx(self):
