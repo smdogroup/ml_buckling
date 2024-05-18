@@ -6,6 +6,7 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil, random
+from pyoptsparse import SNOPT, Optimization
 
 """
 This time I'll try a Gaussian Process model to fit the axial critical load surrogate model
@@ -30,7 +31,7 @@ df = pd.read_csv("data/" + csv_filename + ".csv")
 # extract only the model columns
 # TODO : if need more inputs => could maybe try adding log(E11/E22) in as a parameter?
 # or also log(E11/G12)
-X = df[["log(xi)", "log(rho_0)", "log(zeta)", "log(1+gamma)"]].to_numpy()
+X = df[["log(xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
 Y = df["log(lam_star)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
@@ -45,12 +46,6 @@ print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 rand_perm = np.random.permutation(N_data)
 X = X[rand_perm, :]
 Y = Y[rand_perm, :]
-
-# temporarily remove all gamma >= 0 data
-# just show xi in third axis
-# gamma_keep_mask = X[:,3] == 0.0
-# X = X[gamma_keep_mask,:]
-# Y = Y[gamma_keep_mask,:]
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
@@ -108,8 +103,7 @@ y = Y_train
 # update the local hyperparameter variables
 # initial hyperparameter vector
 # sigma_n, sigma_f, L1, L2, L3
-theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.5, 2, 0.8, 1.0, 0.])
-sigma_n = 1e-2 #1e-1 was old value
+theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.5, 2, 0.8, 1.0, 0.2, 1e-2])
 
 def relu(x):
     return max([0.0, x])
@@ -119,29 +113,28 @@ def soft_relu(x, rho=10):
 
 
 def kernel(xp, xq, theta):
-    # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(zeta), ln(gamma))
+    # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
     vec = xp - xq
 
     S1 = theta[0]
     S2 = theta[1]
-    c = theta[2]
-    L1 = theta[3]
-    S4 = theta[4]
-    S5 = theta[5]
-    L2 = theta[6]
-    alpha_1 = theta[7]
-    L3 = theta[8]
-    S6 = theta[9]
-    S7 = theta[10]
+    L1 = theta[2]
+    S4 = theta[3]
+    S5 = theta[4]
+    L2 = theta[5]
+    L3 = theta[6]
+    S6 = theta[7]
+    S7 = theta[8]
+    S8 = theta[9]
+    S9 = theta[10]
+    # sigma_n = theta[11]
 
     d1 = vec[1]  # first two entries
     d2 = vec[2]
     d3 = vec[3]
 
     # log(xi) direction
-    kernel0 = S1 ** 2 + S2 ** 2 * soft_relu(xp[0] - c, alpha_1) * soft_relu(
-        xq[0] - c, alpha_1
-    )
+    kernel0 = S1 ** 2 + S2 ** 2 * xp[0] * xq[0]
     # log(rho_0) direction
     kernel1 = (
         np.exp(-0.5 * (d1 ** 2 / L1 ** 2))
@@ -151,187 +144,167 @@ def kernel(xp, xq, theta):
         + S5 * soft_relu(-xp[1]) * soft_relu(-xq[1])
     )
     # log(zeta) direction
-    kernel2 = np.exp(-0.5 * d2 ** 2 / L2 ** 2)
+    kernel2 = S6 * np.exp(-0.5 * d2 ** 2 / L2 ** 2) + S7 * xp[2] * xq[2]
     # log(gamma) direction
-    kernel3 = S6 * np.exp(-0.5 * d3 **2 / L3 ** 2) + S7 * xp[3] * xq[3]
-    # TODO : should this be + kernel3 or * kernel3 ?
-    #return kernel0 * kernel1 * kernel2 + 2.0 * kernel3
+    kernel3 = S8 * np.exp(-0.5 * d3 **2 / L3 ** 2) + S9 * xp[3] * xq[3]
     return kernel0 * kernel1 * kernel2 * kernel3
 
-_compute = True
-if _compute:
-    # compute the training kernel matrix
-    K_y = np.array(
-        [
-            [kernel(X_train[i, :], X_train[j, :], theta0) for i in range(n_train)]
-            for j in range(n_train)
-        ]
-    ) + sigma_n ** 2 * np.eye(n_train)
+ntheta = theta0.shape[0]
 
-    # compute the objective : maximize log marginal likelihood
-    # sign,log_detK = np.linalg.slogdet(K_y) # special numpy routine for log(det(K))
-    # print(f"\tlog detK = {log_detK}, sign = {sign}")
-    # _start = time.time()
-    alpha = np.linalg.solve(K_y, y)
-    #print(f"alpha = {alpha}")
+def soft_abs(x, rho=1.0):
+    return 1.0/rho * np.log(np.exp(rho*x) + np.exp(-rho*x))
 
-# plot the model and some of the data near the model range in D*=1, AR from 0.5 to 5.0, b/h=100
-# ---------------------------------------------------------------------------------------------
+def soft_abs_deriv(x, rho=1.0):
+    return (np.exp(rho*x) - np.exp(-rho*x)) / (np.exp(rho*x) + np.exp(-rho*x))
 
-if _plot:
-    # get the available colors
-    prop_cycle = plt.rcParams["axes.prop_cycle"]
-    colors = prop_cycle.by_key()["color"]
+class MyOpt:
+    def __init__(self):
+        self.objective_hist = []
+    def objective(self, xdict):
+        """negative marginal likelihood objective function log p(y|X,theta)"""
+        # computed faster using Cholesky decomposition
+        # here is the training covariance matrix
+        theta = xdict["theta"]
 
-    plt.style.use(niceplots.get_style())
-
-    if _plot_gamma:
-        # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-        #xi_bin = [-1.2, -0.8]
-        xi_bin = [-0.5, 0.5]
-        # xi_bin = [-2.0, 2.0]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
-        avg_xi = 0.0
-        #zeta_bin = [6.0, 8.0]
-        zeta_bin = [4.0, 8.0]
-        # zeta_bin = [0.0, 8.0]
-        zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
-        avg_zeta = 6.0
-        xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
-
-        plt.figure(f"3d rho_0, gamma, lam_star")
-
-        colors = plt.cm.jet(np.linspace(0.0, 1.0, len(log_gamma_bins)))
-
-        for igamma,gamma_bin in enumerate(log_gamma_bins):
-
-            gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
-            mask = np.logical_and(xi_zeta_mask, gamma_mask)
-
-            X_in_range = X[mask,:]
-            Y_in_range = Y[mask,:]
-
-            # print(f"X in range = {X_in_range}")
-            # print(f"Y in range = {Y_in_range}")
-
-
-            plt.plot(
-                X_in_range[:,1],
-                Y_in_range[:,0],
-                "o",
-                color=colors[igamma],
-                zorder=1+igamma
-            )
-
-        plt.savefig(os.path.join(GP_folder, f"2d-unstiffened.png"), dpi=400)
-        plt.close(f"3d rho_0, gamma, lam_star")
-
-    if _plot_3d:
-
-        # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-        # xi_bin = [-0.5, 0.5]
-        # smaller values of xi have higher gamma
-        xi_bin = [-1.15, -0.85]
-        # xi_bin = [-2.0, 2.0]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
-        avg_xi = -1.15
-        # zeta_bin = [0.0, 8.0]
-        zeta_bin = [7.0, 8.0]
-        zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
-        avg_zeta = 7.0
-        xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
-
-        plt.figure(f"3d rho_0, gamma, lam_star")
-        ax = plt.axes(projection="3d", computed_zorder=False)
-
-        colors = plt.cm.jet(np.linspace(0.0, 1.0, len(log_gamma_bins)))
-
-        for igamma,gamma_bin in enumerate(log_gamma_bins):
-
-            gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
-            mask = np.logical_and(xi_zeta_mask, gamma_mask)
-
-            X_in_range = X[mask,:]
-            Y_in_range = Y[mask,:]
-
-            #print(f"X in range = {X_in_range}")
-            #print(f"Y in range = {Y_in_range}")
-
-
-            ax.scatter(
-                X_in_range[:,3],
-                X_in_range[:,1],
-                Y_in_range[:,0],
-                s=20,
-                color=colors[igamma],
-                edgecolors="black",
-                zorder=1+igamma+1
-            )
-
-        # plot the scatter plot
-        n_plot = 3000
-        X_plot_mesh = np.zeros((30, 100))
-        X_plot = np.zeros((n_plot, 4))
-        ct = 0
-        gamma_vec = np.linspace(0.0, 4.0, 30)
-        AR_vec = np.log(np.linspace(0.1, 10.0, 100))
-        for igamma in range(30):
-            for iAR in range(100):
-                X_plot[ct, :] = np.array(
-                    [avg_xi, AR_vec[iAR], avg_zeta, gamma_vec[igamma]]
-                )
-                ct += 1
-
-        Kplot = np.array(
+        Sigma = np.array(
             [
-                [
-                    kernel(X_train[i, :], X_plot[j, :], theta0)
-                    for i in range(n_train)
-                ]
-                for j in range(n_plot)
+                [kernel(X_train[i, :], X_train[j, :], theta) for i in range(n_train)]
+                for j in range(n_train)
             ]
-        )
-        f_plot = Kplot @ alpha
+        ) + theta[-1] ** 2 * np.eye(n_train)
 
-        # make meshgrid of outputs
-        GAMMA = np.zeros((30, 100))
-        AR = np.zeros((30, 100))
-        KMIN = np.zeros((30, 100))
-        ct = 0
-        for igamma in range(30):
-            for iAR in range(100):
-                GAMMA[igamma, iAR] = gamma_vec[igamma]
-                AR[igamma, iAR] = AR_vec[iAR]
-                KMIN[igamma, iAR] = f_plot[ct]
-                ct += 1
+        # eqn log p(y|X,theta) = - 0.5 * y^T Sigma^-1 y - 1/2 * log|Sigma| - n/2 * log(2*pi)
+        L = scipy.linalg.cholesky(Sigma, lower=True)
+        beta = L.T @ Y_train
+        beta_vec = beta[:,0]
+        log_Sigma = 2.0 * np.sum(np.log(np.diag(L)))
+        neg_obj = -0.5 * np.dot(beta_vec, beta_vec) - 0.5 * log_Sigma - 0.5 * n_train * np.log(2.0 * np.pi)
+        obj = -1.0 * neg_obj
 
-        # plot the model curve
-        # Creating plot
-        face_colors = cm.jet((KMIN - 0.8) / np.log(10.0))
-        ax.plot_surface(
-            GAMMA,
-            AR,
-            KMIN,
-            antialiased=False,
-            facecolors=face_colors,
-            alpha=0.4,
-            zorder=1,
-        )
+        # take log on the objective again
+        # log(-log p(y|X,theta))
+        obj2 = np.cbrt(obj) # differentiable as obj goes from positive to negative
+        # obj2 = np.log(soft_abs(obj))
 
-        # save the figure
-        ax.set_xlabel(r"$\log(1+\gamma)$")
-        ax.set_ylabel(r"$log(\rho_0)$")
-        if args.load == "Nx":
-            ax.set_zlabel(r"$log(N_{11,cr}^*)$")
-        else:
-            ax.set_zlabel(r"$log(N_{12,cr}^*)$")
-        ax.set_ylim3d(np.log(0.1), np.log(10.0))
-        #ax.set_zlim3d(0.0, np.log(50.0))
-        #ax.set_zlim3d(1.0, 3.0)
-        ax.view_init(elev=20, azim=20, roll=0)
-        plt.gca().invert_xaxis()
-        # plt.title(f"")
-        plt.show()
-        # plt.savefig(os.path.join(GP_folder, f"gamma-3d.png"), dpi=400)
-        plt.close(f"3d rho_0, gamma, lam_star")
+        print(f"obj2 = {obj2}")
+        print(f"theta = {theta}")
+        funcs = {
+            "obj" : obj2
+        }
 
+        self.objective_hist += [obj2]
+
+        return funcs, False
+
+    def my_gradient(self, xdict, funcs):
+        _gradient = np.zeros((ntheta,))
+        theta = xdict["theta"]
+
+        # important forward analysis states
+        Sigma = np.array(
+            [
+                [kernel(X_train[i, :], X_train[j, :], theta) for i in range(n_train)]
+                for j in range(n_train)
+            ]
+        ) + theta[-1] ** 2 * np.eye(n_train)
+
+        # eqn log p(y|X,theta) = - 0.5 * y^T Sigma^-1 y - 1/2 * log|Sigma| - n/2 * log(2*pi)
+        L = scipy.linalg.cholesky(Sigma, lower=True)
+        temp = scipy.linalg.solve_triangular(L, Y_train, lower=True)
+        alpha = scipy.linalg.solve_triangular(L.T, temp, lower=False)
+
+        # perform complex-step to get dSigma/dtheta_j
+        #  can't really complex-step full objective due to Cholesky decomposition being tricky with imaginary numbers
+        for itheta in range(ntheta):
+            theta_pert = theta * 1.0 # copy
+            theta_pert = theta_pert.astype(np.complex128)
+            theta_pert[itheta] += 1e-30 * 1j
+            Sigma_final = np.array(
+                [
+                    [kernel(X_train[i, :], X_train[j, :], theta_pert) for i in range(n_train)]
+                    for j in range(n_train)
+                ]
+            ) + theta_pert[-1] ** 2 * np.eye(n_train)
+
+            dSigma_dth = np.imag(Sigma_final) / 1e-30
+
+            # now compute the following formula for an analytic derivative
+            # dlogp/dth = 0.5 * tr((alpha*alpha^T - Sigma^-1) * dSigma/dth) where alpha = Sigma^-1 * Y using Cholesky decomp
+            term1_inside = alpha @ alpha.T @ dSigma_dth
+            
+            temp_mat = scipy.linalg.solve_triangular(L, dSigma_dth, lower=True)
+            temp_mat2 = scipy.linalg.solve_triangular(L.T, temp_mat, lower=False)
+            deriv = 0.5 * np.trace(term1_inside - temp_mat2)
+
+            _gradient[itheta] = deriv
+
+        # conver to negative objective again for maxim => minimization
+        _gradient *= -1.0
+
+        # now convert to gradient of objective 2
+        obj = np.exp(funcs["obj"])
+        _gradient2 = _gradient/obj # derivative of the log(cdot) part
+
+        print(f"_gradient2 = {_gradient2}")
+
+        funcsSens = {
+            "obj": {
+                "theta" : _gradient2,
+            },
+        }
+        
+        return funcsSens, False
+
+my_opt = MyOpt()
+
+# pyoptsparse problem
+def run_optmization():
+    # Optimization Object
+    optProb = Optimization("MAP hyperparameter optimization", my_opt.objective)
+
+    # Design Variables
+    # sigma_n = theta[11]
+    optProb.addVarGroup("theta", 12,
+                        # [S1, S2, L1, S4, S5, L2, L3, S6, S7, sigma_n]
+                        lower=np.array([1e-4, 1e-4, 0.1, 1e-4, 1e-4, 0.1, 0.1, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4]),
+                        upper=np.array([3, 3, 5, 3, 3, 5, 5, 3, 3, 3, 3, 1e-2]),
+                        value=np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 0.5, 0.8, 1.0, 0.2, 0.2, 1.0, 1e-2]))
+    optProb.addObj("obj")
+    # Optimizer
+    opt = SNOPT(options={
+    })
+    optProb.printSparsity()
+    return opt, optProb
+
+if __name__ == "__main__":
+
+    #test the forward + gradient
+    # _obj,_ = objective({"theta" : theta0})
+    # print(f"_obj = {_obj["obj"]:.4e}")
+    # _grad,_ = my_gradient({"theta" : theta0},{})
+    # for igrad,deriv in enumerate(_grad["obj"]["theta"]):
+    #     print(f"_grad {igrad} = {deriv:.4e}")
+
+    # NOTE : the objective starts out very large
+    # and it seems like p(y|X,theta) is btw [0,1]
+    # so log marginal likelihood should be negative and indeed log p(y|X,theta) should be small positive number for a good model
+    # indeed this is true => but my initial model must not be that good since the log p(y|X,theta) is so large
+    # this is correct behavior. Also try with larger sampling size of the full dataset for training & see what I get.
+
+    # Solution
+    optOptions = {}
+    opt, optProb = run_optmization()
+    # some bug in the analytic derivatives, just use finite differencing for now
+    # have to do Cholesky decomp 13 times in the gradient and 1 in the forward normally
+    # so ~12 in the forward for FD approach => results in FD being about same comp speed as analytic gradient here..
+    sol = opt(optProb)
+    #sol = opt(optProb, sens=my_opt.my_gradient)
+    print(sol)
+
+    # write out the data for the objective history
+    import pandas as pd
+    obj_hist_dict = {
+        "obj" : my_opt.objective_hist
+    }
+    df = pd.DataFrame(obj_hist_dict)
+    df.to_csv("data/train_hist.csv")
