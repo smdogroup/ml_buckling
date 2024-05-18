@@ -271,10 +271,10 @@ if _plot:
         xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
         avg_xi = -1.15
         # zeta_bin = [0.0, 8.0]
-        zeta_bin = [0.0, 1.0]
+        zeta_bin = [0.3, 1.25]
         # zeta_bin = [0.0, 8.0]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
-        avg_zeta = 0.5
+        avg_zeta = 0.8
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
         plt.figure(f"3d rho_0, gamma, lam_star")
