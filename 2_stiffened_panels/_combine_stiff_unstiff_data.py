@@ -39,11 +39,18 @@ pred_type = stiff_df["pred_type"].to_numpy()
 pred_mask = pred_type == "global"
 X = X[pred_mask,:]
 # convert from zeta to 1 + 10^3 * zeta (then will take log on this)
+print(f"X2 orig = {X[:,2]}")
+if args.load == "Nx":
+    X[:,2] = 1.0/X[:,2]
+    
 X[:,2] = 1.0 + 1000.0 * X[:,2]
+
 # convert gamma to 1 + gamma so that log(1+gamma) is taken later
 X[:,3] = 1.0 + X[:,3]
 # convert all to log scale
 X = np.log(X)
+print(f"X2 new = {X[:,2]}")
+
 Y_stiff = X[:,4:]
 X_stiff = X[:,:4]
 
@@ -66,7 +73,7 @@ Y_combined = np.concatenate([Y_unstiff, Y_stiff], axis=0)
 new_df_dict = {
     "log(xi)" : list(X_combined[:,0]),
     "log(rho_0)" : list(X_combined[:,1]),
-    "log(1+10^3 * zeta)" : list(X_combined[:,2]),
+    "log(1+10^3*zeta)" : list(X_combined[:,2]),
     "log(1+gamma)" : list(X_combined[:,3]),
     "log(lam_star)" : list(Y_combined[:,0]),
 }
