@@ -40,7 +40,10 @@ pred_mask = pred_type == "global"
 X = X[pred_mask,:]
 # convert from zeta to 1 + 10^3 * zeta (then will take log on this)
 print(f"X2 orig = {X[:,2]}")
-X[:,2] = 1.0 + 1000.0 / X[:,2]
+if args.load == "Nx":
+    X[:,2] = 1.0/X[:,2]
+    
+X[:,2] = 1.0 + 1000.0 * X[:,2]
 
 # convert gamma to 1 + gamma so that log(1+gamma) is taken later
 X[:,3] = 1.0 + X[:,3]

@@ -109,9 +109,26 @@ y = Y_train
 # initial hyperparameter vector
 # sigma_n, sigma_f, L1, L2, L3
 # theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.5, 2, 0.8, 1.0, 0.2])
-theta0 = [9.99999999e-05, 9.99999997e-05, 1.59340141e-01, 7.26056398e-01,
- 9.27506384e-01, 4.98424731e-01, 7.75092936e-01, 9.96708608e-01,
- 9.99999998e-05, 9.99999998e-05, 6.96879851e-01, 1.00000000e-04,]
+# theta0 = [9.99999999e-05, 9.99999997e-05, 1.59340141e-01, 7.26056398e-01,
+#  9.27506384e-01, 4.98424731e-01, 7.75092936e-01, 9.96708608e-01,
+#  9.99999998e-05, 9.99999998e-05, 6.96879851e-01, 1.00000000e-04,]
+# theta0 = [9.99999999e-05, 1.00000000e-01, 1.70095486e-01, 8.42616423e-01,
+#          9.78301139e-01, 4.05578917e-01, 7.89718868e-01, 9.15860119e-01,
+#          1.00000000e-01, 6.92185488e-02, 8.37836523e-01, 1.00547797e-04,]
+# theta = [1.00000000e-04 1.30342193e-01 2.10713893e-01 9.99999999e-05
+#  8.50836331e-01 3.36062544e-01 8.12693340e-01 5.48897610e-01
+#  1.00000000e-01 1.00000000e-02 1.00000000e-01 1.00000000e-04]
+
+# v1
+# theta0 = np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 0.5, 0.8, 1.0, 0.2, 0.2, 1.0, 1e-2])
+# v2 - increase gamma length
+# theta0 = np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 2.0, 0.8, 1.0, 0.2, 0.1, 1.0, 1e-2, 0.0])
+# v3 - increase gamma an dzeta length again
+# theta0 = np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 3.0, 3.0, 1.0, 0.2, 0.1, 1.0, 1e-2, 0.0])
+# v4 - make zeta direction mostly linear
+# theta0 = np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 3.0, 3.0, 0.2, 1.0, 0.1, 1.0, 1e-2, 0.0])
+# v5 - make S4 smaller and add modified L1 (larger L1_rho distance at higher gamma values => so smoother there)
+theta0 = np.array([1e-1, 3e-1, 0.2, 0.1, 1.0, 3.0, 3.0, 0.2, 1.0, 0.1, 1.0, 1e-2, 1.0])
 sigma_n = 1e-2 #1e-1 was old value
 
 def relu(x):
@@ -119,47 +136,6 @@ def relu(x):
 
 def soft_relu(x, rho=10):
     return 1.0 / rho * np.log(1 + np.exp(rho * x))
-
-
-# def kernel(xp, xq, theta):
-#     # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(zeta), ln(gamma))
-#     vec = xp - xq
-
-#     S1 = theta[0]
-#     S2 = theta[1]
-#     c = theta[2]
-#     L1 = theta[3]
-#     S4 = theta[4]
-#     S5 = theta[5]
-#     L2 = theta[6]
-#     alpha_1 = theta[7]
-#     L3 = theta[8]
-#     S6 = theta[9]
-#     S7 = theta[10]
-
-#     d1 = vec[1]  # first two entries
-#     d2 = vec[2]
-#     d3 = vec[3]
-
-#     # log(xi) direction
-#     kernel0 = S1 ** 2 + S2 ** 2 * soft_relu(xp[0] - c, alpha_1) * soft_relu(
-#         xq[0] - c, alpha_1
-#     )
-#     # log(rho_0) direction
-#     kernel1 = (
-#         np.exp(-0.5 * (d1 ** 2 / L1 ** 2))
-#         * soft_relu(1 - abs(xp[1]))
-#         * soft_relu(1 - abs(xq[1]))
-#         + S4
-#         + S5 * soft_relu(-xp[1]) * soft_relu(-xq[1])
-#     )
-#     # log(zeta) direction
-#     kernel2 = np.exp(-0.5 * d2 ** 2 / L2 ** 2)
-#     # log(gamma) direction
-#     kernel3 = S6 * np.exp(-0.5 * d3 **2 / L3 ** 2) + S7 * xp[3] * xq[3]
-#     # TODO : should this be + kernel3 or * kernel3 ?
-#     #return kernel0 * kernel1 * kernel2 + 2.0 * kernel3
-#     return kernel0 * kernel1 * kernel2 * kernel3
 
 def kernel(xp, xq, theta):
     # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
@@ -177,6 +153,7 @@ def kernel(xp, xq, theta):
     S8 = theta[9]
     S9 = theta[10]
     # sigma_n = theta[11]
+    L_grho = theta[12]
 
     d1 = vec[1]  # first two entries
     d2 = vec[2]
@@ -185,8 +162,9 @@ def kernel(xp, xq, theta):
     # log(xi) direction
     kernel0 = S1 ** 2 + S2 ** 2 * xp[0] * xq[0]
     # log(rho_0) direction
+    L1_prime = L1 + L_grho * (xp[3] + xq[3]) / 2.0
     kernel1 = (
-        np.exp(-0.5 * (d1 ** 2 / L1 ** 2))
+        np.exp(-0.5 * (d1 ** 2 / L1_prime ** 2))
         * soft_relu(1 - abs(xp[1]))
         * soft_relu(1 - abs(xq[1]))
         + S4

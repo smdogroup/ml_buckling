@@ -37,8 +37,8 @@ Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
 N_data = X.shape[0]
 
-# n_train = int(0.9 * N_data)
-n_train = 1000
+n_train = int(0.4 * N_data)
+# n_train = 1000
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
@@ -265,8 +265,8 @@ def run_optmization():
     # Design Variables
     # sigma_n = theta[11]
     optProb.addVarGroup("theta", 12,
-                        # [S1, S2, L1, S4, S5, L2, L3, S6, S7, sigma_n]
-                        lower=np.array([1e-4, 1e-4, 0.1, 1e-4, 1e-4, 0.1, 0.1, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4]),
+                        # [S1, S2, L1, S4, S5, L2, L3, S6, S7, S8, S9, sigma_n]
+                        lower=np.array([1e-4, 0.1, 0.1, 1e-4, 0.1, 0.1, 0.1, 1e-2, 1e-1, 1e-2, 1e-1, 1e-4]),
                         upper=np.array([3, 3, 5, 3, 3, 5, 5, 3, 3, 3, 3, 1e-2]),
                         value=np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 0.5, 0.8, 1.0, 0.2, 0.2, 1.0, 1e-2]))
     optProb.addObj("obj")
