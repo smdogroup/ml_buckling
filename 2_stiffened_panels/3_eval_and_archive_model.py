@@ -40,7 +40,7 @@ Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 N_data = X.shape[0]
 
 # n_train = int(0.9 * N_data)
-n_train = 1000 # 1000, 4000
+n_train = 3000 # 1000, 4000
 n_test = min([4000, N_data-n_train])
 
 
@@ -51,30 +51,71 @@ def soft_relu(x, rho=10):
     return 1.0 / rho * np.log(1 + np.exp(rho * x))
 
 sigma_n = 1e-1 #1e-1 was old value
-def kernel(xp, xq, theta):
-    # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-    vec = xp - xq
 
-    d1 = vec[1]  # first two entries
-    d2 = vec[2]
-    d3 = vec[3]
+# this one was a pretty good model except for high gamma, middle rho0 for one region of the design
+kernel_option = 1
+if kernel_option == 1:
+    def kernel(xp, xq, theta):
+        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
+        vec = xp - xq
 
-    # log(xi) direction
-    kernel0 = xp[0] * xq[0] + 0.1
-    # log(rho_0) direction
-    kernel1 = (
-        soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1 +
-        1.0 #* np.exp(-0.5 * (xp[3] + xq[3]) / 1.0) # 0.2
-        # * np.exp(-0.5 * (d1 ** 2 / (0.2 ** 2))
-        * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2))
-        * soft_relu(1 - abs(xp[1]))
-        * soft_relu(1 - abs(xq[1]))
-    )
-    # log(zeta) direction
-    kernel2 = xp[2] * xq[2] + 0.5 * np.exp(-0.5 * d2 ** 2 / 9.0)
-    # log(gamma) direction
-    kernel3 = xp[3] * xq[3] + 0.5 * np.exp(-0.5 * d3 ** 2 / 9.0)
-    return kernel0 * kernel1 * kernel2 * kernel3
+        d1 = vec[1]  # first two entries
+        d2 = vec[2]
+        d3 = vec[3]
+
+        # log(xi) direction
+        kernel0 = 1.0 + xp[0] * xq[0]
+
+        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
+        kernel2_1 = 1.0 + 0.2 * xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
+        kernel2_2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
+        # log(gamma) direction
+        kernel3_1 = 1.0 + 0.2 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
+        kernel3_2 = xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
+
+        # log(rho_0) direction
+        # idea here is to combine linear kernel on (rho0, gamma, zeta) for rho0 outside [-1,1] the tails
+        #    using weaker linear functions in gamma, zeta directions (by + const)
+        #    also the rho0 of course is actually bilinear
+        # then use weak SE term to cover the oscillations in rho0 and in this example we use regular 
+        #     linear kernels without a constant term because then it couples the gamma = 0 to high gamma data too much
+        #     and messes up the mode switching zones
+        #     put this in the paper.
+
+        #* np.exp(-0.5 * (xp[3] + xq[3]) / 1.0) # 0.2, # * np.exp(-0.5 * (d1 ** 2 / (0.2 ** 2))
+        kernel123 = (0.1 + soft_relu(-xp[1]) * soft_relu(-xq[1])) * kernel2_1 * kernel3_1 + \
+            0.1 * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2)) * \
+            soft_relu(1 - abs(xp[1])) * \
+            soft_relu(1 - abs(xq[1])) * kernel2_2 * kernel3_2
+        
+        return kernel0 * kernel123
+
+elif kernel_option == 2:
+    def kernel(xp, xq, theta):
+        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
+        vec = xp - xq
+
+        d1 = vec[1]  # first two entries
+        d2 = vec[2]
+        d3 = vec[3]
+
+        # log(xi) direction
+        kernel0 = 0.1 + xp[0] * xq[0]
+        # log(rho_0) direction
+        kernel1 = (
+            soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1 +
+            0.1 #* np.exp(-0.5 * (xp[3] + xq[3]) / 1.0) # 0.2
+            # * np.exp(-0.5 * (d1 ** 2 / (0.2 ** 2))
+            * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2))
+            * soft_relu(1 - abs(xp[1]))
+            * soft_relu(1 - abs(xq[1]))
+        )
+        # log(zeta) direction
+        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
+        kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
+        # log(gamma) direction
+        kernel3 = xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
+        return kernel0 * kernel1 * kernel2 * kernel3
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
@@ -91,7 +132,7 @@ print(f"\tgamma or x3: min {np.min(gamma)}, max {np.max(gamma)}")
 # bins for the data (in log space)
 xi_bins = [[-1.2, -0.8], [-0.8, -0.4], [-0.4, 0.0], [0.0, 0.4]]
 rho0_bins = [[-2.5, -1.0], [-1.0, 0.0], [0.0, 1.0], [1.0, 2.5]]
-zeta_bins = [[0.0, 1.0], [1.0, 2.0], [3.0, 4.0], [4.0, 5.0]]
+zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.0]]
 gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0] ]
 
 # randomly permute the arrays
@@ -145,6 +186,15 @@ if _remove_outliers:
     n_removed = len(_remove_indices)
     print(f"removed {n_removed} outliers : now {N_data} data points left")
 
+    """
+    Please note, I have removed some of the potentially bad data points here
+    to make the model better. Some values of high zeta, xi, gamma are hard to mesh converge
+    depending on how many stiffeners there are. Data quality is very important in training machine learning models.
+    Especially if you want them to extrapolate well to high values of gamma, xi, zeta as best you can.
+    Some case studies on individual FEA models is probably also warranted. Also, some trends here might be correct
+    as high values of gamma for instance might reduce the gamma slope due to mode distortion. But this is unclear.
+    And needs more investigation first.
+    """
     # also remove some of the bad data based on inspecting the 2d plots
     # some seemed like they are not mesh converged for high AR, high gamma, or this is mode distortion?
     large_xi_mask = X[:,0] >= -0.3
@@ -154,6 +204,22 @@ if _remove_outliers:
     mask = np.logical_and(mask, large_gm_mask)
     new_remove_indices = _full_indices[mask]
     _remove_indices += list(new_remove_indices)
+
+    # remove zeta > 2 from dataset as it messes up the zeta profiles
+    # zeta > 2 is very unrealistic for aircraft wings as it represents pretty thick plates
+    # and wings are lightweight, thin plate structures.
+    zeta_mask = X[:,2] > 2.0
+    _remove_indices += list(_full_indices[zeta_mask])
+
+    # remove xi > 1.0 as the stiffened data is too close to unstiffened data here as gamma inc
+    # that it messes up the slopes (might be mesh convergence related) => hard to mesh converge high xi, gamma
+    # other parts of the literature also state that 0 < xi < 1.0 for all realistic designs
+    xi_mask = X[:,0] >= 0.0
+    _remove_indices += list(_full_indices[xi_mask])
+
+    # remove last xi_bin
+    xi_bins = xi_bins[:-1]
+
 
     # keep the non outlier data
     _keep_indices = [_ for  _ in range(N_data) if not(_ in _remove_indices)]
@@ -167,7 +233,7 @@ if _remove_outliers:
     n_test = min([4000, N_data-n_train])
 
     n_removed2 = len(_remove_indices)
-    print(f"removed {n_removed2-n_removed} poor mesh convergeddata points : now {N_data} data points left")
+    print(f"removed {n_removed2-n_removed} data points outside of realistic design bounds : now {N_data} data points left")
     # exit()
 
 
@@ -427,8 +493,6 @@ if args.plotmodel:
                 avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
                 xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
-                if np.sum(xi_zeta_mask) == 0: continue
-
                 plt.figure(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}", figsize=(8,6))
 
                 colors = plt.cm.jet(np.linspace(0.0, 1.0, len(gamma_bins)))
@@ -439,19 +503,20 @@ if args.plotmodel:
                     avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
                     mask = np.logical_and(xi_zeta_mask, gamma_mask)
 
-                    if np.sum(mask) == 0: continue
+                    #if np.sum(mask) == 0: continue
 
                     X_in_range = X[mask,:]
                     Y_in_range = Y[mask,:]
 
-                    plt.plot(
-                        X_in_range[:,1],
-                        Y_in_range[:,0],
-                        "o",
-                        color=colors[igamma],
-                        zorder=1+igamma,
-                        label=f"gamma in [{gamma_bin[0]:.0f},{gamma_bin[1]:.0f}]"
-                    )
+                    if np.sum(mask) != 0:
+                        plt.plot(
+                            X_in_range[:,1],
+                            Y_in_range[:,0],
+                            "o",
+                            color=colors[igamma],
+                            zorder=1+igamma,
+                            label=f"gamma in [{gamma_bin[0]:.0f},{gamma_bin[1]:.0f}]"
+                        )
 
                     # predict the models, with the same colors, no labels
                     X_plot = np.zeros((n_plot_2d, 4))
@@ -474,14 +539,14 @@ if args.plotmodel:
                         f_plot,
                         "--",
                         color=colors[igamma],
-                        zorder=
+                        zorder=1
                     )
 
                 plt.legend()
                 plt.xlabel(r"$\log{\rho_0}$")
                 plt.ylabel(r"$N_{cr}^*$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-gamma_xi{ixi}_zeta{izeta}.png"), dpi=400)
+                plt.savefig(os.path.join(GP_folder, f"2d-gamma-model_xi{ixi}_zeta{izeta}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}")
 
     if _plot_zeta:
@@ -502,33 +567,56 @@ if args.plotmodel:
                     avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
                     mask = np.logical_and(xi_gamma_mask, zeta_mask)
 
-                    if np.sum(mask) == 0: continue
+                    #if np.sum(mask) == 0: continue
 
                     plt.figure(f"xi = {avg_xi:.2f}, gamma = {avg_gamma:.2f}", figsize=(8,6))
 
                     colors = plt.cm.jet(np.linspace(0.0, 1.0, len(zeta_bins)))
 
-                
-
-                    if np.sum(mask) == 0: continue
+                    #if np.sum(mask) == 0: continue
 
                     X_in_range = X[mask,:]
                     Y_in_range = Y[mask,:]
 
+                    if np.sum(mask) != 0:
+                        plt.plot(
+                            X_in_range[:,1],
+                            Y_in_range[:,0],
+                            "o",
+                            color=colors[izeta],
+                            zorder=1+izeta,
+                            label=f"Lzeta in [{zeta_bin[0]:.0f},{zeta_bin[1]:.0f}]"
+                        )
+
+                    # predict the models, with the same colors, no labels
+                    X_plot = np.zeros((n_plot_2d, 4))
+                    for irho, crho0 in enumerate(rho0_vec):
+                        X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
+
+                    Kplot = np.array(
+                        [
+                            [
+                                kernel(X_train[i, :], X_plot[j, :], theta0)
+                                for i in range(n_train)
+                            ]
+                            for j in range(n_plot_2d)
+                        ]
+                    )
+                    f_plot = Kplot @ alpha
+
                     plt.plot(
-                        X_in_range[:,1],
-                        Y_in_range[:,0],
-                        "o",
+                        rho0_vec,
+                        f_plot,
+                        "--",
                         color=colors[izeta],
-                        zorder=1+izeta,
-                        label=f"Lzeta in [{zeta_bin[0]:.0f},{zeta_bin[1]:.0f}]"
+                        zorder=1
                     )
 
                 plt.legend()
                 plt.xlabel(r"$\log{\rho_0}$")
                 plt.ylabel(r"$N_{cr}^*$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-zeta_xi{ixi}_gamma{igamma}.png"), dpi=400)
+                plt.savefig(os.path.join(GP_folder, f"2d-zeta-model_xi{ixi}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, gamma = {avg_gamma:.2f}")  
 
     if _plot_xi:
@@ -549,35 +637,59 @@ if args.plotmodel:
                     avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
                     mask = np.logical_and(gamma_zeta_mask, xi_mask)
 
-                    if np.sum(mask) == 0: continue
+                    #if np.sum(mask) == 0: continue
 
                     plt.figure(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}", figsize=(8,6))
 
                     colors = plt.cm.jet(np.linspace(0.0, 1.0, len(xi_bins)))
 
             
-                    if np.sum(mask) == 0: continue
+                    #if np.sum(mask) == 0: continue
 
                     X_in_range = X[mask,:]
                     Y_in_range = Y[mask,:]
 
-                    plt.plot(
-                        X_in_range[:,1],
-                        Y_in_range[:,0],
-                        "o",
-                        color=colors[ixi],
-                        zorder=1+ixi,
-                        label=f"Lxi in [{xi_bin[0]:.1f},{xi_bin[1]:.1f}]"
-                    )
+                    if np.sum(mask) != 0:
+                        plt.plot(
+                            X_in_range[:,1],
+                            Y_in_range[:,0],
+                            "o",
+                            color=colors[ixi],
+                            zorder=1+ixi,
+                            label=f"Lxi in [{xi_bin[0]:.1f},{xi_bin[1]:.1f}]"
+                        )
 
                     # plot the model now
+                    # predict the models, with the same colors, no labels
+                    X_plot = np.zeros((n_plot_2d, 4))
+                    for irho, crho0 in enumerate(rho0_vec):
+                        X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
+
+                    Kplot = np.array(
+                        [
+                            [
+                                kernel(X_train[i, :], X_plot[j, :], theta0)
+                                for i in range(n_train)
+                            ]
+                            for j in range(n_plot_2d)
+                        ]
+                    )
+                    f_plot = Kplot @ alpha
+
+                    plt.plot(
+                        rho0_vec,
+                        f_plot,
+                        "--",
+                        color=colors[ixi],
+                        zorder=1
+                    )
                     
 
                 plt.legend()
                 plt.xlabel(r"$\log{\rho_0}$")
                 plt.ylabel(r"$N_{cr}^*$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-xi_zeta{izeta}_gamma{igamma}.png"), dpi=400)
+                plt.savefig(os.path.join(GP_folder, f"2d-xi-model_zeta{izeta}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}")  
 
     if _plot_3d:
@@ -689,6 +801,13 @@ if args.plotmodel:
         plt.show()
         # plt.savefig(os.path.join(GP_folder, f"gamma-3d.png"), dpi=400)
         plt.close(f"3d rho_0, gamma, lam_star")
+
+# only eval relative error on test set for zeta < 1
+# because based on the model plots it appears that the patterns break down some for that
+zeta_mask = X_test[:,2] < 1.0
+X_test = X_test[zeta_mask, :]
+Y_test = Y_test[zeta_mask, :]
+n_test = X_test.shape[0]
 
 # predict and report the relative error on the test dataset
 K_test_cross = np.array(
