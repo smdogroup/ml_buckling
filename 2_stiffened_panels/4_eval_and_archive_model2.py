@@ -53,7 +53,7 @@ def soft_relu(x, rho=10):
 sigma_n = 1e-1 #1e-1 was old value
 
 # this one was a pretty good model except for high gamma, middle rho0 for one region of the design
-kernel_option = 1
+kernel_option = 2
 if kernel_option == 1:
     def kernel(xp, xq, theta):
         # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
@@ -116,6 +116,18 @@ elif kernel_option == 2:
         # log(gamma) direction
         kernel3 = xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
         return kernel0 * kernel1 * kernel2 * kernel3
+
+def mean_function(x):
+    min_val = 1e4
+    xi = np.exp(x[0])
+    rho0 = np.exp(x[1])
+    gamma = np.exp(x[3]) - 1.0
+    for m1 in range(1,51):
+        val = (1.0 + gamma) * m1**2 / rho0**2 + rho0**2 / m1**2 + 2.0 * xi
+        if val < min_val:
+            val = min_val
+    
+    return np.log(min_val)
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
@@ -472,6 +484,7 @@ K_y = np.array(
 
 #print(f"K_y = {K_y}")
 #exit()
+y = Y_train - np.array([mean_function(X_train[i,:]) for i in range(n_train)]).reshape((n_train,1))
 
 alpha = np.linalg.solve(K_y, y)
 
@@ -532,7 +545,7 @@ if args.plotmodel:
                             for j in range(n_plot_2d)
                         ]
                     )
-                    f_plot = Kplot @ alpha
+                    f_plot = Kplot @ alpha + np.array([mean_function(X_plot[i,:]) for i in range(n_plot_2d)]).reshape((n_plot_2d,1))
 
                     plt.plot(
                         rho0_vec,
@@ -602,7 +615,7 @@ if args.plotmodel:
                             for j in range(n_plot_2d)
                         ]
                     )
-                    f_plot = Kplot @ alpha
+                    f_plot = Kplot @ alpha + np.array([mean_function(X_plot[i,:]) for i in range(n_plot_2d)]).reshape((n_plot_2d,1))
 
                     plt.plot(
                         rho0_vec,
@@ -674,7 +687,7 @@ if args.plotmodel:
                             for j in range(n_plot_2d)
                         ]
                     )
-                    f_plot = Kplot @ alpha
+                    f_plot = Kplot @ alpha + np.array([mean_function(X_plot[i,:]) for i in range(n_plot_2d)]).reshape((n_plot_2d,1))
 
                     plt.plot(
                         rho0_vec,
@@ -758,7 +771,7 @@ if args.plotmodel:
                 for j in range(n_plot)
             ]
         )
-        f_plot = Kplot @ alpha
+        f_plot = Kplot @ alpha + np.array([mean_function(X_plot[i,:]) for i in range(n_plot)]).reshape((n_plot,1))
 
         # make meshgrid of outputs
         GAMMA = np.zeros((30, 100))
@@ -819,7 +832,7 @@ K_test_cross = np.array(
         for j in range(n_test)
     ]
 )
-Y_test_pred = K_test_cross @ alpha
+Y_test_pred = K_test_cross @ alpha + np.array([mean_function(X_test[i,:]) for i in range(n_test)]).reshape((n_test,1))
 
 crit_loads = np.exp(Y_test)
 crit_loads_pred = np.exp(Y_test_pred)
