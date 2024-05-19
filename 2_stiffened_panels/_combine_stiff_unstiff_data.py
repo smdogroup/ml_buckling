@@ -38,6 +38,10 @@ X = stiff_df[["xi", "rho_0", "zeta", "gamma", "lambda_star"]].to_numpy()
 pred_type = stiff_df["pred_type"].to_numpy()
 pred_mask = pred_type == "global"
 X = X[pred_mask,:]
+
+# convert xi to log(1+xi)
+X[:,0] += 1.0
+
 # convert from zeta to 1 + 10^3 * zeta (then will take log on this)
 print(f"X2 orig = {X[:,2]}")
 if args.load == "Nx":
@@ -46,7 +50,7 @@ if args.load == "Nx":
 X[:,2] = 1.0 + 1000.0 * X[:,2]
 
 # convert gamma to 1 + gamma so that log(1+gamma) is taken later
-X[:,3] = 1.0 + X[:,3]
+X[:,3] += 1.0
 # convert all to log scale
 X = np.log(X)
 print(f"X2 new = {X[:,2]}")
@@ -60,6 +64,9 @@ unstiff_df = pd.read_csv(unstiffened_csv, skiprows=1)
 X_unstiff = unstiff_df[["x0", "x1", "x2"]].to_numpy()
 n_unstiff = X_unstiff.shape[0]
 Y_unstiff = unstiff_df["y"].to_numpy().reshape((n_unstiff,1))
+
+# change unstiff data to log(1+xi)
+X_unstiff[:,0] = np.log(1.0 + np.exp(X_unstiff[:,0]))
 
 # add gamma=0 parameter to the unstiff data
 # assume gamma=0 is approx exp(-6) => -6 log scale
