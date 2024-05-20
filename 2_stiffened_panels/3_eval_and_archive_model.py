@@ -366,6 +366,7 @@ if _remove_outliers:
     # remove xi > 1.0 as the stiffened data is too close to unstiffened data here as gamma inc
     # that it messes up the slopes (might be mesh convergence related) => hard to mesh converge high xi, gamma
     # other parts of the literature also state that 0 < xi < 1.0 for all realistic designs
+    #xi_mask = X[:,0] >= 0.8
     xi_mask = X[:,0] >= 0.4
     #_remove_indices += list(_full_indices[xi_mask])
 
