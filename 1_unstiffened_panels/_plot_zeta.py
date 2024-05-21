@@ -14,6 +14,15 @@ import matplotlib.image as image
 
 # The child artists are meant to be drawn at a relative position to its #parent.
 
+# parse the arguments
+parent_parser = argparse.ArgumentParser(add_help=False)
+parent_parser.add_argument("--load", type=str)
+parent_parser.add_argument("--BC", type=str)
+
+args = parent_parser.parse_args()
+
+assert args.load in ["Nx", "Nxy", "axial", "shear"]
+assert args.BC in ["SS", "CL"]
 
 """
 This time I'll try a Gaussian Process model to fit the axial critical load surrogate model
@@ -21,12 +30,12 @@ Inputs: D*, a0/b0, ln(b/h)
 Output: k_x0
 """
 
-load = "Nx"
-BC = "SS"
+# load = "Nx"
+# BC = "SS"
 
 # load the Nxcrit dataset
-load_prefix = "Nxcrit" if load == "Nx" else "Nxycrit"
-csv_filename = f"{load_prefix}_{BC}"
+load_prefix = "Nxcrit" if args.load == "Nx" else "Nxycrit"
+csv_filename = f"{load_prefix}_{args.BC}"
 print(f"csv filename = {csv_filename}")
 df = pd.read_csv("_data/" + csv_filename + ".csv")
 
@@ -44,22 +53,12 @@ n_train = int(0.9 * N_data)
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
-if BC == "CL":
-    slender_bins = [
-        [10.0, 20.0],
-        [20.0, 50.0],
-        [50.0, 100.0],
-        [100.0, 200.0],
-    ]  # [5.0, 10.0],
-else:
-    log_slender_bins = [
-        [2.0, 4.0],
-        [4.0, 6.0],
-        [6.0, 8.0],
-        [8.0, 10.0]
-    ]
-    slender_bins = [[np.exp(bin[0]), np.exp(bin[1])] for bin in log_slender_bins]
-
+zeta_bins = [
+    [0.0, 1.0],
+    [1.0, 2.0],
+    [2.0, 3.0],
+    [3.0, 4.5],
+]
 
 xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1, 7)]
 # added smaller and larger bins here cause we miss some of the outliers near the higher a0/b0 with less data
@@ -86,42 +85,42 @@ for ifolder, folder in enumerate(
 plt.style.use(niceplots.get_style())
 xi = X[:, 0]
 rho0 = X[:, 1]
-slenderness = X[:, 2]
+zeta = X[:, 2]
 lam = Y[:, 0]
 
 # colors = plt.cm.jet(np.linspace(0, 1, len(slender_bins)))
 colors = mlb.four_colors6
 
-slender_bins = slender_bins[::-1]
+zeta_bins = zeta_bins#[::-1]
 
 # now plot by xi
 for ixi, xi_bin in enumerate(xi_bins):
     fig, ax = plt.subplots(figsize=(10, 7))
-    xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi), np.exp(xi) <= xi_bin[1])
+    xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
 
-    plt.arrow(x=1.4, y=14, dx=0, dy=-6, facecolor="b", width=0.01)
-    plt.text(x=1.4, y=14.5, s="Mode#", horizontalalignment="center")
+    # plt.arrow(x=1.4, y=14, dx=0, dy=-6, facecolor="b", width=0.01)
+    # plt.text(x=1.4, y=14.5, s="Mode#", horizontalalignment="center")
 
-    for iAR in range(1, 4):
-        plt.arrow(x=iAR, y=7, dx=0, dy=-1.8, facecolor="k", width=0.01)
-        plt.text(
-            x=iAR, y=14, s=r"$\rho = " + str(iAR) + r"$", horizontalalignment="center"
-        )
-        for imode in range(1, 4):
-            _image = image.imread(f"images/NxSS-{iAR}_{imode}.png")
+    # for iAR in range(1, 4):
+        # plt.arrow(x=iAR, y=7, dx=0, dy=-1.8, facecolor="k", width=0.01)
+        # plt.text(
+        #     x=iAR, y=14, s=r"$\rho = " + str(iAR) + r"$", horizontalalignment="center"
+        # )
+        # for imode in range(1, 4):
+            # _image = image.imread(f"images/NxSS-{iAR}_{imode}.png")
 
-            # plt.text(2+dx, 18+dy, text, horizontalalignment="center")
-            zoom = 0.05
-            if iAR == 3:
-                zoom = 0.1
-            imagebox = OffsetImage(
-                _image, zoom=zoom
-            )  # Annotation box for solar pv logo
-            # Container for the imagebox referring to a specific position *xy*.
-            ab = AnnotationBbox(
-                imagebox, (iAR, 8 + 4.6 - 2.4 * (imode - 1)), frameon=False
-            )
-            ax.add_artist(ab)
+            # # plt.text(2+dx, 18+dy, text, horizontalalignment="center")
+            # zoom = 0.05
+            # if iAR == 3:
+            #     zoom = 0.1
+            # imagebox = OffsetImage(
+            #     _image, zoom=zoom
+            # )  # Annotation box for solar pv logo
+            # # Container for the imagebox referring to a specific position *xy*.
+            # ab = AnnotationBbox(
+            #     imagebox, (iAR, 8 + 4.6 - 2.4 * (imode - 1)), frameon=False
+            # )
+            # ax.add_artist(ab)
 
     # get xy coords of point at rho0 = 1.0
     mask1 = np.logical_and(np.log(1.4) <= xi, xi <= np.log(1.7))
@@ -132,12 +131,12 @@ for ixi, xi_bin in enumerate(xi_bins):
 
     # plt.arrow(x=2+dx, y=13+dy, dx=-1.0-dx, dy=lam_near - 13-dy, width=0.01, facecolor="k")
 
-    for islender, slender_bin in enumerate(slender_bins):
-        slender_mask = np.logical_and(
-            slender_bin[0] <= np.exp(slenderness), np.exp(slenderness) <= slender_bin[1]
+    for izeta, zeta_bin in enumerate(zeta_bins):
+        zeta_mask = np.logical_and(
+            zeta_bin[0] <= zeta, zeta <= zeta_bin[1]
         )
 
-        mask = np.logical_and(xi_mask, slender_mask)
+        mask = np.logical_and(xi_mask, zeta_mask)
         if np.sum(mask) == 0:
             continue
 
@@ -145,22 +144,23 @@ for ixi, xi_bin in enumerate(xi_bins):
             np.exp(rho0[mask]),
             np.exp(lam[mask]),
             "o",
-            color=colors[islender],
-            zorder=len(slender_bins) - islender,
-            label=r"$\log \zeta\ in\ [" + f"{np.log(slender_bin[0]):.0f},{np.log(slender_bin[1]):.0f}" + r"]$",
+            color=colors[izeta],
+            zorder=len(zeta_bins) - izeta,
+            label=r"$\log(1+10^3\zeta)\ in\ [" + f"{zeta_bin[0]:.1f},{zeta_bin[1]:.1f}" + r"]$",
         )
 
-    plt.legend(fontsize=18, loc='lower left')
-    plt.xlabel(r"$\rho_0$", fontsize=20)
+    plt.legend(fontsize=18, loc='upper right')
+    plt.xlabel(r"$\rho_0 = \frac{a}{b} \sqrt[4]{D_{22}/D_{11}}$", fontsize=24)
     plt.xticks(fontsize=18)
-    if load == "Nx":
-        plt.ylabel(r"$N_{11,cr}^*$", fontsize=20)
+    if args.load == "Nx":
+        plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
     else: # "Nxy"
-        plt.ylabel(r"$N_{12,cr}^*$", fontsize=20)
+        plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
     plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)
-    plt.xlim(0.0, 4.0)
-    plt.ylim(0.0, 15.0)
+    plt.xlim(0.0, 5.0)
+    plt.ylim(0.0, 10.0)
     # plt.show()
+    plt.savefig(os.path.join(sub_sub_data_folder, f"xi{ixi}.svg"), dpi=400)
     plt.savefig(os.path.join(sub_sub_data_folder, f"xi{ixi}.png"), dpi=400)
     plt.close("all")

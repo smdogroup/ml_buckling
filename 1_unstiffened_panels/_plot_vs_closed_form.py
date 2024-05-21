@@ -181,10 +181,14 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
 plt.legend(fontsize=20, loc="upper right")
 plt.xlabel(r"$\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p /D_{11}^p}$", fontsize=24)
 plt.xticks(fontsize=18)
+# if args.load == "Nx":
+#     plt.ylabel(r"$N_{11,cr}^* = N_{11,cr} \cdot \frac{b^2}{\pi^2 \sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
+# else: # "Nxy"
+#     plt.ylabel(r"$N_{12,cr}^* = N_{12,cr} \cdot \frac{b^2}{\pi^2 \sqrt[4]{D_{11}^p (D_{22}^p)^3}}$", fontsize=24)
 if args.load == "Nx":
-    plt.ylabel(r"$N_{11,cr}^* = N_{11,cr} \cdot \frac{b^2}{\pi^2 \sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
+    plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
 else: # "Nxy"
-    plt.ylabel(r"$N_{12,cr}^* = N_{12,cr} \cdot \frac{b^2}{\pi^2 \sqrt[4]{D_{11}^p (D_{22}^p)^3}}$", fontsize=24)
+    plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
 plt.yticks(fontsize=18)
 plt.margins(x=0.02, y=0.02)
 plt.xlim(0.0, 5.0)
