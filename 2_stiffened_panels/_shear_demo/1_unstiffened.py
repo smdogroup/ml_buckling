@@ -3,6 +3,7 @@ Sean Engelstad, Feb 2024
 GT SMDO Lab
 NOTE : copy u*iHat+v*jHat+w*kHat for paraview
 """
+
 import ml_buckling as mlb
 import numpy as np
 from mpi4py import MPI
@@ -15,7 +16,7 @@ flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
     a=0.1,
     b=0.1,
     h=0.005,
-    ply_angle=0,
+    ply_angle=38,
 )
 
 flat_plate.generate_bdf(
@@ -27,7 +28,10 @@ flat_plate.generate_bdf(
     clamped=False,
 )
 
-# avg_stresses = flat_plate.run_static_analysis(write_soln=True)
+if comm.rank == 0:
+    print(f"exy = {flat_plate.affine_exy}")
+
+avg_stresses = flat_plate.run_static_analysis(write_soln=True)
 
 tacs_eigvals, errors = flat_plate.run_buckling_analysis(
     sigma=10.0, num_eig=15, write_soln=True

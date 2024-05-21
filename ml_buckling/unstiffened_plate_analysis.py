@@ -395,12 +395,13 @@ class UnstiffenedPlateAnalysis:
             )
         # option 2 - based on NASA non-dimensional buckling parameter derivation (much better)
         elif option == 2:
-            exy_T = (
+            A66 = self.h * self.G12
+            # 0.5 factor because we are converting from gamma_12 to engineering shear strain eps_12
+            exy_T = 0.5 * (
                 np.pi ** 2
                 * (self.D11 * self.D22 ** 3) ** 0.25
                 / self.b ** 2
-                / self.h
-                / self.G12
+                / A66
             )
         return exy_T
 

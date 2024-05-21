@@ -292,13 +292,14 @@ class StiffenedPlateAnalysis:
         _Darray = self.Darray_plate
         D11 = _Darray[0]
         D22 = _Darray[2]
+        _Aarray = self.Aarray_plate
+        A11 = _Aarray[0]
         exx_T = (
             np.pi ** 2
             * np.sqrt(D11 * D22)
             / self.geometry.b ** 2
             / (1 + self.delta)
-            / self.geometry.h
-            / self.plate_material.E_eff
+            / A11
         )
         return exx_T
 
@@ -342,12 +343,15 @@ class StiffenedPlateAnalysis:
         _Darray = self.Darray_plate
         D11 = _Darray[0]
         D22 = _Darray[2]
-        exy_T = (
+        _Aarray = self.Aarray_plate
+        A66 = _Aarray[3]
+        print(f"A66 = {A66}")
+        # 0.5 times because N12 = A66 * gamma_12 and we need to convert from gamma_12 = 2 * eps_12 (solve for eps_12 shear strain)
+        exy_T = 0.5 * (
             np.pi ** 2
             * (D11 * D22 ** 3) ** 0.25
             / self.geometry.b ** 2
-            / self.geometry.h
-            / self.plate_material.G12
+            / A66
         )
         return exy_T
 
