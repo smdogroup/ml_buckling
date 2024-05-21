@@ -277,6 +277,9 @@ for ibin, bin in enumerate(slender_bins):
 print(f"num outliers = {np.sum(global_outlier_mask)}")
 # exit()
 
+# replace X[0] xi with log(1+xi)
+X[:,0] += 1.0
+
 # replace X[2] the b/h slenderness column with zeta
 X[:,2] = 1.0 + 1000.0 * zeta[:]
 

@@ -4,7 +4,7 @@ import numpy as np
 import niceplots
 import os
 
-df = pd.read_csv("../data/stiffener_crippling.csv")
+df = pd.read_csv("../raw_data/stiffener_crippling.csv")
 xi = df["xi"].to_numpy()
 slenderness = np.log(df["b/h"].to_numpy())
 gen_eps = df["gen_eps"].to_numpy()
