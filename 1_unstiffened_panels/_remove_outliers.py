@@ -292,6 +292,10 @@ Y = Y[keep_mask, :]
 X[:, :] = np.log(X[:, :])
 Y[:, 0:] = np.log(Y[:, 0:])
 
+# double the shear raw data since it was wrong eps_12 vs gamma_12
+if args.load == "Nxy":
+    Y[:,:] *= 2.0
+
 data_dict = {"x0": X[:, 0], "x1": X[:, 1], "x2": X[:, 2], "y": Y[:, 0]}
 
 # write out to csv file in _data folder
