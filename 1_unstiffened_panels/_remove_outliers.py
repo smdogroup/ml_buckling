@@ -288,13 +288,13 @@ keep_mask = np.logical_not(global_outlier_mask)
 X = X[keep_mask, :]
 Y = Y[keep_mask, :]
 
-# convert xi, a0/b0, b/h and kmin to log space
-X[:, :] = np.log(X[:, :])
-Y[:, 0:] = np.log(Y[:, 0:])
-
 # double the shear raw data since it was wrong eps_12 vs gamma_12
 if args.load == "Nxy":
     Y[:,:] *= 2.0
+
+# convert xi, a0/b0, b/h and kmin to log space
+X[:, :] = np.log(X[:, :])
+Y[:, 0:] = np.log(Y[:, 0:])
 
 data_dict = {"x0": X[:, 0], "x1": X[:, 1], "x2": X[:, 2], "y": Y[:, 0]}
 

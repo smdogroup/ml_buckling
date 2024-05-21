@@ -57,21 +57,13 @@ n_train = int(0.9 * N_data)
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
-if BC == "CL":
-    slender_bins = [
-        [10.0, 20.0],
-        [20.0, 50.0],
-        [50.0, 100.0],
-        [100.0, 200.0],
-    ]  # [5.0, 10.0],
-else:
-    log_slender_bins = [
-        [2.0, 4.0],
-        [4.0, 6.0],
-        [6.0, 8.0],
-        [8.0, 10.0]
-    ]
-    slender_bins = [[np.exp(bin[0]), np.exp(bin[1])] for bin in log_slender_bins]
+slender_bins = [
+    [0.0, 0.6],
+    [0.6, 1.0],
+    [1.0, 2.0],
+    [2.0, 3.0],
+    [3.0, 4.5],
+]
 
 xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1, 7)]
 # added smaller and larger bins here cause we miss some of the outliers near the higher a0/b0 with less data
@@ -101,7 +93,7 @@ rho0 = X[:, 1]
 slenderness = X[:, 2]
 lam = Y[:, 0]
 
-_image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
+# _image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
 
 #colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
 # five color custom color map
@@ -110,45 +102,47 @@ colors = mlb.six_colors2#[::-1]
 
 for islender, slender_bin in enumerate(slender_bins):
     fig, ax = plt.subplots(figsize=(10, 7))
+    zeta = slenderness # slightly deprecated names here
     slender_mask = np.logical_and(
-        slender_bin[0] <= np.exp(slenderness), np.exp(slenderness) <= slender_bin[1]
+        slender_bin[0] <= zeta, zeta <= slender_bin[1]
     )
 
-    text = "Axial" if args.load == "Nx" else "Shear"
-    text += ", "
-    text += "Simply Supported" if args.BC == "SS" else "Clamped"
-    text += " Modes"
-    dx = 0
-    dy = 0
+    # text = "Axial" if args.load == "Nx" else "Shear"
+    # text += ", "
+    # text += "Simply Supported" if args.BC == "SS" else "Clamped"
+    # text += " Modes"
+    # dx = 0
+    # dy = 0
 
-    if args.load == "Nx" and args.BC == "CL":
-        dx += 0.5
-        dy += 1.1
+    # if args.load == "Nx" and args.BC == "CL":
+    #     dx += 0.5
+    #     dy += 1.1
 
-    plt.text(2 + dx, 18 + dy, text, horizontalalignment="center")
-    imagebox = OffsetImage(_image, zoom=0.15)  # Annotation box for solar pv logo
-    # Container for the imagebox referring to a specific position *xy*.
-    ab = AnnotationBbox(imagebox, (2 + dx, 13 + dy), frameon=False)
-    ax.add_artist(ab)
+    # plt.text(2 + dx, 18 + dy, text, horizontalalignment="center")
+    # imagebox = OffsetImage(_image, zoom=0.15)  # Annotation box for solar pv logo
+    # # Container for the imagebox referring to a specific position *xy*.
+    # ab = AnnotationBbox(imagebox, (2 + dx, 13 + dy), frameon=False)
+    # ax.add_artist(ab)
 
-    # get xy coords of point at rho0 = 1.0
-    mask1 = np.logical_and(np.log(1.4) <= xi, xi <= np.log(1.7))
-    mask2 = np.logical_and(np.log(0.9) <= rho0, rho0 <= np.log(1.1))
-    mask = np.logical_and(mask1, mask2)
-    lam_near = np.exp(lam[mask][0])
-    rho0_near = np.exp(rho0[mask][0])
+    # # get xy coords of point at rho0 = 1.0
+    # mask1 = np.logical_and(np.log(1.4) <= xi, xi <= np.log(1.7))
+    # mask2 = np.logical_and(np.log(0.9) <= rho0, rho0 <= np.log(1.1))
+    # mask = np.logical_and(mask1, mask2)
+    # lam_near = np.exp(lam[mask][0])
+    # rho0_near = np.exp(rho0[mask][0])
 
-    plt.arrow(
-        x=2 + dx,
-        y=13 + dy,
-        dx=-1.0 - dx,
-        dy=lam_near - 13 - dy,
-        width=0.01,
-        facecolor="k",
-    )
+    # plt.arrow(
+    #     x=2 + dx,
+    #     y=13 + dy,
+    #     dx=-1.0 - dx,
+    #     dy=lam_near - 13 - dy,
+    #     width=0.01,
+    #     facecolor="k",
+    # )
 
     for ixi, xi_bin in enumerate(xi_bins[::-1]):
-        xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi), np.exp(xi) <= xi_bin[1])
+        # slightly deprecated code in some areas
+        xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
 
         mask = np.logical_and(xi_mask, slender_mask)
         if np.sum(mask) == 0:
@@ -163,18 +157,18 @@ for islender, slender_bin in enumerate(slender_bins):
             markersize=6.5
         )
 
-    plt.legend(fontsize=20)
-    plt.xlabel(r"$\rho_0$", fontsize=20)
+    # plt.legend(fontsize=20) # label xi values in the plots
+    plt.xlabel(r"$\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p/D_{11}^p}$", fontsize=24)
     plt.xticks(fontsize=18)
     if args.load == "Nx":
-        plt.ylabel(r"$N_{11,cr}^*$", fontsize=20)
+        plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
     else: # "Nxy"
-        plt.ylabel(r"$N_{12,cr}^*$", fontsize=20)
+        plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
     plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)
     plt.xlim(0.0, 5.0)
     plt.ylim(0.0, 20.0)
     # plt.show()
+    plt.savefig(os.path.join(sub_sub_data_folder, f"sl{islender}.svg"), dpi=400)
     plt.savefig(os.path.join(sub_sub_data_folder, f"sl{islender}.png"), dpi=400)
-    filepath = os.path.join(sub_sub_data_folder, f"sl{islender}.png")
     plt.close("all")
