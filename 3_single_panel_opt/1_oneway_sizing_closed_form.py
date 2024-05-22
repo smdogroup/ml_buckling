@@ -40,17 +40,17 @@ Variable.structural(TacsSteadyInterface.LENGTH_VAR, value=0.5).set_bounds(
 ).register_to(panel)
 
 # stiffener pitch variable
-Variable.structural("spitch", value=0.06).set_bounds(
+Variable.structural("spitch", value=0.20).set_bounds(
     lower=0.05, upper=0.5, scale=1.0
 ).register_to(panel)
 
 # panel thickness variable
-Variable.structural("pthick", value=0.005).set_bounds(
+Variable.structural("pthick", value=0.02).set_bounds(
     lower=0.002, upper=0.1, scale=100.0
 ).register_to(panel)
 
 # stiffener height
-Variable.structural("sheight", value=0.005).set_bounds(
+Variable.structural("sheight", value=0.05).set_bounds(
     lower=0.002, upper=0.1, scale=10.0
 ).register_to(panel)
 
@@ -163,7 +163,7 @@ manager = OptimizationManager(
     tacs_driver,
     design_out_file=design_out_file,
     hot_start=args.hotstart,
-    debug=True,
+    debug=True, # having this flag on means error catching is disabled, so you will see any error messages (although they shouldn't happen anyways)
     hot_start_file=hot_start_file,
     sparse=True,
 )
@@ -185,13 +185,13 @@ snoptimizer = SNOPT(
         "Major iterations limit": 1000,
         "Minor iterations limit": 150000000,
         "Iterations limit": 100000000,
-        "Major step limit": 5e-2,
+        # "Major step limit": 5e-2,
         "Nonderivative linesearch": None,
         "Linesearch tolerance": 0.9,
         "Difference interval": 1e-6,
         "Function precision": 1e-10,
         "New superbasics limit": 2000,
-        "Penalty parameter": 1,
+        # "Penalty parameter": 1,
         "Scale option": 1,
         "Hessian updates": 40,
         "Print file": os.path.join("SNOPT_print.out"),
