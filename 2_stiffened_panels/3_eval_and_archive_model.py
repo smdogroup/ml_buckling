@@ -35,7 +35,7 @@ csv_filename = f"{load}_stiffened"
 df = pd.read_csv("data/" + csv_filename + ".csv")
 
 # extract only the model columns
-X = df[["log(xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
+X = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
 Y = df["log(lam_star)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
@@ -328,7 +328,7 @@ Y = Y[rand_perm, :]
 # REMOVE THE OUTLIERS in local 4d regions
 # Step 1 - remove any gamma > 0 points below the curve (there aren't many)
 # but these are definitely outliers / bad points
-_remove_outliers = True
+_remove_outliers = args.load == "Nx" # TBD on using it for the Nxy data
 if _remove_outliers:
     _remove_indices = []
     _full_indices = np.array([_ for _ in range(N_data)])
@@ -423,15 +423,15 @@ if _remove_outliers:
 
 
 # 2d plots
-_plot_2d = False
+_plot_2d = True
 _plot_gamma = _plot_2d
 _plot_zeta = _plot_2d
 _plot_xi = _plot_2d
 # 3d plots
-_plot_3d = False
+_plot_3d = True
 _plot_3d_gamma = _plot_3d
 _plot_3d_xi = _plot_3d
-_plot_3d_zeta = True #_plot_3d
+_plot_3d_zeta = _plot_3d #_plot_3d
 
 # make a folder for the model fitting
 plots_folder = os.path.join(os.getcwd(), "plots")
@@ -1276,9 +1276,9 @@ if os.path.exists(output_csv):
     os.remove(output_csv)
 
 
-# [log(xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
+# [log(1+xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
 dataframe_dict = {
-    "log(xi)" : X_train[:,0],
+    "log(1+xi)" : X_train[:,0],
     "log(rho0)" : X_train[:,1],
     "log(1+gamma)" : X_train[:,3],
     "log(1+10^3*zeta)" : X_train[:,2], # gamma,zeta are flipped to the order used in TACS
