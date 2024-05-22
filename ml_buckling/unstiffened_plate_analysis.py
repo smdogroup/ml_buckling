@@ -696,6 +696,13 @@ class UnstiffenedPlateAnalysis:
             # plt.contour(X,Y,W, corner_mask=True, antialiased=True)
             # plt.show()
 
+            fp.write("MAT1*                 1              0.                              0. *0      \n")
+            fp.write("*0                   0.                                                 *1      \n")
+            fp.write("*1                   1.              0.              0. \n")
+            fp.write("$ Femap Property  : panel\n")
+            fp.write("PSHELL*               1               1           1.E-2               1 *0      \n")
+            fp.write("*0                   1.               1 0.8333333333333 \n")
+
             fp.write("ENDDATA")
             fp.close()
 
