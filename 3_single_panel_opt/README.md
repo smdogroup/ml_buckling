@@ -16,3 +16,4 @@ dv7 - stiffener thickness
 
 ## Reducing the Number of Optimization Iterations to Convergence
 * Ideas: Try to change SNOPT settings. Maybe lower spar pitch (closer to optimal design) will help a lot.
+* Solution: Removing the fixed SNOPT penalty parameter and the major step size limit helped the optimization converge in 27 design evaluations versus 225 (function evals). This is equivalent to ~11 major iterations now vs 80-100 before.
