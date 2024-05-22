@@ -40,17 +40,17 @@ Variable.structural(TacsSteadyInterface.LENGTH_VAR, value=0.5).set_bounds(
 ).register_to(panel)
 
 # stiffener pitch variable
-Variable.structural("spitch", value=0.20).set_bounds(
+Variable.structural("spitch", value=0.06).set_bounds(
     lower=0.05, upper=0.5, scale=1.0
 ).register_to(panel)
 
 # panel thickness variable
-Variable.structural("pthick", value=0.02).set_bounds(
+Variable.structural("pthick", value=0.005).set_bounds(
     lower=0.002, upper=0.1, scale=100.0
 ).register_to(panel)
 
 # stiffener height
-Variable.structural("sheight", value=0.05).set_bounds(
+Variable.structural("sheight", value=0.005).set_bounds(
     lower=0.002, upper=0.1, scale=10.0
 ).register_to(panel)
 
