@@ -41,7 +41,7 @@ Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 N_data = X.shape[0]
 
 # n_train = int(0.9 * N_data)
-n_train = 1000 # 1000, 4000
+n_train = 3000 # 1000, 4000
 n_test = min([4000, N_data-n_train])
 
 
@@ -268,6 +268,38 @@ elif kernel_option == 7:
         kernel3 = 1.0 + 0.5 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
         
         return kernel1_1 * (kernel0 + kernel2 + kernel3) + kernel1_2 * kernel0 * kernel2 * kernel3
+    
+elif kernel_option == 8:
+    # This one worked great! Captured more of the local data with a tuned value of the
+    # SE coefficient to 0.02 and the linear terms are of a different style from the 
+    # bilinear and SE part of rho0. 
+    def kernel(xp, xq, theta):
+        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
+        vec = xp - xq
+
+        d1 = vec[1]  # first two entries
+        d2 = vec[2]
+        d3 = vec[3]
+
+        # log(xi) direction
+        kernel0 = 1.0 + xp[0] * xq[0]
+        # log(rho_0) direction
+        kernel1_1 = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
+
+        kernel1_2 = (
+            1.0 + 0.02
+            * np.exp(-0.5 * (d1 ** 2 / 0.2**2 ))
+            * soft_relu(1 - abs(xp[1]))
+            * soft_relu(1 - abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
+        )
+        
+        # log(zeta) direction
+        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
+        kernel2 = (1.0 + 0.2 * xp[2] * xq[2])**2 + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
+        # log(gamma) direction
+        kernel3 = 1.0 + 0.5 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
+        
+        return kernel1_1 * (kernel0 + kernel2 + kernel3) + kernel1_2 * kernel0 * kernel2 * kernel3
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
@@ -381,8 +413,7 @@ if _remove_outliers:
 
     N_data = X.shape[0]
 
-    # n_train = int(0.9 * N_data)
-    n_train = 1000 # 1000, 4000
+    # update n_test based on remaining data
     n_test = min([4000, N_data-n_train])
 
     n_removed2 = len(_remove_indices)
@@ -646,6 +677,8 @@ if args.plotmodel:
                 avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
                 xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
+                print(f"zeta {izeta} in {zeta_bin[0]}, {zeta_bin[1]}")
+
                 plt.figure(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}", figsize=(8,6))
 
                 colors = plt.cm.jet(np.linspace(0.0, 1.0, len(gamma_bins)))
@@ -668,7 +701,7 @@ if args.plotmodel:
                             "o",
                             color=colors[igamma],
                             zorder=1+igamma,
-                            label=f"gamma in [{gamma_bin[0]:.0f},{gamma_bin[1]:.0f}]"
+                            label=r"$\log(1+\gamma)" + f"\ in\ [{gamma_bin[0]:.1f},{gamma_bin[1]:.1f}" + r"]$",
                         )
 
                     # predict the models, with the same colors, no labels
@@ -697,7 +730,10 @@ if args.plotmodel:
 
                 plt.legend()
                 plt.xlabel(r"$\log{\rho_0}$")
-                plt.ylabel(r"$N_{cr}^*$")
+                if args.load == "Nx":
+                    plt.ylabel(r"$\log(N_{11,cr}^*)$")
+                else:
+                    plt.ylabel(r"$\log(N_{12,cr}^*)$")
 
                 plt.savefig(os.path.join(GP_folder, f"2d-gamma-model_xi{ixi}_zeta{izeta}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}")
@@ -738,7 +774,7 @@ if args.plotmodel:
                             "o",
                             color=colors[izeta],
                             zorder=1+izeta,
-                            label=f"Lzeta in [{zeta_bin[0]:.0f},{zeta_bin[1]:.0f}]"
+                            label=r"$\log(1+10^3\zeta)" + f"\ in\ [{zeta_bin[0]:.1f},{zeta_bin[1]:.1f}" + r"]$"
                         )
 
                     # predict the models, with the same colors, no labels
@@ -767,7 +803,10 @@ if args.plotmodel:
 
                 plt.legend()
                 plt.xlabel(r"$\log{\rho_0}$")
-                plt.ylabel(r"$N_{cr}^*$")
+                if args.load == "Nx":
+                    plt.ylabel(r"$\log(N_{11,cr}^*)$")
+                else:
+                    plt.ylabel(r"$\log(N_{12,cr}^*)$")
 
                 plt.savefig(os.path.join(GP_folder, f"2d-zeta-model_xi{ixi}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, gamma = {avg_gamma:.2f}")  
@@ -809,7 +848,7 @@ if args.plotmodel:
                             "o",
                             color=colors[ixi],
                             zorder=1+ixi,
-                            label=f"Lxi in [{xi_bin[0]:.1f},{xi_bin[1]:.1f}]"
+                            label=r"$\log(1+\xi)" f"\ in\ [{xi_bin[0]:.1f},{xi_bin[1]:.1f}" + r"]$"
                         )
 
                     # plot the model now
@@ -840,7 +879,10 @@ if args.plotmodel:
 
                 plt.legend()
                 plt.xlabel(r"$\log{\rho_0}$")
-                plt.ylabel(r"$N_{cr}^*$")
+                if args.load == "Nx":
+                    plt.ylabel(r"$\log(N_{11,cr}^*)$")
+                else:
+                    plt.ylabel(r"$\log(N_{12,cr}^*)$")
 
                 plt.savefig(os.path.join(GP_folder, f"2d-xi-model_zeta{izeta}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}")  
@@ -1010,6 +1052,13 @@ hdl.close()
 # archive the data to the format of the 
 filename = "axialGP.csv" if args.load == "Nx" else "shearGP.csv"
 output_csv = "../archived_models/" + filename
+
+# remove the previous csv file if it exits
+# assume on serial here
+if os.path.exists(output_csv):
+    os.remove(output_csv)
+
+
 # [log(xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
 dataframe_dict = {
     "log(xi)" : X_train[:,0],
