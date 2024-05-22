@@ -36,8 +36,9 @@ stiff_df = pd.read_csv(stiffened_csv)
 
 X = stiff_df[["xi", "rho_0", "zeta", "gamma", "lambda_star"]].to_numpy()
 pred_type = stiff_df["pred_type"].to_numpy()
-pred_mask = pred_type == "global"
-X = X[pred_mask,:]
+if args.load == "Nx":
+    pred_mask = pred_type == "global"
+    X = X[pred_mask,:]
 
 # convert xi to log(1+xi)
 X[:,0] += 1.0
@@ -59,14 +60,13 @@ Y_stiff = X[:,4:]
 X_stiff = X[:,:4]
 
 unstiffened_csv = os.path.join(data_folder, args.load + "_unstiffened.csv")
-unstiff_df = pd.read_csv(unstiffened_csv, skiprows=1)
+unstiff_df = pd.read_csv(unstiffened_csv)#, skiprows=1)
+
+# print(f"unstiff df = {unstiff_df}")
 
 X_unstiff = unstiff_df[["x0", "x1", "x2"]].to_numpy()
 n_unstiff = X_unstiff.shape[0]
 Y_unstiff = unstiff_df["y"].to_numpy().reshape((n_unstiff,1))
-
-# change unstiff data to log(1+xi)
-X_unstiff[:,0] = np.log(1.0 + np.exp(X_unstiff[:,0]))
 
 # add gamma=0 parameter to the unstiff data
 # assume gamma=0 is approx exp(-6) => -6 log scale
@@ -78,11 +78,11 @@ Y_combined = np.concatenate([Y_unstiff, Y_stiff], axis=0)
 
 # make a new dataframe and csv file in the reg data folder
 new_df_dict = {
-    "log(xi)" : list(X_combined[:,0]),
+    "log(1+xi)" : list(X_combined[:,0]),
     "log(rho_0)" : list(X_combined[:,1]),
     "log(1+10^3*zeta)" : list(X_combined[:,2]),
     "log(1+gamma)" : list(X_combined[:,3]),
     "log(lam_star)" : list(Y_combined[:,0]),
 }
 df = pd.DataFrame(new_df_dict)
-df.to_csv("data/Nx_stiffened.csv")
+df.to_csv(f"data/{args.load}_stiffened.csv")
