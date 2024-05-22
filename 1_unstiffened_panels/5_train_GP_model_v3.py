@@ -46,15 +46,17 @@ print(f"Monte Carlo #data = {X.shape[0]}")
 N_data = X.shape[0]
 
 n_train = int(0.9 * N_data)
+# n_train = 100
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
 slender_bins = [
-    [10.0, 20.0],
-    [20.0, 50.0],
-    [50.0, 100.0],
-    [100.0, 200.0],
-]  # [5.0, 10.0],
+    [0.0, 0.6],
+    [0.6, 1.0],
+    [1.0, 2.0],
+    [2.0, 3.0],
+    [3.0, 4.5],
+]
 Dstar_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(7)]
 # added smaller and larger bins here cause we miss some of the outliers near the higher a0/b0 with less data
 aff_AR_bins = (
@@ -68,8 +70,8 @@ _plot = True
 _plot_Dstar_2d = False
 _plot_slender_2d = False
 _plot_3d = True
-_plot_model_fit = True
-_plot_model_fit_xi = True
+_plot_model_fit = False
+_plot_model_fit_xi = False
 
 # make a folder for the model fitting
 plots_folder = os.path.join(os.getcwd(), "plots")
@@ -460,7 +462,8 @@ if _plot:
         # plot the 3D version of the GP curve for each slenderness value
         # iterate over the different slender,D* bins
         for ibin, bin in enumerate(slender_bins):
-            slender_bin = [np.log(bin[0]), np.log(bin[1])]
+            # slender_bin = [np.log(bin[0]), np.log(bin[1])]
+            slender_bin = bin
             avg_log_slender = 0.5 * (slender_bin[0] + slender_bin[1])
             mask1 = np.logical_and(slender_bin[0] <= X[:, 2], X[:, 2] <= slender_bin[1])
             if np.sum(mask1) == 0:
@@ -471,7 +474,7 @@ if _plot:
 
             # plot data in certain range of the training set
             for iDstar, Dstar_bin in enumerate(Dstar_bins):
-                log_Dstar_bin = np.log(np.array(Dstar_bin))
+                log_Dstar_bin = np.log(1.0 + np.array(Dstar_bin))
                 mask2 = np.logical_and(
                     log_Dstar_bin[0] <= X[:, 0], X[:, 0] <= log_Dstar_bin[1]
                 )
@@ -495,7 +498,7 @@ if _plot:
             X_plot_mesh = np.zeros((30, 100))
             X_plot = np.zeros((n_plot, 3))
             ct = 0
-            Dstar_vec = np.log(np.linspace(0.25, 1.75, 30))
+            Dstar_vec = np.log(1.0+np.linspace(0.25, 1.75, 30))
             AR_vec = np.log(np.linspace(0.1, 10.0, 100))
             for iDstar in range(30):
                 for iAR in range(100):
@@ -541,14 +544,14 @@ if _plot:
             )
 
             # save the figure
-            ax.set_xlabel(r"$\log(\xi)$")
+            ax.set_xlabel(r"$\log(1+\xi)$")
             ax.set_ylabel(r"$log(\rho_0)$")
-            ax.set_zlabel(r"$log(\lambda_{min}^*)$")
+            ax.set_zlabel(r"$log(N_{11,cr}^*)$")
             ax.set_ylim3d(np.log(0.1), np.log(10.0))
             ax.set_zlim3d(0.0, np.log(30.0))
             ax.view_init(elev=20, azim=20, roll=0)
             plt.gca().invert_xaxis()
-            plt.title(f"b/h in [{bin[0]},{bin[1]}]")
+            # plt.title(f"b/h in [{bin[0]},{bin[1]}]")
             # plt.show()
             plt.savefig(os.path.join(GP_folder, f"3d-slender-{ibin}.png"), dpi=400)
             plt.close("3d-GP")

@@ -148,5 +148,8 @@ if args.case in [5, 8]:
     plt.ylim(-7, 7)
 
 plt.savefig(
+    f"kernel-demo{args.case}.svg", dpi=400, bbox_inches="tight", pad_inches=0.02
+)
+plt.savefig(
     f"kernel-demo{args.case}.png", dpi=400, bbox_inches="tight", pad_inches=0.02
 )
