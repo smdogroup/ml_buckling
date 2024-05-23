@@ -13,9 +13,15 @@ import os, argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=4)
 parent_parser.add_argument("--hotstart", type=bool, default=False)
+parent_parser.add_argument("--useML", type=bool, default=False)
 args = parent_parser.parse_args()
 
-from _closed_form_callback import closed_form_callback
+if args.useML:
+    from _gp_callback import GP_callback as callback
+    model_name = "ML-panel"
+else:
+    from _closed_form_callback import closed_form_callback as callback
+    model_name = "CF-panel"
 
 comm = MPI.COMM_WORLD
 
@@ -24,7 +30,7 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 # F2F MODEL and SHAPE MODELS
 # ----------------------------------------
 
-f2f_model = FUNtoFEMmodel("oneway-panel")
+f2f_model = FUNtoFEMmodel(model_name)
 
 # BODIES AND STRUCT DVs
 # -------------------------------------------------
@@ -95,7 +101,7 @@ solvers.structural = TacsSteadyInterface.create_from_bdf(
     nprocs=args.procs,
     bdf_file="_plate.bdf",
     prefix="_struct", # baseline file path is current so empty string
-    callback=closed_form_callback,
+    callback=callback,
     panel_length_dv_index=0,
     panel_width_dv_index=5,
 )
@@ -145,7 +151,7 @@ if test_derivatives:  # test using the finite difference test
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-design_out_file = os.path.join(base_dir, "design", "sizing.txt")
+design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
 
 design_folder = os.path.join(base_dir, "design")
 if not os.path.exists(design_folder) and comm.rank == 0:
@@ -186,7 +192,7 @@ snoptimizer = SNOPT(
         "Minor iterations limit": 150000000,
         "Iterations limit": 100000000,
         # "Major step limit": 5e-2,
-        "Nonderivative linesearch": None,
+        "Nonderivative linesearch": True, # turns off nonderivative linesearches
         "Linesearch tolerance": 0.9,
         "Difference interval": 1e-6,
         "Function precision": 1e-10,

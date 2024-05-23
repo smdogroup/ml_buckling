@@ -1,25 +1,31 @@
 __all__ = [
-    "gp_callback",
+    "GP_callback",
 ]
 
 """
 Define the TACS constitutive and element objects in the structural analysis.
-Also setup the GPBladeConstitutive object to use closed-form solutions not the GP models in this
+Also setup the GPBladeConstitutive object to use GP ML models here for the buckling constraints
 
 Author: Sean Engelstad
 """
 
 from tacs import elements, constitutive, TACS
 import numpy as np
+import ml_buckling as mlb
 
 dtype = TACS.dtype
 
+
+# build the axial and shear GPs, don't use a GP for stiffener crippling
+print(f"make axial and shearGP here")
+axialGP = constitutive.AxialGP.from_csv(csv_file=mlb.archived_model_files.axialGP_csv)
+shearGP = constitutive.ShearGP.from_csv(csv_file=mlb.archived_model_files.shearGP_csv)
 
 # ==============================================================================
 # Element callback function
 # ==============================================================================
 
-def gp_callback(
+def GP_callback(
     dvNum, compID, compDescript, elemDescripts, specialDVs, **kwargs
 ):
 
@@ -65,6 +71,7 @@ def gp_callback(
     # TBD can add panel and stifener ply fractions to the DVs
 
     # don't put in any GP models (so using closed-form solutions rn)
+    print(f"make con object with axial GP and shearGP", flush=True)
     con = constitutive.GPBladeStiffenedShellConstitutive(
         panelPly=ortho_ply,
         stiffenerPly=ortho_ply,
@@ -85,6 +92,8 @@ def gp_callback(
         stiffenerHeightNum=dvNum+3,
         stiffenerThickNum=dvNum+4,
         panelWidthNum=dvNum+5,
+        axialGP=axialGP,
+        shearGP=shearGP
     )
     # Set the KS weight really low so that all failure modes make a
     # significant contribution to the failure function derivatives
