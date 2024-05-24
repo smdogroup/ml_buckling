@@ -295,12 +295,12 @@ if test_derivatives:  # test using the finite difference test
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-design_out_file = os.path.join(base_dir, "design", "sizing.txt")
+design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
 
 design_folder = os.path.join(base_dir, "design")
 if not os.path.exists(design_folder) and comm.rank == 0:
     os.mkdir(design_folder)
-history_file = os.path.join(design_folder, "sizing.hst")
+history_file = os.path.join(design_folder, "ML-sizing.hst" if args.useML else "CF-sizing.hst")
 store_history_file = history_file if store_history else None
 hot_start_file = history_file if hot_start else None
 
@@ -334,13 +334,16 @@ snoptimizer = SNOPT(
         "Major iterations limit": 1000,
         "Minor iterations limit": 150000000,
         "Iterations limit": 100000000,
-        # "Major step limit": 5e-2, # need this off I think (but this maybe could be on)
+        # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
         "Nonderivative linesearch": True, # turns off derivative linesearch
         "Linesearch tolerance": 0.9,
         "Difference interval": 1e-6,
         "Function precision": 1e-10,
         "New superbasics limit": 2000,
-        # "Penalty parameter": 1, # need this off otherwise really slow opt
+        "Penalty parameter": 1e-2, # had this off for faster opt in the single panel case
+        # however ksfailure becomes too large with this off. W/ on merit function goes down too slowly though
+        # try intermediate value btw 0 and 1 (smaller penalty)
+        # this may be the most important switch to change for opt performance w/ ksfailure in the opt
         "Scale option": 1,
         "Hessian updates": 40,
         "Print file": os.path.join("SNOPT_print.out"),
