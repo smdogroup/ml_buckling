@@ -17,7 +17,8 @@ parent_parser.add_argument("--useML", type=bool, default=False)
 args = parent_parser.parse_args()
 
 if args.useML:
-    from _gp_callback import GP_callback as callback
+    from _gp_callback import gp_callback_generator
+    callback = gp_callback_generator(["panel"])
     model_name = "ML-panel"
 else:
     from _closed_form_callback import closed_form_callback as callback

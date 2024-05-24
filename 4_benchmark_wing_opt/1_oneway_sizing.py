@@ -9,10 +9,6 @@ from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
 
-# script inputs
-hot_start = False
-store_history = True
-
 # import openmdao.api as om
 from funtofem import *
 from mpi4py import MPI
@@ -26,7 +22,7 @@ parent_parser.add_argument("--useML", type=bool, default=False)
 args = parent_parser.parse_args()
 
 if args.useML:
-    from _gp_callback import GP_callback as callback
+    from _gp_callback import gp_callback_generator
     model_name = "ML-oneway"
 else:
     from _closed_form_callback import closed_form_callback as callback
@@ -93,6 +89,10 @@ component_groups = [f"rib{irib}" for irib in range(1, nribs + 1)]
 for prefix in ["spLE", "spTE", "uOML", "lOML"]:
     component_groups += [f"{prefix}{iOML}" for iOML in range(1, nOML + 1)]
 component_groups = sorted(component_groups)
+
+# now that you have the list of tacs components, you can build the custom gp callback if using ML case
+if args.useML:
+    callback = gp_callback_generator(component_groups)
 
 for icomp, comp in enumerate(component_groups):
     caps2tacs.CompositeProperty.null(comp, null_material).register_to(tacs_model)
@@ -243,26 +243,6 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
     init_transfer=True,
 )
 
-# print out the two meshes here and compare them..
-# import matplotlib.pyplot as plt
-# fig = plt.figure()
-# ax = fig.add_subplot(projection='3d')
-
-# # For each set of style and range settings, plot n random points in the box
-# # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
-# ax.scatter(
-#     wing.struct_X[0::3].astype(np.double),
-#     wing.struct_X[1::3].astype(np.double),
-#     wing.struct_X[2::3].astype(np.double),
-# )
-# ax.scatter(
-#     wing.aero_X[0::3].astype(np.double),
-#     wing.aero_X[1::3].astype(np.double),
-#     wing.aero_X[2::3].astype(np.double),
-# )
-# plt.show()
-# exit()
-
 test_derivatives = False
 if test_derivatives:  # test using the finite difference test
     # load the previous design
@@ -301,8 +281,6 @@ design_folder = os.path.join(base_dir, "design")
 if not os.path.exists(design_folder) and comm.rank == 0:
     os.mkdir(design_folder)
 history_file = os.path.join(design_folder, "ML-sizing.hst" if args.useML else "CF-sizing.hst")
-store_history_file = history_file if store_history else None
-hot_start_file = history_file if hot_start else None
 
 # reload previous design
 # not needed since we are hot starting
@@ -311,9 +289,9 @@ hot_start_file = history_file if hot_start else None
 manager = OptimizationManager(
     tacs_driver,
     design_out_file=design_out_file,
-    hot_start=hot_start,
+    hot_start=args.hotstart,
     debug=True,
-    hot_start_file=hot_start_file,
+    hot_start_file=history_file,
     sparse=True,
 )
 
@@ -344,6 +322,8 @@ snoptimizer = SNOPT(
         # however ksfailure becomes too large with this off. W/ on merit function goes down too slowly though
         # try intermediate value btw 0 and 1 (smaller penalty)
         # this may be the most important switch to change for opt performance w/ ksfailure in the opt
+        # TODO : could try higher penalty parameter like 50 or higher and see if that helps reduce iteration count..
+        #   because it often increases the penalty parameter a lot near the optimal solution anyways
         "Scale option": 1,
         "Hessian updates": 40,
         "Print file": os.path.join("SNOPT_print.out"),
@@ -354,8 +334,8 @@ snoptimizer = SNOPT(
 sol = snoptimizer(
     opt_problem,
     sens=manager.eval_gradients,
-    storeHistory=store_history_file,
-    hotStart=hot_start_file,
+    storeHistory=history_file, #None
+    hotStart=history_file if args.hotstart else None,
 )
 
 # print final solution
