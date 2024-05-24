@@ -1,0 +1,6 @@
+*.txt
+*.dat
+*.bdf
+*.in
+*.sens
+tacs/

@@ -1,0 +1,97 @@
+
+interface rootChord in 5.0
+interface tipChord in 1.5
+interface halfSpan in 14.0
+interface tipOffset in 7.5
+
+interface nStations in 9
+
+interface twist1 in 0
+interface twist2 in 0
+interface twist3 in 0
+interface twist4 in 0
+interface twist5 in 0
+interface twist6 in 0
+interface twist7 in 0
+interface twist8 in 0
+interface twist9 in 0
+
+interface thickFactor0 in 1
+interface thickFactor1 in 1
+interface thickFactor2 in 1
+interface thickFactor3 in 1
+interface thickFactor4 in 1
+interface thickFactor5 in 1
+interface thickFactor6 in 1
+interface thickFactor7 in 1
+interface thickFactor8 in 1
+interface thickFactor9 in 1
+
+set dcdy (tipChord-rootChord)/halfSpan
+set dxdy (tipOffset)/halfSpan
+
+mark
+
+# Make the RAE2822 airfoil section
+#udprim $/fitCurve1
+#rotatex 90 0 0
+udprim $/airfoil teChop 0.03
+store baseAirfoil
+
+# Station 0 (root)
+restore baseAirfoil
+scale 5.0
+store rootAirfoil
+restore rootAirfoil
+
+patbeg iStation nStations
+    set fr iStation/nStations
+    set dy fr*halfSpan
+    set dx dxdy*dy
+    set c rootChord+dcdy*dy
+    set iTwist str2val(!$twist+iStation)
+
+    restore baseAirfoil
+    scale c
+    rotatey -iTwist 0 0
+    translate dx dy 0
+patend
+
+#blend 0 -1;0.75
+blend
+  ATTRIBUTE _name       $Wing
+  ATTRIBUTE  tagComp    $Wing
+  ATTRIBUTE  capsBound  $Wing
+
+select face 1
+  attribute tagComp1 $upperSurface
+
+select face 2
+  attribute tagComp1 $lowerSurface
+
+select face 3
+  attribute tagComp1 $teSurface
+
+select face 4
+  attribute tagComp1 $rootSurface
+
+select face 5
+  attribute tagComp1 $tipSurface
+
+select edge 3
+  attribute tagEdge $leEdge
+
+select edge 1
+  attribute tagEdge $teUp
+
+select edge 6
+  attribute tagEdge $teLow
+
+select edge 8
+  attribute tagEdge $teRoot
+
+select edge 9
+  attribute tagEdge $teTip
+
+end
+||||||||||||||||||||||||||

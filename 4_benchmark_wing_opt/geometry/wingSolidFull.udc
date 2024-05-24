@@ -1,0 +1,42 @@
+interface rootChord in 5.0
+interface tipChord in 1.5
+interface halfSpan in 14.0
+interface tipOffset in 7.5
+
+interface nStations in 9
+
+interface twist1 in 0
+interface twist2 in 0
+interface twist3 in 0
+interface twist4 in 0
+interface twist5 in 0
+interface twist6 in 0
+interface twist7 in 0
+interface twist8 in 0
+interface twist9 in 0
+
+udparg $/wingSolid rootChord rootChord tipChord tipChord halfSpan halfSpan tipOffset tipOffset
+udparg $/wingSolid nStations nStations
+udparg $/wingSolid twist1 twist1 twist2 twist2 twist3 twist3 twist4 twist4
+udprim $/wingSolid twist5 twist5 twist6 twist6 twist7 twist7 twist8 twist8 twist9 twist9
+
+select face
+  attribute tagSide $starboard
+
+store wingSolidStar
+restore wingSolidStar
+mirror 0 -1 0
+
+select face
+  attribute tagSide $port
+
+restore wingSolidStar
+union
+
+udprim editAttr filename <<
+  EDGE ADJ2FACE tagSide=port
+  AND ADJ2FACE tagSide=starboard
+  SET tagComp2=rootEdge
+>>
+
+end

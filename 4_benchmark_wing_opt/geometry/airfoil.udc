@@ -1,0 +1,13 @@
+interface teChop in 0.02
+
+# Make the RAE2822 airfoil section
+udprim $/fitCurve1
+rotatex 90 0 0
+store baseAirfoil
+
+restore baseAirfoil
+box 1-teChop -0.1 -1 1 0.2 2
+subtract
+
+end
+||

@@ -1,0 +1,98 @@
+# Generate wing aerodynamic component
+
+interface rootChord in 5.0
+interface tipChord in 1.5
+interface halfSpan in 14.0
+interface tipOffset in 7.5
+
+interface twist1 in 0
+interface twist2 in 0
+interface twist3 in 0
+interface twist4 in 0
+interface twist5 in 0
+interface twist6 in 0
+interface twist7 in 0
+interface twist8 in 0
+interface twist9 in 0
+
+set xFarfield 150
+
+# Make the full wing solid
+udparg $/wingSolid rootChord rootChord tipChord tipChord halfSpan halfSpan tipOffset tipOffset
+udparg $/wingSolid twist1 twist1 twist2 twist2 twist3 twist3 twist4 twist4
+udprim $/wingSolid twist5 twist5 twist6 twist6 twist7 twist7 twist8 twist8 twist9 twist9
+store wingSolid
+
+
+box -xFarfield 0 -xFarfield 2*xFarfield xFarfield 2*xFarfield
+select face
+  attribute tagComp $farfield
+select face 3
+  attribute tagComp $symmetry
+
+restore wingSolid
+
+subtract
+
+udprim editAttr filename <<
+  EDGE ADJ2FACE tagComp1=upperSurface
+  AND ADJ2FACE tagComp=symmetry
+  SET tagComp=rootUpperEdge
+  SET capsMesh=rootUpperEdgeMesh
+
+  EDGE ADJ2FACE tagComp1=lowerSurface
+  AND ADJ2FACE tagComp=symmetry
+  SET tagComp=rootlowerEdge
+  SET capsMesh=rootLowerEdgeMesh
+
+  EDGE ADJ2FACE tagComp1=upperSurface
+  AND ADJ2FACE tagComp1=tipSurface
+  SET tagComp=tipUpperEdge
+  SET capsMesh=tipUpperEdgeMesh
+
+  EDGE ADJ2FACE tagComp1=lowerSurface
+  AND ADJ2FACE tagComp1=tipSurface
+  SET tagComp=tiplowerEdge
+  SET capsMesh=tipLowerEdgeMesh
+>>
+
+select face $tagComp1 $tipSurface
+  attribute capsMesh $tipMesh
+  attribute capsGroup $wing
+  attribute AFLR4_CMP_ID 1
+  attribute AFLR_GBC $-STD_UG3_GBC
+
+select face $tagComp1 $upperSurface
+select add $tagComp1 $lowerSurface
+  attribute capsMesh $wingMesh
+  attribute capsGroup $wing
+  attribute AFLR4_CMP_ID 1
+  attribute AFLR_GBC $-STD_UG3_GBC
+
+select face $tagComp $farfield
+  attribute capsMesh $farfieldMesh
+  attribute capsGroup $farfield
+  attribute AFLR_GBC $FARFIELD_UG3_GBC
+  attribute AFLR4_CMP_ID 3
+  attribute AFLR4_Scale_Factor 10.0
+
+select face $tagComp $symmetry
+  attribute capsMesh $symmetryMesh
+  attribute capsGroup $symmetry
+  attribute AFLR4_CMP_ID 2
+  attribute AFLR_GBC $BL_INT_UG3_GBC
+
+select edge $tagEdge $teEdge
+  attribute capsMesh $teEdgeMesh
+
+select edge $tagEdge $leEdge
+  attribute capsMesh $leEdgeMesh
+
+
+select body
+  attribute capsAIM $fun3dAIM;aflr3AIM;egadsTessAIM;aflr4AIM
+  attribute capsMeshLength 1.0
+
+end
+|
+||||||||||||||||
