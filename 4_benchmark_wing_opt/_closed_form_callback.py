@@ -25,21 +25,18 @@ def closed_form_callback(
 
     # Create the orthotropic layup
     ortho_prop = constitutive.MaterialProperties(
-        rho=1550,
-        specific_heat=921.096,
-        E1=54e3,
-        E2=18e3,
-        nu12=0.25,
-        G12=9e3,
-        G13=9e3,
-        G23=9e3,
-        Xt=2410.0,
-        Xc=1040.0,
-        Yt=73.0,
-        Yc=173.0,
-        S12=71.0,
-        alpha=24.0e-6,
-        kappa=230.0,
+        rho=1.55e3,  # density kg/m^3
+        E1=117.9e9, # Young's modulus in 11 direction (Pa)
+        E2=9.7e9, # Young's modulus in 22 direction (Pa)
+        G12=4.8e9, # in-plane 1-2 shear modulus (Pa)
+        G13=4.8e9, # Transverse 1-3 shear modulus (Pa)
+        G23=4.8e9, # Transverse 2-3 shear modulus (Pa)
+        nu12=0.35,  # 1-2 poisson's ratio
+        T1=1648e6,  # Tensile strength in 1 direction (Pa)
+        C1=1034e6,  # Compressive strength in 1 direction (Pa)
+        T2=64e6,  # Tensile strength in 2 direction (Pa)
+        C2=228e6,  # Compressive strength in 2 direction (Pa)
+        S12=71e6,  # Shear strength direction (Pa)
     )
     ortho_ply = constitutive.OrthotropicPly(1.0, ortho_prop)
 
@@ -49,7 +46,7 @@ def closed_form_callback(
         panelPlyFractions = np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0
         refAxis = np.array([0.34968083, 0.93686889, 0.0])
     else:
-        plyAngles = sparRibPlyAngles = np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype))
+        plyAngles = np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype))
         panelPlyFractions = np.array([10.0, 35.0, 35.0, 20.0], dtype=dtype) / 100.0
         refAxis = np.array([0.0, 0.0, 1.0])
 

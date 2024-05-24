@@ -117,8 +117,7 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     # panel thickness variable, shortened DV name for ESP/CAPS, nastran requirement here
-    panel_thickness = 0.02
-    Variable.structural(f"{comp}-T", value=panel_thickness).set_bounds(
+    Variable.structural(f"{comp}-T", value=0.02).set_bounds(
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
@@ -229,17 +228,10 @@ solvers.structural = TacsSteadyInterface.create_from_bdf(
     panel_width_dv_index=5,
 )
 
-# remove these panel length composite functions from the model
-# ncomp = len(f2f_model.composite_functions)
-# nkeep = ncomp - npanel_func
-# f2f_model.composite_functions = f2f_model.composite_functions[:nkeep]
-
-# exit()
-
 # read in aero loads
 aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_turb_loads.txt")
 
-transfer_settings = TransferSettings(npts=200)
+transfer_settings = TransferSettings(npts=50, beta=0.1)
 
 # build the shape driver from the file
 tacs_driver = OnewayStructDriver.prime_loads_from_file(
@@ -248,7 +240,28 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
     model=f2f_model,
     nprocs=args.procs,
     transfer_settings=transfer_settings,
+    init_transfer=True,
 )
+
+# print out the two meshes here and compare them..
+# import matplotlib.pyplot as plt
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
+
+# # For each set of style and range settings, plot n random points in the box
+# # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
+# ax.scatter(
+#     wing.struct_X[0::3].astype(np.double),
+#     wing.struct_X[1::3].astype(np.double),
+#     wing.struct_X[2::3].astype(np.double),
+# )
+# ax.scatter(
+#     wing.aero_X[0::3].astype(np.double),
+#     wing.aero_X[1::3].astype(np.double),
+#     wing.aero_X[2::3].astype(np.double),
+# )
+# plt.show()
+# exit()
 
 test_derivatives = False
 if test_derivatives:  # test using the finite difference test

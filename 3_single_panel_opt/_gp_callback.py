@@ -33,7 +33,8 @@ def GP_callback(
     ortho_prop = constitutive.MaterialProperties(
         rho=1550,
         specific_heat=921.096,
-        E1=54e3,
+        E1=54e3, # replace these values with more realistic
+        # these values came from unittest script
         E2=18e3,
         nu12=0.25,
         G12=9e3,
