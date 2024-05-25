@@ -30,8 +30,8 @@ flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
 )
 
 flat_plate.generate_bdf(
-    nx=int(100*args.AR),
-    ny=100,
+    nx=int(30*args.AR),
+    ny=30,
     exx=flat_plate.affine_exx if args.load == "Nx" else 0.0,
     eyy=0.0,
     exy=flat_plate.affine_exy if args.load == "Nxy" else 0.0,
