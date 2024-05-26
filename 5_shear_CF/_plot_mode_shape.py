@@ -1,11 +1,11 @@
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib import cm
 import argparse
-import os
+import os, math
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--case", type=int, default=1)
-parent_parser.add_argument("--AR", type=float, default=1.0)
+parent_parser.add_argument("--AR", type=float, default=2.0)
 
 args = parent_parser.parse_args()
 
@@ -17,8 +17,10 @@ a = b * args.AR
 m1 = 1 # one orthogonal mode
 
 A = 1.0
-lam1 = a / m1
-lam1 = 2.0
+m1 = math.ceil(args.AR)
+lam1 = 2.0 * a / m1
+print(f"lam1 = {lam1}")
+# lam1 = 2.0
 lam2 = 1.0 # probably not actually 1.0 (eqn for this)
 
 # make 3d plot
@@ -101,6 +103,19 @@ elif args.case == 6:
     ny = 4.0
     W *= np.power(np.sin(np.pi * X1 / a), 2.0/nx)
     W *= np.power(np.sin(np.pi * X2 / b), 2.0/ny)
+
+if args.case == 7:
+    m1 = math.ceil(args.AR) # really ceil(rho0)
+    print(f"m1 = {m1}")
+    # technically min m1 slightly differs
+    lam1 = a / m1
+
+    W = 0.5 * np.sin(np.pi * (X1 - lam2 * X2 - lam1 / 2.0) / lam1)
+    W *= np.sin(np.pi * X1 / lam1)**2 
+    W *= np.sin(np.pi * X2 / b)**2 # X2**2 might be optional TBD on that (but might make it more accurate with 2 half-waves in 2-direction for instance subcase)
+
+# TODO : add case 7 here for debugging and trying new things with AR = 2.0 case..
+# compare to the actual modes..
 
 # now multiply by a super ellipse
 # n = 4.0 # higher order makes it more box-like
