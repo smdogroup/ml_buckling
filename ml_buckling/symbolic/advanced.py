@@ -213,6 +213,10 @@ class SymbolGroup:
         num = Fraction.cast(num)
         return cls(float=num, letters=[], exponents=[])
     
+    @classmethod
+    def Pi(cls):
+        return cls(float=1, letters=["Pi"], exponents=[1])
+    
     def derivative(self, letter, order=1):
         # sparse derivatives since only one letter can match (this is good)
         # no N terms or something
@@ -361,6 +365,10 @@ class DualSin:
         else:
             # recursive call for higher order derivatives
             return first_deriv.derivative(sym,order-1)
+        
+    def integral(self, symbol, lower, upper):
+        # this is a definite integral of the sine expression
+        pass
         
     @property
     def simplify(self):

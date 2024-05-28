@@ -96,6 +96,21 @@ class TestAdvanced(unittest.TestCase):
         print(f"sine = {mysine}")
         print(f"deriv = {mysine.derivative("x1").simplify}")
 
+    def test_sine_integral(self):
+        print("\ntest sine integral")
+        # sin(pi*x1) integrated
+        mysine = mlb.DualSin(
+            arg1=mlb.SymbolGroup.from_symbols([
+                mlb.Symbol("Pi")
+            ]), # x1 coeff
+            arg2=mlb.SymbolGroup.zero()
+        )
+        # want to eval integral at two periodic locations
+
+        # integral = mysine.
+        print(f"sine = {mysine}")
+        print(f"deriv = {mysine.derivative("x1").simplify}")
+
     def test_mode_shape3(self):
         # test multiplying the full mode shape together for w
         # and then differentiating twice
@@ -103,14 +118,14 @@ class TestAdvanced(unittest.TestCase):
 
         # again not the prettiest code (but we want functionality here)
 
-        # factor 1 = 0.5 * np.sin(np.pi * (X1 - lam2 * X2 - lam1 / 2.0) / lam1)
+        # factor 1 = 0.5 * np.sin(pi * (X1 - lam2 * X2) *m/a - pi/2) where m is positive integer
         mysine = mlb.DualSin(
             arg1=mlb.SymbolGroup.from_symbols([
-                mlb.Symbol("Pi"), mlb.Symbol("lam1", exponent=-1)
+                mlb.Symbol("Pi"), mlb.Symbol("a", exponent=-1), mlb.Symbol("m")
             ]), # x1 coeff
             arg2=mlb.SymbolGroup.from_symbols([
-                mlb.Symbol("Pi", float=-1), mlb.Symbol("lam2"),
-                mlb.Symbol("lam1", exponent=-1)
+                mlb.Symbol("Pi", float=-1), mlb.Symbol("lam2"), 
+                mlb.Symbol("a", exponent=-1), mlb.Symbol("m")
             ]), # x2 coeff
             const=mlb.SymbolGroup.from_symbols([
                 mlb.Symbol("Pi", float=mlb.Fraction(-1,2)),
@@ -197,11 +212,54 @@ class TestAdvanced(unittest.TestCase):
         print(f"deriv = {deriv}")
         print(f"simplified = {deriv.simplify}")
 
+    def test_orig_mode_shape(self):
+        # test multiplying the full mode shape together for w
+        # and then differentiating twice
+        print("\ntest orig mode shape")
+
+        # again not the prettiest code (but we want functionality here)
+
+        # factor 1 = 0.5 * np.sin(np.pi * (X1 - lam2 * X2 - lam1 / 2.0) / lam1)
+        mysine = mlb.DualSin(
+            arg1=mlb.SymbolGroup.from_symbols([
+                mlb.Symbol("Pi"), mlb.Symbol("lam1", exponent=-1)
+            ]), # x1 coeff
+            arg2=mlb.SymbolGroup.from_symbols([
+                mlb.Symbol("Pi", float=-1), mlb.Symbol("lam2"),
+                mlb.Symbol("lam1", exponent=-1)
+            ]), # x2 coeff
+            const=mlb.SymbolGroup.from_symbols([
+                mlb.Symbol("Pi", float=mlb.Fraction(-1,2)),
+            ]), # const term
+            coeff=None # if None defaults to 1 SymbolGroup
+        )     
+        print(f"step 1 : " + str(mysine)) 
+
+        # factor 2 = np.sin(np.pi * X1 / a)
+        w = mysine * mlb.DualSin(
+            arg1=mlb.SymbolGroup.zero(),
+            arg2=mlb.SymbolGroup.from_symbols([
+                mlb.Symbol("Pi"), mlb.Symbol("b", exponent=-1)
+            ]),
+        )
+        print(f"step 3 : " + str(w)) 
+        w = w.simplify # this is the main mode shape now
+        print(f"\nstep 4 : " + str(w)) 
+
+        # now differentiate it twice
+        print("\nnow differentiate twice::")
+        w1 = w.derivative("x1")
+        w1 = w1.simplify
+        print(f"\nd/dx1(w) = {w1}")
+        
+        w11 = w1.derivative("x1").simplify
+        print(f"\nd^2/dx1^2(w) = {w11}")
 
 
 if __name__=="__main__":
     # unittest.main()
     tester = TestAdvanced()
     tester.test_mode_shape3()
+    # tester.test_orig_mode_shape()
     # tester.test_common_factor()
     # tester.test_deriv_add_group()
