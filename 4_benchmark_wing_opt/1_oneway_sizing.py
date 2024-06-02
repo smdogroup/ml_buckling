@@ -16,7 +16,7 @@ from tacs import caps2tacs
 import os
 
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--procs", type=int, default=4)
+parent_parser.add_argument("--procs", type=int, default=6)
 parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
 args = parent_parser.parse_args()
@@ -309,7 +309,7 @@ snoptimizer = SNOPT(
         "Major feasibility tolerance": 1e-6,
         "Major optimality tolerance": 1e-6,
         "Verify level": 0,
-        "Major iterations limit": 1000,
+        "Major iterations limit": 4000,
         "Minor iterations limit": 150000000,
         "Iterations limit": 100000000,
         # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)

@@ -5,7 +5,7 @@ from tacs import pyTACS, constitutive, elements, utilities
 import os
 from pprint import pprint
 from .composite_material_utility import CompositeMaterialUtility
-from typing_extensions import Self
+#from typing_extensions import Self
 
 dtype = utilities.BaseUI.dtype
 
@@ -70,7 +70,7 @@ class UnstiffenedPlateAnalysis:
 
     @classmethod
     def mac_permutation(
-        cls, nominal_plate: Self, new_plate: Self, num_modes: int
+        cls, nominal_plate, new_plate, num_modes: int
     ) -> dict:
         """
         compute the permutation of modes in the new plate that correspond to the modes in the nominal plate
