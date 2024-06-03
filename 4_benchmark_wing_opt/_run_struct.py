@@ -5,7 +5,7 @@ Local machine optimization for the panel thicknesses using nribs-1 OML panels an
 """
 
 import time
-from pyoptsparse import SNOPT, Optimization
+#from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
 
@@ -17,7 +17,7 @@ import os
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=6)
-parent_parser.add_argument("--hotstart", type=bool, default=False)
+#parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
 args = parent_parser.parse_args()
 
@@ -214,14 +214,8 @@ for igroup, comp_group in enumerate(comp_groups):
 
         # minimum stiffener AR
         min_stiff_AR = sheight_var - 2.0 * sthick_var
-        min_stiff_AR.set_name(f"{comp_group}{icomp}-minstiffAR").optimize(
+        min_stiff_AR.set_name(f"{comp_group}{icomp}-stiffAR").optimize(
                 lower=0.0, scale=1.0, objective=False
-        ).register_to(f2f_model)
-
-        # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
-        max_stiff_AR = sheight_var - 8.0 * sthick_var
-        max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
-                upper=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
 # DISCIPLINE INTERFACES AND DRIVERS
@@ -289,67 +283,9 @@ if test_derivatives:  # test using the finite difference test
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
 design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
 
-design_folder = os.path.join(base_dir, "design")
-if not os.path.exists(design_folder) and comm.rank == 0:
-    os.mkdir(design_folder)
-history_file = os.path.join(design_folder, "ML-sizing.hst" if args.useML else "CF-sizing.hst")
-
 # reload previous design
 # not needed since we are hot starting
-# f2f_model.read_design_variables_file(comm, design_out_file)
+f2f_model.read_design_variables_file(comm, design_out_file)
 
-manager = OptimizationManager(
-    tacs_driver,
-    design_out_file=design_out_file,
-    hot_start=args.hotstart,
-    debug=True,
-    hot_start_file=history_file,
-    sparse=True,
-)
-
-# create the pyoptsparse optimization problem
-opt_problem = Optimization("gbm-sizing", manager.eval_functions)
-
-# add funtofem model variables to pyoptsparse
-manager.register_to_problem(opt_problem)
-
-# run an SNOPT optimization
-snoptimizer = SNOPT(
-    options={
-        "Print frequency": 1000,
-        "Summary frequency": 10000000,
-        "Major feasibility tolerance": 1e-6,
-        "Major optimality tolerance": 1e-6,
-        "Verify level": 0,
-        "Major iterations limit": 4000,
-        "Minor iterations limit": 150000000,
-        "Iterations limit": 100000000,
-        # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
-        "Nonderivative linesearch": True, # turns off derivative linesearch
-        "Linesearch tolerance": 0.9,
-        "Difference interval": 1e-6,
-        "Function precision": 1e-10,
-        "New superbasics limit": 2000,
-        "Penalty parameter": 1.0, # had this off for faster opt in the single panel case
-        # however ksfailure becomes too large with this off. W/ on merit function goes down too slowly though
-        # try intermediate value btw 0 and 1 (smaller penalty)
-        # this may be the most important switch to change for opt performance w/ ksfailure in the opt
-        # TODO : could try higher penalty parameter like 50 or higher and see if that helps reduce iteration count..
-        #   because it often increases the penalty parameter a lot near the optimal solution anyways
-        "Scale option": 1,
-        "Hessian updates": 40,
-        "Print file": os.path.join("SNOPT_print.out"),
-        "Summary file": os.path.join("SNOPT_summary.out"),
-    }
-)
-
-sol = snoptimizer(
-    opt_problem,
-    sens=manager.eval_gradients,
-    storeHistory=history_file, #None
-    hotStart=history_file if args.hotstart else None,
-)
-
-# print final solution
-sol_xdict = sol.xStar
-print(f"Final solution = {sol_xdict}", flush=True)
+# run a forward struct analysis
+tacs_driver.solve_forward()

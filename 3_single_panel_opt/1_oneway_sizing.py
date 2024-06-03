@@ -57,12 +57,12 @@ Variable.structural("pthick", value=0.02).set_bounds(
 ).register_to(panel)
 
 # stiffener height
-Variable.structural("sheight", value=0.05).set_bounds(
+sheight = Variable.structural("sheight", value=0.05).set_bounds(
     lower=0.002, upper=0.1, scale=10.0
 ).register_to(panel)
 
 # stiffener thickness
-Variable.structural("sthick", value=0.02).set_bounds(
+sthick = Variable.structural("sthick", value=0.02).set_bounds(
     lower=0.002, upper=0.1, scale=100.0
 ).register_to(panel)
 
@@ -90,6 +90,17 @@ Function.mass().optimize(
 ).register_to(oneway_struct)
 
 oneway_struct.register_to(f2f_model)
+
+# COMPOSITE FUNCTIONS
+# ----------------------------------------------------
+# in one design step tends to drop sheight too low too fast and stays there
+# trying out a stiffener AR min constraint, 
+#    don't need max one bc of stiffener crippling
+
+stiffARconstr = sheight - 2 * sthick
+stiffARconstr.set_name("stiffAR").optimize(
+    lower=0.0, scale=1.0, objective=False
+).register_to(f2f_model)
 
 
 # DISCIPLINE INTERFACES AND DRIVERS
@@ -215,4 +226,11 @@ sol = snoptimizer(
 
 # print final solution
 sol_xdict = sol.xStar
-print(f"Final solution = {sol_xdict}", flush=True)
+if comm.rank == 0:
+    print(f"Final solution = {sol_xdict}", flush=True)
+
+# print the sheight, sthick and stiffAR constraints and vars
+if comm.rank == 0:
+   print(f"\n\nsheight = {sheight.value}", flush=True)
+   print(f"sthick = {sthick.value}", flush=True)
+   print(f"stiffARconstr = {stiffARconstr.value}", flush=True)

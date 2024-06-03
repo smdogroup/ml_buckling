@@ -23,15 +23,12 @@ To exaggarate: have really thick stiffener (non-physically thick)
 # then the 4th and 5th modes are local buckling!
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=0.1,
-    b=0.1,
-    h=3e-3,
+    a=1.0,
+    b=1.0,
+    h=1e-2,
     num_stiff=3,
-    w_b=6e-3,
-    t_b=3e-3,
-    h_w=1e-2,
-    t_w=27
-    * 8e-2,  # if the wall thickness is too low => stiffener crimping failure happens
+    h_w=7e-2, #1e-1 worked here
+    t_w=4e-3, #1e-2 but then crippling happened
 )
 
 material = mlb.CompositeMaterial.solvay5320(ref_axis=np.array([1, 0, 0]))
@@ -46,7 +43,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 stiff_analysis.pre_analysis(
     global_mesh_size=0.03,
     exx=stiff_analysis.affine_exx,
-    exy=0.0,
+    exy=0.0, # stiff_analysis.affine_exy, #0.0
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,
