@@ -14,6 +14,7 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=4)
 parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
+parent_parser.add_argument("--testDeriv", type=bool, default=False)
 args = parent_parser.parse_args()
 
 if args.useML:
@@ -131,8 +132,7 @@ tacs_driver = OnewayStructDriver(
 )
 
 
-test_derivatives = False
-if test_derivatives:  # test using the finite difference test
+if args.testDeriv:  # test using the finite difference test
     # load the previous design
     # design_in_file = os.path.join(base_dir, "design", "sizing-oneway.txt")
     # f2f_model.read_design_variables_file(comm, design_in_file)
@@ -146,7 +146,7 @@ if test_derivatives:  # test using the finite difference test
         driver=tacs_driver,
         status_file="1-CF-derivs.txt",
         complex_mode=False,
-        epsilon=1e-4,
+        epsilon=1e-5,
     )
 
     end_time = time.time()
