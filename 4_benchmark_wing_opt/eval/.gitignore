@@ -1,0 +1,7 @@
+*.f5
+*.vtk
+*.png
+*oneway*.txt
+*.out
+*.hst
+*.svg

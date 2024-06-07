@@ -7,7 +7,7 @@ cfgpmtr symPlane 0      # Symmetry plane input (yes/no)
 cfgpmtr nribs 23
 cfgpmtr nspars 2
 cfgpmtr fullRootRib 0 # whether root rib extends all the way to wing surface
-
+cfgpmtr exploded 0 # 0 - all, 1 - uOML, 2 - intStruct, 3 - lOML
 cfgpmtr nStations 4
 
 ## DESIGN PARAMETERS
@@ -37,6 +37,7 @@ ifthen view:struct EQ 1
     udparg $/wingBoxHalf rootChord rootChord tipChord tipChord halfSpan halfSpan tipOffset tipOffset
     udparg $/wingBoxHalf nStations nStations 
     udparg $/wingBoxHalf fullRootRib fullRootRib
+    udparg $/wingBoxHalf exploded exploded
     udparg $/wingBoxHalf twist1 twist1 twist2 twist2 twist3 twist3 twist4 twist4
     udprim $/wingBoxHalf twist5 twist5 twist6 twist6 twist7 twist7 twist8 twist8 twist9 twist9
 endif

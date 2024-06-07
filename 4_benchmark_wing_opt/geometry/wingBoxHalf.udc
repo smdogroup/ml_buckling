@@ -6,7 +6,7 @@ interface halfSpan in 14.0
 interface tipOffset in 7.5
 interface fullRootRib in 1 #whether to make root rib extend to full root
 interface vol out 0 # volume
-
+interface exploded in 0
 interface nStations in 9
 
 interface twist1 in 0
@@ -265,6 +265,26 @@ udprim editAttr filename <<
 
 select face $tagComp $OML
    attribute capsLoad $OML
+
+
+ifthen exploded EQ 1
+   select face $tagComp1 $upperSurface
+   extract @sellist
+elseif exploded EQ 2
+   select face $tagComp $rib
+   select add $tagComp $sparLE
+   select add $tagComp $sparTE
+   extract @sellist
+elseif exploded EQ 3
+   select face $tagComp1 $lowerSurface
+   extract @sellist
+endif
+
+ifthen exploded NE 0
+   select edge 1
+   attribute capsConstraint $root
+endif
+
 
 select body
    attribute capsAIM $egadsTessAIM;tacsAIM
