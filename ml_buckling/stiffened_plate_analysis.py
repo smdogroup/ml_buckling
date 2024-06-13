@@ -1544,6 +1544,7 @@ class StiffenedPlateAnalysis:
                 * lam_star_global
             )
             lam_global = N11_cr_global / N11_plate
+            return lam_star_global, "global" # temp
 
             # predict the axial local mode
             lam_star_local = min(

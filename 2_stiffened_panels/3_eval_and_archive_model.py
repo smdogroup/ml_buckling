@@ -20,7 +20,8 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str)
 parent_parser.add_argument("--plotraw", type=bool, default=False)
 parent_parser.add_argument("--plotmodel", type=bool, default=False)
-parent_parser.add_argument("--kernel", type=int, default=7)
+parent_parser.add_argument("--resid", type=bool, default=False)
+parent_parser.add_argument("--kernel", type=int, default=9) #7 before..
 parent_parser.add_argument("--archive", type=bool, default=False)
 
 args = parent_parser.parse_args()
@@ -51,6 +52,9 @@ def relu(x):
 
 def soft_relu(x, rho=10):
     return 1.0 / rho * np.log(1 + np.exp(rho * x))
+
+def soft_abs(x, rho=10):
+    return 1.0 / rho * np.log(np.exp(rho*x) + np.exp(-rho*x))
 
 sigma_n = 1e-1 #1e-1 was old value
 
@@ -302,6 +306,37 @@ elif kernel_option == 8:
         
         return kernel1_1 * (kernel0 + kernel2 + kernel3) + kernel1_2 * kernel0 * kernel2 * kernel3
 
+elif kernel_option == 9:
+    # This one worked great! Captured more of the local data with a tuned value of the
+    # SE coefficient to 0.02 and the linear terms are of a different style from the 
+    # bilinear and SE part of rho0. 
+    def kernel(xp, xq, theta, debug=False):
+        # xp, xq are Nx1,Mx1 vectors (ln(1+xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
+        vec = xp - xq
+
+        d1 = vec[1]  # first two entries
+        d2 = vec[2]
+        d3 = vec[3]
+
+        BL_kernel = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
+        if debug: print(f"BL_kernel = {BL_kernel}")
+        SE_kernel = (
+            0.02
+            * np.exp(-0.5 * (d1 ** 2 / 0.2**2 ))
+            * soft_relu(1 - soft_abs(xp[1]))
+            * soft_relu(1 - soft_abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
+        )
+        if debug: print(f"SE kernel = {SE_kernel}")
+        gamma_kernel = 1.0 + 0.1 * xp[3] * xq[3]
+        if debug: print(f"gamma vals = {xp[3]}, {xq[3]}")
+        if debug: print(f"gamma kernel = {gamma_kernel}")
+        xi_kernel = 0.1 * xp[0] * xq[0]
+        if debug: print(f"xi kernel = {xi_kernel}")
+
+        inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3]) + SE_kernel + 0.1 * xp[0] * xq[0]
+        if debug: print(f"inner kernel = {inner_kernel}")
+        return inner_kernel * (1 + 0.01 * xp[2] * xq[2])
+
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
 # print bounds of the data
@@ -433,14 +468,30 @@ _plot_3d_gamma = _plot_3d
 _plot_3d_xi = _plot_3d
 _plot_3d_zeta = _plot_3d #_plot_3d
 
+def closed_form_resid(x,y):
+    if args.load == "Nx":
+        xi = np.exp(x[0]) - 1.0
+        rho0 = np.exp(x[1])
+        zeta = (np.exp(x[2])-1.0)/1000.0
+        gamma = np.exp(x[3]) - 1.0
+        N11cr = 10000.0
+        for m in range(1,51):
+            for n in range(1,11):
+                N11 = m**2 / rho0**2 * (1.0 + gamma) + rho0**2 * n**4 / m**2 + 2.0 * xi * n**2
+                if N11 < N11cr:
+                    N11cr = N11
+        return y - np.log(N11cr)
+    elif args.load == "Nxy":
+        raise AssertionError("Not written shear one yet..")
+
 # make a folder for the model fitting
 plots_folder = os.path.join(os.getcwd(), "plots")
 sub_plots_folder = os.path.join(plots_folder, csv_filename)
-GP_folder = os.path.join(sub_plots_folder, "GP")
+GP_folder = os.path.join(sub_plots_folder, "GP-resid" if args.resid else "GP")
 for ifolder, folder in enumerate(
     [
         #plots_folder,
-        #sub_plots_folder,
+        sub_plots_folder,
         GP_folder,
     ]
 ):
@@ -664,6 +715,28 @@ K_y = np.array(
 
 alpha = np.linalg.solve(K_y, y)
 
+# test out a certain input
+# debugging
+xi = 0.9487
+rho0 = 0.3121
+gamma = 5.868
+zeta = 0.0035
+_Xtest = np.zeros((1,4))
+_Xtest[0,0] = np.log(1.0+xi)
+_Xtest[0,1] = np.log(rho0)
+_Xtest[0,2] = np.log(1.0+1000.0*zeta)
+_Xtest[0,3] = np.log(1.0+gamma)
+#_Xtest[0,3] = np.log(1.0+1000.0*zeta)
+print(f"Xtest = {_Xtest}")
+#Ktest = np.array([[kernel(X_train[i,:], _Xtest[j,:], theta0, debug=True) for i in range(n_train)] for j in range(1)])
+#print(f"Ktest = {Ktest}")
+#for itrain in range(n_train):
+#    print(f"mkernel = {Ktest[0,itrain]}")
+#    print(f"alpha = {alpha[itrain]}")
+#pred = Ktest @ alpha
+#print(f"pred = {pred}")
+#exit()
+
 if args.plotmodel:
 
     n_plot_2d = 100
@@ -698,6 +771,9 @@ if args.plotmodel:
 
                     X_in_range = X[mask,:]
                     Y_in_range = Y[mask,:]
+                    if args.resid:
+                        Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
+                        Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
 
                     if np.sum(mask) != 0:
                         plt.plot(
@@ -724,6 +800,10 @@ if args.plotmodel:
                         ]
                     )
                     f_plot = Kplot @ alpha
+
+                    if args.resid:
+                        f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
+                        f_plot = f_resid.reshape((X_plot.shape[0],1))
 
                     plt.plot(
                         rho0_vec,
@@ -771,6 +851,9 @@ if args.plotmodel:
 
                     X_in_range = X[mask,:]
                     Y_in_range = Y[mask,:]
+                    if args.resid:
+                        Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
+                        Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
 
                     if np.sum(mask) != 0:
                         plt.plot(
@@ -797,6 +880,10 @@ if args.plotmodel:
                         ]
                     )
                     f_plot = Kplot @ alpha
+
+                    if args.resid:
+                        f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
+                        f_plot = f_resid.reshape((X_plot.shape[0],1))
 
                     plt.plot(
                         rho0_vec,
@@ -845,6 +932,9 @@ if args.plotmodel:
 
                     X_in_range = X[mask,:]
                     Y_in_range = Y[mask,:]
+                    if args.resid:
+                        Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
+                        Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
 
                     if np.sum(mask) != 0:
                         plt.plot(
@@ -872,6 +962,9 @@ if args.plotmodel:
                         ]
                     )
                     f_plot = Kplot @ alpha
+                    if args.resid:
+                        f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
+                        f_plot = f_resid.reshape((X_plot.shape[0],1))
 
                     plt.plot(
                         rho0_vec,
@@ -916,6 +1009,9 @@ if args.plotmodel:
 
             X_in_range = X[mask,:]
             Y_in_range = Y[mask,:]
+            if args.resid:
+                Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
+                Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
 
             #print(f"X in range = {X_in_range}")
             #print(f"Y in range = {Y_in_range}")
@@ -955,6 +1051,10 @@ if args.plotmodel:
             ]
         )
         f_plot = Kplot @ alpha
+
+        if args.resid:
+            f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
+            f_plot = f_resid.reshape((X_plot.shape[0],1))
 
         # make meshgrid of outputs
         GAMMA = np.zeros((30, 100))
@@ -1023,6 +1123,9 @@ if args.plotmodel:
 
             X_in_range = X[mask,:]
             Y_in_range = Y[mask,:]
+            if args.resid:
+                Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
+                Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
 
             #print(f"X in range = {X_in_range}")
             #print(f"Y in range = {Y_in_range}")
@@ -1062,6 +1165,9 @@ if args.plotmodel:
             ]
         )
         f_plot = Kplot @ alpha
+        if args.resid:
+            f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
+            f_plot = f_resid.reshape((X_plot.shape[0],1))
 
         # make meshgrid of outputs
         XI = np.zeros((30, 100))
@@ -1132,6 +1238,9 @@ if args.plotmodel:
 
             X_in_range = X[mask,:]
             Y_in_range = Y[mask,:]
+            if args.resid:
+                Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
+                Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
 
             #print(f"X in range = {X_in_range}")
             #print(f"Y in range = {Y_in_range}")
@@ -1171,6 +1280,9 @@ if args.plotmodel:
             ]
         )
         f_plot = Kplot @ alpha
+        if args.resid:
+            f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
+            f_plot = f_resid.reshape((X_plot.shape[0],1))
 
         # make meshgrid of outputs
         ZETA = np.zeros((30, 100))
@@ -1266,23 +1378,24 @@ for i,sort_ind in enumerate(sort_indices[:n_worst]): # first 10
 hdl.close()
 
 
-# archive the data to the format of the 
-filename = "axialGP.csv" if args.load == "Nx" else "shearGP.csv"
-output_csv = "../archived_models/" + filename
+if args.archive:
+    # archive the data to the format of the 
+    filename = "axialGP.csv" if args.load == "Nx" else "shearGP.csv"
+    output_csv = "../archived_models/" + filename
 
-# remove the previous csv file if it exits
-# assume on serial here
-if os.path.exists(output_csv):
-    os.remove(output_csv)
+    # remove the previous csv file if it exits
+    # assume on serial here
+    if os.path.exists(output_csv):
+        os.remove(output_csv)
 
 
-# [log(1+xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
-dataframe_dict = {
-    "log(1+xi)" : X_train[:,0],
-    "log(rho0)" : X_train[:,1],
-    "log(1+gamma)" : X_train[:,3],
-    "log(1+10^3*zeta)" : X_train[:,2], # gamma,zeta are flipped to the order used in TACS
-    "alpha" : alpha[:,0],
-}
-model_df = pd.DataFrame(dataframe_dict)
-model_df.to_csv(output_csv)
+    # [log(1+xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
+    dataframe_dict = {
+        "log(1+xi)" : X_train[:,0],
+        "log(rho0)" : X_train[:,1],
+        "log(1+gamma)" : X_train[:,3],
+        "log(1+10^3*zeta)" : X_train[:,2], # gamma,zeta are flipped to the order used in TACS
+        "alpha" : alpha[:,0],
+    }
+    model_df = pd.DataFrame(dataframe_dict)
+    model_df.to_csv(output_csv)
