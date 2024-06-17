@@ -96,6 +96,7 @@ def closed_form_callback(
     # Set the KS weight really low so that all failure modes make a
     # significant contribution to the failure function derivatives
     con.setKSWeight(20.0)
+    con.setCFShearMode(2) # use analytic shear surrogate so more accurate at lower aspect ratios
 
     con.setStiffenerPitchBounds(0.05, 0.5)
     con.setPanelThicknessBounds(0.002, 0.1)

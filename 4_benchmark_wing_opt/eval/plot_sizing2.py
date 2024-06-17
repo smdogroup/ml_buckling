@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt, niceplots
 
 # 1 : plot 1_sizing_opt_local.py results
 # ---------------------------------------------------------------------------
-m_case = "CF"
+m_case = "ML"
 scenario_name = "climb-turb"
 plotter = PlotManager.from_hist_file(
     "CF-oneway_design.txt" if m_case == "CF" else "ML-oneway_design.txt",
