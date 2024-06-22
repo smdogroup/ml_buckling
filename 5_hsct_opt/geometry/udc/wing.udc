@@ -1,0 +1,670 @@
+# generate the wing solid component
+
+# interface cfgpmtr inputs
+interface struct in 1 
+interface midplane in 1
+interface allOMLgroups in 1
+interface includeTE in 1
+interface includeLE in 1
+interface nribs in 1
+interface nspars in 1
+interface exploded in 1
+
+#interface justInternal in 1
+
+# interface despmtr inputs
+interface aspect in 1
+interface c1 in 1
+interface c2 in 1
+interface c3 in 1
+interface c4 in 1
+interface sweep1LE in 1
+interface ybar1 in 1
+interface ybar2 in 1
+interface dz2 in 1
+interface dz3 in 1
+interface dz4 in 1
+interface thick1 in 1
+interface thick2 in 1
+interface thick3 in 1
+interface thick4 in 1
+
+interface twist1 in 1
+interface twist2 in 1
+interface twist3 in 1
+interface twist4 in 1
+
+# internal struct despmtr inputs
+interface rib_a1 in 1
+interface rib_a2 in 1
+interface spar_a1 in 1
+interface spar_a2 in 1
+interface LEchop in 1
+interface TEchop in 1
+
+# interface outputs
+interface ybar3 out 0
+interface area out 0
+interface span out 0
+interface sspan out 0
+interface y1 out 0
+interface y2 out 0
+interface y3 out 0
+interface y4 out 0
+interface x1 out 0
+interface x2 out 0
+interface x3 out 0
+interface x4 out 0
+interface nOML out 0
+
+interface useBlend in 1
+
+# string output for variable # of OML capsGroups that were made
+interface x1_LE out 0
+interface x2_LE out 0
+interface x3_LE out 0
+interface x4_LE out 0
+interface x1_TE out 0
+#interface capsGroups out 0
+
+# debugging output parameters
+interface tan_sweep1TE out 0
+interface tan_sweep2TE out 0
+interface tan_sweep2LE out 0
+
+# compute the area of the wing (not half wing area)
+set temp (c1+c2)*ybar1+(c2+c3)*ybar2+(c3+c4)*ybar3
+set area temp^2*aspect/4
+
+# compute the spanwise stations of the wing
+set span sqrt(area*aspect)
+set sspan span*0.5
+set ybar3 1.0-ybar1-ybar2
+set dy1 sspan*ybar1
+set dy2 sspan*ybar2
+set dy3 sspan*ybar3
+set y1 0.0
+set y2 y1+dy1
+set y3 y2+dy2
+set y4 y3+dy3
+
+# compute the additional sweep angles
+set tan_sweep1LE tand(sweep1LE)
+set tan_sweep1TE (c1-c2-dy1*tan_sweep1LE)/dy1
+set tan_sweep2TE (c2-c3-dy2*tan_sweep1LE)/dy2
+set tan_sweep2LE (c3-c4-dy3*tan_sweep2TE)/dy3
+
+# dihedral positions
+set dz1 0.0
+# others are already specified as design parameters
+
+# compute the x positions of the leading edge
+set x1 0.0
+set x2 x1+dy1*tan_sweep1LE
+set x3 x2+dy2*tan_sweep1LE
+set x4 x3+dy3*tan_sweep2LE
+
+# thickness to chord ratios
+set tc1 thick1/c1
+set tc2 thick2/c2
+set tc3 thick3/c3
+set tc4 thick4/c4
+
+# regular wing solid
+udparg $/wingSolid tc1 tc1 tc2 tc2
+udparg $/wingSolid tc3 tc3 tc4 tc4
+udparg $/wingSolid c1 c1 c2 c2
+udparg $/wingSolid c3 c3 c4 c4
+udparg $/wingSolid x1 x1 x2 x2 
+udparg $/wingSolid x3 x3 x4 x4
+udparg $/wingSolid dz1 dz1 dz2 dz2 
+udparg $/wingSolid dz3 dz3 dz4 dz4
+udparg $/wingSolid y1 y1 y2 y2 
+udparg $/wingSolid y3 y3 y4 y4
+udparg $/wingSolid twist1 twist1 twist2 twist2
+udparg $/wingSolid twist3 twist3 twist4 twist4
+udparg $/wingSolid LEchop LEchop TEchop TEchop
+udparg $/wingSolid useBlend useBlend
+udparg $/wingSolid chopMode 0
+udprim $/wingSolid midplane 0
+store wingSolid
+   
+# structure
+set rib_a3 1.0-rib_a1-rib_a2
+set spar_a3 1.0-spar_a1-spar_a2
+set nOML nribs-1
+
+ifthen struct EQ 1 # struct mode   
+    # make each piece between ribs
+    set z_root 0.0
+    set z_tip -sspan
+    set xmargin 5.0
+    set ymargin 5.0
+    set zmargin 5.0
+    set xmin -xmargin
+    set xmax max(c1,c4+x4)+xmargin
+    set ymax abs(dz4*2)+ymargin
+    set ymin -ymax-ymargin
+   
+    set x1_LE x1*(1-LEchop)+(x1+c1)*LEchop
+    set x2_LE x2*(1-LEchop)+(x2+c2)*LEchop
+    set x3_LE x3*(1-LEchop)+(x3+c3)*LEchop
+    set x4_LE x4*(1-LEchop)+(x4+c4)*LEchop
+    set x1_TE x1*TEchop+(x1+c1)*(1-TEchop)
+    set x2_TE x2*TEchop+(x2+c2)*(1-TEchop)
+    set x3_TE x3*TEchop+(x3+c3)*(1-TEchop)
+    set x4_TE x4*TEchop+(x4+c4)*(1-TEchop)
+   
+   # chopSolid
+    udparg $/wingSolid tc1 tc1 tc2 tc2
+      udparg $/wingSolid tc3 tc3 tc4 tc4
+      udparg $/wingSolid c1 c1 c2 c2
+      udparg $/wingSolid c3 c3 c4 c4
+      udparg $/wingSolid x1 x1 x2 x2 
+      udparg $/wingSolid x3 x3 x4 x4
+      udparg $/wingSolid dz1 dz1 dz2 dz2 
+      udparg $/wingSolid dz3 dz3 dz4 dz4
+      udparg $/wingSolid y1 y1 y2 y2 
+      udparg $/wingSolid y3 y3 y4 y4
+      udparg $/wingSolid twist1 twist1 twist2 twist2
+      udparg $/wingSolid twist3 twist3 twist4 twist4
+      udparg $/wingSolid LEchop LEchop TEchop TEchop
+      udparg $/wingSolid useBlend useBlend
+      udparg $/wingSolid chopMode 2
+      udprim $/wingSolid midplane 0
+   store chopSolid
+   
+   # LE section
+   ifthen includeLE EQ 1
+      throw 999 #deprecated for now
+      udparg $/wingSolid tc1 tc1 tc2 tc2
+         udparg $/wingSolid tc3 tc3 tc4 tc4
+         udparg $/wingSolid c1 c1 c2 c2
+         udparg $/wingSolid c3 c3 c4 c4
+         udparg $/wingSolid x1 x1 x2 x2 
+         udparg $/wingSolid x3 x3 x4 x4
+         udparg $/wingSolid dz1 dz1 dz2 dz2 
+         udparg $/wingSolid dz3 dz3 dz4 dz4
+         udparg $/wingSolid y1 y1 y2 y2 
+         udparg $/wingSolid y3 y3 y4 y4
+         udparg $/wingSolid twist1 twist1 twist2 twist2
+         udparg $/wingSolid twist3 twist3 twist4 twist4
+         udparg $/wingSolid LEchop LEchop TEchop TEchop
+         udparg $/wingSolid useBlend useBlend
+         udparg $/wingSolid chopMode 1
+         udprim $/wingSolid midplane 0
+      select face
+        attribute _color $green
+      store LEsection
+   endif
+   
+   # TE section
+   ifthen includeTE EQ 1
+      throw 999 #deprecated for now
+      udparg $/wingSolid tc1 tc1 tc2 tc2
+         udparg $/wingSolid tc3 tc3 tc4 tc4
+         udparg $/wingSolid c1 c1 c2 c2
+         udparg $/wingSolid c3 c3 c4 c4
+         udparg $/wingSolid x1 x1 x2 x2 
+         udparg $/wingSolid x3 x3 x4 x4
+         udparg $/wingSolid dz1 dz1 dz2 dz2 
+         udparg $/wingSolid dz3 dz3 dz4 dz4
+         udparg $/wingSolid y1 y1 y2 y2 
+         udparg $/wingSolid y3 y3 y4 y4
+         udparg $/wingSolid twist1 twist1 twist2 twist2
+         udparg $/wingSolid twist3 twist3 twist4 twist4
+         udparg $/wingSolid LEchop LEchop TEchop TEchop
+         udparg $/wingSolid useBlend useBlend
+         udparg $/wingSolid chopMode 3
+         udprim $/wingSolid midplane 0
+      store TEsection
+   endif
+   
+   # start making the spars
+   # make the spars and trim them each
+   patbeg ispar nspars
+      set fr ispar/(nspars+1)
+      set spar_fr fr*(spar_a1+fr*(spar_a2+fr*spar_a3))
+      set x_spar x1_LE*(1-spar_fr)+x1_TE*spar_fr
+      
+      #box x_spar ymin zmargin 0.0 (ymax-ymin) (-y4-zmargin)
+
+      # WARNING: there still seems to be some spurrious nodes here
+      box x_spar ymin zmargin 0.0 (ymax-ymin) (-y4-zmargin)
+      restore chopSolid
+      intersect
+      
+      # attribute the spar
+      select face
+        attribute capsMesh $spar
+        attribute tagComp $spar
+        attribute capsGroup !$spar+ispar
+   patend
+
+   # make the ribs and trim them each
+   patbeg irib nribs
+      set fr (irib-1)/(nribs-1)
+      set rib_fr fr*(rib_a1+fr*(rib_a2+fr*rib_a3)) 
+      set z_rib z_root*(1-rib_fr)+z_tip*rib_fr
+      
+      # make the rib waffle and trim it
+      box xmin ymin z_rib (xmax-xmin) (ymax-ymin) 0.0
+      restore chopSolid
+      intersect
+      
+      # attribute the rib
+      select face
+        attribute capsMesh $rib
+        attribute tagComp $rib
+        attribute capsGroup !$rib+irib
+      
+      # join the rib to the rest of the internal structure
+      ifthen irib EQ 1
+         patbeg ispar nspars
+            union
+         patend
+      else
+         union
+      endif
+   patend # END of ribs section
+
+   # put thermal midplanes through the internal structure
+   # make the camber sheetBody
+   select edge
+     attribute tagMidplane $none
+   udparg $/wingSolid tc1 tc1 tc2 tc2
+      udparg $/wingSolid tc3 tc3 tc4 tc4
+      udparg $/wingSolid c1 c1 c2 c2
+      udparg $/wingSolid c3 c3 c4 c4
+      udparg $/wingSolid x1 x1 x2 x2 
+      udparg $/wingSolid x3 x3 x4 x4
+      udparg $/wingSolid dz1 dz1 dz2 dz2 
+      udparg $/wingSolid dz3 dz3 dz4 dz4
+      udparg $/wingSolid y1 y1 y2 y2 
+      udparg $/wingSolid y3 y3 y4 y4
+      udparg $/wingSolid twist1 twist1 twist2 twist2
+      udparg $/wingSolid twist3 twist3 twist4 twist4
+      udparg $/wingSolid LEchop LEchop TEchop TEchop
+      udparg $/wingSolid useBlend useBlend
+      udparg $/wingSolid chopMode 2
+      udprim $/wingSolid midplane 1
+   subtract
+   
+   select edge $tagMidplane $none
+   select not
+      attribute capsConstraint $midplane
+   
+   # make the OML and LE
+   restore chopSolid
+   ifthen includeLE EQ 1
+      restore LEsection
+      union
+   endif
+   ifthen includeTE EQ 1
+      restore TEsection
+      union
+   endif
+
+   extract 0
+
+   ifthen includeLE EQ 1
+      throw 999 # need to update these face #s for this case and fix spurrious nodes
+   endif
+   ifthen includeTE EQ 1
+      throw 999
+   endif
+   
+   ## ATTRIBUTES ON OML faces
+   ifthen useBlend EQ 1
+      select face 5
+        attribute capsGroup $rib1
+        attribute tagComp $rib
+        attribute capsMesh $rib
+
+      select face 3
+        attribute capsGroup $LEspar
+        attribute tagComp $spar
+        attribute capsMesh $spar
+
+      select face 1
+        attribute capsGroup $TEspar
+        attribute tagComp $spar
+        attribute capsMesh $spar
+
+      select face 2
+        attribute tagComp $OML
+        attribute tagComp2 $OMLtop
+
+      select face 4
+        attribute tagComp $OML
+        attribute tagComp2 $OMLbot
+
+      select face 6
+        attribute capsGroup !$rib+nribs
+        attribute tagComp $rib
+   endif # useBlend EQ 1 check
+   
+   ifthen useBlend EQ 0
+      select face 3
+      select add 7
+        attribute capsGroup $rib1
+        attribute tagComp $rib
+        attribute capsMesh $rib
+
+      select face 1
+      select add 2
+      select add 5
+      select add 8
+      select add 11
+      select add 14
+        attribute capsGroup $LEspar
+        attribute tagComp $spar
+        attribute capsMesh $spar
+
+      select face 9
+      select add 12
+      select add 15
+      select add 18
+      select add 21
+      select add 22
+        attribute capsGroup $TEspar
+        attribute tagComp $spar
+        attribute capsMesh $spar
+
+      select edge 4
+      select add 7
+      select add 12
+      select add 18
+      select add 23
+      select add 29
+        attribute tagComp $station
+        attribute tagComp2 $station2
+
+      select edge 15
+      select add 21
+      select add 25
+      select add 31
+      select add 35
+      select add 40
+        attribute tagComp $station
+      attribute tagComp2 $station3
+
+      select face 6
+      select add 13
+      select add 19
+        attribute tagComp $OML
+        attribute tagComp2 $OMLtop
+
+      select face 4
+      select add 10
+      select add 16
+        attribute tagComp $OML
+        attribute tagComp2 $OMLbot
+
+      select face 17
+      select add 20
+        attribute capsGroup !$rib+nribs
+        attribute tagComp $rib
+   endif # useBlend EQ 0 check
+   
+   # join OML and internal structure
+   union 
+   
+   # ATTRIBUTES
+   # ---------------------------------------
+   # boolean attributes that speed up the computation
+   select face $capsGroup $*
+     attribute has_group $yes
+   select face $capsGroup $*
+   select not
+     attribute has_group $no
+   
+   # first just label the OML + LE spaces
+   # station crossing and triangle faces will be dealt with later
+   udprim editAttr filename <<
+     patbeg iOML nribs-1
+        # OML faces between ribs
+        FACE HAS has_group=no
+        AND HAS tagComp=OML
+        AND ADJ2FACE capsGroup=!$rib+iOML
+        AND ADJ2FACE capsGroup=!$rib+(iOML+1)
+        SET capsGroup=!$OML+iOML
+        SET has_group=yes
+        
+        # OML faces between rib and LE face
+        FACE HAS has_group=no
+        AND HAS tagComp=OML
+        AND ADJ2FACE capsGroup=!$rib+iOML
+        AND ADJ2FACE capsGroup=LEspar
+        SET capsGroup=!$OML+iOML
+        SET has_group=yes
+     patend
+   >>
+   
+   # loop back through for faces crossing a turn in structure
+   # as well as triangle faces touching LE 
+   ifthen useBlend EQ 0 # rule
+      udprim editAttr filename <<
+        patbeg iOML nribs-1        
+           # faces on inboard side of station crossing
+           FACE HAS has_group=no
+           AND HAS tagComp=OML
+           AND ADJ2EDGE tagComp=station
+           AND ADJ2FACE capsGroup=!$rib+iOML
+           AND ADJ2FACE capsGroup=!$OML+(iOML-1)
+           SET capsGroup=!$OML+iOML
+           SET has_group=yes
+           SET stationFace=inboard
+
+           # faces on outboard side of station crossing
+           FACE HAS has_group=no
+           AND HAS tagComp=OML
+           AND ADJ2EDGE tagComp=station
+           AND ADJ2FACE stationFace=inboard
+           AND ADJ2FACE capsGroup=!$OML+iOML
+           SET capsGroup=!$OML+iOML
+           SET has_group=yes
+
+           # triangle faces near LE that don't touch both ribs
+           FACE HAS has_group=no
+           AND HAS tagComp=OML
+           AND ADJ2FACE capsGroup=LEspar
+           AND ADJ2FACE capsGroup=!$rib+iOML
+           AND ADJ2FACE capsGroup=!$OML+iOML
+           AND ADJ2FACE capsGroup=!$OML+(iOML-1)
+           SET capsGroup=!$OML+(iOML)
+           SET has_group=yes
+         patend
+      >>
+   endif
+   
+   ifthen allOMLgroups EQ 1
+   
+      udprim editAttr filename <<     
+         # reset has_group on OML faces
+         FACE HAS tagComp=OML
+         AND HAS has_group=yes
+         SET has_group=no
+      
+         # set OML capsGroups
+         patbeg iOML nribs-1            
+            # set OML faces through middle spars 
+            patbeg ispace nspars-1
+               # top OML
+               FACE HAS has_group=no
+               AND HAS capsGroup=!$OML+iOML
+               AND HAS tagComp2=OMLtop
+               AND ADJ2FACE capsGroup=!$spar+ispace
+               AND ADJ2FACE capsGroup=!$spar+(ispace+1)
+               SET capsGroup=!$OMLtop+iOML+$-+(ispace+1)
+               SET prevGroup=!$OML+iOML
+               SET has_group=yes
+               
+               # bottom OML
+               FACE HAS has_group=no
+               AND HAS capsGroup=!$OML+iOML
+               AND HAS tagComp2=OMLbot
+               AND ADJ2FACE capsGroup=!$spar+ispace
+               AND ADJ2FACE capsGroup=!$spar+(ispace+1)
+               SET capsGroup=!$OMLbot+iOML+$-+(ispace+1)
+               SET prevGroup=!$OML+iOML
+               SET has_group=yes
+            patend
+            
+            # top OML, last spar
+            FACE HAS has_group=no
+            AND HAS capsGroup=!$OML+iOML
+            AND HAS tagComp2=OMLtop
+            AND ADJ2FACE capsGroup=!$spar+nspars
+            AND ADJ2FACE capsGroup=TEspar
+            SET capsGroup=!$OMLtop+iOML+$-+(nspars+1)
+            SET prevGroup=!$OML+iOML
+            SET has_group=yes
+            
+            # bot OML, last spar
+            FACE HAS has_group=no
+            AND HAS capsGroup=!$OML+iOML
+            AND HAS tagComp2=OMLbot
+            AND ADJ2FACE capsGroup=!$spar+nspars
+            AND ADJ2FACE capsGroup=TEspar
+            SET capsGroup=!$OMLbot+iOML+$-+(nspars+1)
+            SET prevGroup=!$OML+iOML
+            SET has_group=yes
+            
+            # loop back through to pickup first face of section
+            patbeg irev nspars
+               FACE HAS has_group=no
+               AND HAS capsGroup=!$OML+iOML
+               AND ADJ2FACE capsGroup=!$OMLtop+iOML+$-+(irev+1)
+               SET capsGroup=!$OMLtop+iOML+$-+irev
+               SET prevGroup=!$OML+iOML
+               SET has_group=yes
+               
+               FACE HAS has_group=no
+               AND HAS capsGroup=!$OML+iOML
+               AND ADJ2FACE capsGroup=!$OMLbot+iOML+$-+(irev+1)
+               SET capsGroup=!$OMLbot+iOML+$-+irev
+               SET prevGroup=!$OML+iOML
+               SET has_group=yes
+            patend
+         patend
+      >>
+
+      udprim editAttr filename <<   
+         # set spar capsGroups (all panels)
+         patbeg ispar2 nspars
+            patbeg iOML2 nribs-1
+               FACE HAS capsGroup=!$spar+ispar2
+               AND ADJ2FACE prevGroup=!$OML+iOML2
+               SET capsGroup=!$spar+ispar2+$-+iOML2
+            patend
+         patend
+
+         patbeg iOML2 nribs-1
+            FACE HAS capsGroup=LEspar
+            AND ADJ2FACE prevGroup=!$OML+iOML2
+            SET capsGroup=!$LEspar+$-+iOML2
+
+            FACE HAS capsGroup=TEspar
+            AND ADJ2FACE prevGroup=!$OML+iOML2
+            SET capsGroup=!$TEspar+$-+iOML2
+         patend
+
+         # set rib capsGroups (all panels)
+         patbeg irib2 nribs-1
+            patbeg ispace2 nspars+1
+               FACE HAS capsGroup=!$rib+irib2
+               AND ADJ2FACE capsGroup=!$OMLtop+irib2+$-+ispace2
+               SET capsGroup=!$rib+irib2+$-+ispace2
+               SET prevGroup=!$rib+irib2
+            patend
+         patend
+         patbeg ispace2 nspars+1
+            FACE HAS capsGroup=!$rib+nribs
+            AND ADJ2FACE capsGroup=!$OMLtop+(nribs-1)+$-+ispace2
+            SET capsGroup=!$rib+nribs+$-+ispace2
+            SET prevGroup=!$rib+irib2
+         patend
+      >>
+   endif
+   
+   # add root constraint to wing
+   select face $prevGroup $rib1
+   attribute capsConstraint $root
+
+   # assign capsMesh attributes to edges and fix root constraint
+   udprim editAttr filename <<
+      EDGE ADJ2FACE capsConstraint=root
+      SET capsConstraint=root
+      
+      NODE ADJ2EDGE capsConstraint=root
+      SET capsConstraint=root
+
+      FACE HAS tagComp=rib
+      AND ADJ2FACE tagComp=LE
+      SET capsMesh=LEribFace
+
+      FACE HAS tagComp=rib
+      AND ADJ2FACE tagComp=TE
+      SET capsMesh=TEribFace
+
+      EDGE ADJ2FACE capsMesh=LEribFace
+      SET capsMesh=LEribEdge
+
+      EDGE ADJ2FACE capsMesh=TEribFace
+      SET capsMesh=TEribEdge
+   
+      EDGE ADJ2FACE tagComp=rib
+      AND ADJ2FACE tagComp=spar
+      SET capsMesh=vert
+
+      EDGE ADJ2FACE tagComp=rib
+      AND ADJ2FACE tagComp=OML
+      SET capsMesh=chord
+
+      EDGE ADJ2FACE tagComp=spar
+      AND ADJ2FACE tagComp=OML
+      SET capsMesh=span
+
+      EDGE HAS tagComp=span
+      AND ADJ2FACE tagComp=LE
+      SET capsMesh=spanLE
+
+      NODE ADJ2EDGE capsConstraint=station2
+      SET capsConstraint=station2
+   >>
+   
+   # extract only certain faces for the exploded view
+   ifthen exploded EQ 1
+      select face $tagComp2 $OMLtop
+      select add $tagComp2 $LEtop
+      extract @sellist
+   elseif exploded EQ 2
+      select face $tagComp $rib
+      select add $tagComp $spar
+      extract @sellist
+   elseif exploded EQ 3
+      select face $tagComp2 $OMLbot
+      select add $tagComp2 $LEbot
+      extract @sellist
+   endif
+
+   # add a dummy constraint to a random edge so that tacs doesn't complain for viewing dvs
+   ifthen exploded NE 0
+     select edge 1
+     attribute capsConstraint $dummy
+   endif
+
+   
+    
+endif # end of struct EQ 1 section
+
+ifthen struct EQ 0
+   restore wingSolid
+endif
+
+end
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+|
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||

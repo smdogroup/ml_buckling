@@ -1,0 +1,15 @@
+meshes/autosave.csm
+meshes/*.jrnl
+*.jrnl
+*.hst
+*Struct*
+*.txt
+*.o*
+*.pbs
+capsFluid/
+tacs.*
+*.f5
+*.vtk
+Scratch/
+*.png
+autosave.csm

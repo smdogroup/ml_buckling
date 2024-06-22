@@ -1,0 +1,196 @@
+# fuselage inputs
+# --------------------------------------------------
+interface nfuse in 1
+interface fuseDX in 1
+interface fuseDZ in 1
+interface tailDX in 1
+interface tailDZ in 1
+
+# fuselage centerline B-spline x coordinates
+interface fuse:CLx1 in 1
+interface fuse:CLx2 in 1
+interface fuse:CLx3 in 1
+interface fuse:CLx4 in 1
+
+# fuselage centerline B-spline z coordinates
+interface fuse:CLz1 in 1
+interface fuse:CLz2 in 1
+interface fuse:CLz3 in 1
+interface fuse:CLz4 in 1
+
+# fuselage x radius using B-spline
+interface fuse:rx1 in 1
+interface fuse:rx2 in 1
+interface fuse:rx3 in 1
+interface fuse:rx4 in 1
+
+# fuselage upper z radius using B-spline
+interface fuse:rzn1 in 1
+interface fuse:rzn2 in 1
+interface fuse:rzn3 in 1
+interface fuse:rzn4 in 1
+
+# fuselage lower z radius using B-spline
+interface fuse:rzs1 in 1
+interface fuse:rzs2 in 1
+interface fuse:rzs3 in 1
+interface fuse:rzs4 in 1
+
+# fuselage upper superellipse order
+interface fuse:n1 in 1
+interface fuse:n2 in 1
+interface fuse:n3 in 1
+interface fuse:n4 in 1
+
+# fuselage lower superellipse order
+interface fuse:s1 in 1
+interface fuse:s2 in 1
+interface fuse:s3 in 1
+interface fuse:s4 in 1
+
+# nose inputs
+# ---------------------------------------------------------
+interface nnose in 1
+interface noseDX in 1
+interface noseDZ in 1
+interface noselist in 2 4
+interface taillist in 2 4
+
+interface nose:CLx1 in 1
+interface nose:CLx2 in 1
+interface nose:CLx3 in 1
+
+interface nose:CLz1 in 1
+interface nose:CLz2 in 1
+interface nose:CLz3 in 1
+
+interface nose:rx1 in 1
+interface nose:rx2 in 1
+interface nose:rx3 in 1
+
+interface nose:rzn1 in 1
+interface nose:rzn2 in 1
+interface nose:rzn3 in 1
+
+interface nose:rzs1 in 1
+interface nose:rzs2 in 1
+interface nose:rzs3 in 1
+
+interface nose:n_n in 1
+interface nose:n_s in 1
+
+# OUTPUTS
+# ------------------------------
+# TBD
+
+# MAKE THE FUSELAGE
+# -------------------------------------------------
+
+# NOSE SECTION
+mark
+point -noseDX fuseDZ+noseDZ 0
+
+patbeg inose nnose
+   # apply p=2, 5-node B-spline coefficients
+   set u 2*(nnose-inose)/(nnose-1)
+   ifthen u LT 1.0
+      set N0 (1-u)*(1-u)
+      set N1 2*u-1.5*u*u
+      set N2 0.5*u*u
+      set N3 0.0
+      set i 0
+   else
+      set N0 0.0
+      set N1 0.5*(2-u)*(2-u)
+      set N2 -1.5*u*u+4*u-2
+      set N3 (1-u)*(1-u)
+      set i 1
+   endif
+   
+   # fuselage shape with B-splines
+   set xc fuseDX*fuse:CLx1*N0+noseDX*(nose:CLx1*N1+nose:CLx2*N2+nose:CLx3*N3)
+   set zc fuseDZ*fuse:CLz1*N0+fuseDZ*(1-N0)+noseDZ*(nose:CLz1*N1+nose:CLz2*N2+nose:CLz3*N3)
+   
+   # fuselage radii with B-splines
+   set rx fuse:rx1*N0+nose:rx1*N1+nose:rx2*N2+nose:rx3*N3
+   set ry_n fuse:rzn1*N0+nose:rzn1*N1+nose:rzn2*N2+nose:rzn3*N3
+   set ry_s fuse:rzs1*N0+nose:rzs1*N1+nose:rzs2*N2+nose:rzs3*N3
+   
+   # superellipse orders with B-splines
+   set n_n fuse:n1*N0+nose:n_n*(N1+N2+N3)
+   set n_s fuse:s1*N0+nose:n_s*(N1+N2+N3)
+   
+   udparg supell rx rx ry_n ry_n ry_s ry_s
+   udprim supell n_n n_n n_s n_s
+   rotatey 90 0 0
+   # goes upstream direction while making the nose
+   translate -xc zc 0
+  
+patend
+
+# MAIN FUSELAGE / CABIN SECTION
+#mark
+patbeg ifuse nfuse
+   # apply p=2, 5-node B-spline coefficients
+   set u 2*(ifuse-1)/(nfuse-1) # B-spline coordinate from in [0,1] or [1,2] domains
+   ifthen u LT 1.0
+      set N0 (1-u)*(1-u)
+      set N1 2*u-1.5*u*u
+      set N2 0.5*u*u
+      set N3 0.0
+      set i 0
+   else
+      set N0 0.0
+      set N1 0.5*(2-u)*(2-u)
+      set N2 -1.5*u*u+4*u-2
+      set N3 (1-u)*(1-u)
+      set i 1
+   endif
+   
+   # fuselage shape with B-splines
+   set xc fuseDX*(fuse:CLx1*N0+fuse:CLx2*N1+fuse:CLx3*N2+fuse:CLx4*N3)
+   set zc fuseDZ*(fuse:CLz1*N0+fuse:CLz2*N1+fuse:CLz3*N2+fuse:CLz4*N3)
+   
+   # fuselage radii with B-splines
+   set rx fuse:rx1*N0+fuse:rx2*N1+fuse:rx3*N2+fuse:rx4*N3
+   set ry_n fuse:rzn1*N0+fuse:rzn2*N1+fuse:rzn3*N2+fuse:rzn4*N3
+   set ry_s fuse:rzs1*N0+fuse:rzs2*N1+fuse:rzs3*N2+fuse:rzs4*N3
+   
+   # superellipse orders with B-splines
+   set n_n fuse:n1*N0+fuse:n2*N1+fuse:n3*N2+fuse:n4*N3
+   set n_s fuse:s1*N0+fuse:s2*N1+fuse:s3*N2+fuse:s4*N3
+   
+   udparg supell rx rx ry_n ry_n ry_s ry_s
+   udprim supell n_n n_n n_s n_s
+   rotatey 90 0 0
+   translate xc zc 0
+ 
+patend
+
+point fuseDX+tailDX tailDZ 0
+
+# level checker for fuselage
+#--- box 0.0 0.0 -10.0 100.0 0.0 20.0
+#--- throw 999
+   
+# make the nose part of the fuselage
+
+blend noselist taillist
+
+select face
+attribute _color $blue
+
+select face 1
+select add 2
+attribute tagComp $fuselageUpper
+
+select face 3
+select add 4
+attribute tagComp $fuselageLower
+
+select edge 1
+   select add 6
+   attribute tagComp $fuselageMidEdge
+
+end
+|||||||

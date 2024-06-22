@@ -352,4 +352,5 @@ sol = snoptimizer(
 
 # print final solution
 sol_xdict = sol.xStar
-print(f"Final solution = {sol_xdict}", flush=True)
+if comm.rank == 0:
+    print(f"Final solution = {sol_xdict}", flush=True)

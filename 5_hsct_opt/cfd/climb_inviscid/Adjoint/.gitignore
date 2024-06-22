@@ -1,0 +1,4 @@
+*.dat
+debug*
+*.adjoint
+*.grid_info
