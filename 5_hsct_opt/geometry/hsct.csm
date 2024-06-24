@@ -1,7 +1,7 @@
 # VIEW config parameters
 # ----------------------------------------------------------
-cfgpmtr mode:flow 1
-cfgpmtr mode:struct 0
+cfgpmtr mode:flow 0
+cfgpmtr mode:struct 1
 
 # fluid view parameters
 cfgpmtr view:farfield 1
@@ -10,6 +10,7 @@ cfgpmtr view:half 1
 cfgpmtr view:fuselage 0
 cfgpmtr view:tail 0
 cfgpmtr view:wing 1
+#cfgpmtr view:blend 0
 
 # wing design and config parameters
 # -----------------------------------------------------------
@@ -19,7 +20,7 @@ cfgpmtr wing:exploded 0 # 0 - regular, 1 - OMLtop, 2 - int-struct, 3 OMLbot
 cfgpmtr wing:includeLE 0
 cfgpmtr wing:includeTE 0
 cfgpmtr wing:nribs 20
-cfgpmtr wing:nspars 8
+cfgpmtr wing:nspars 40 #8, 16
 
 despmtr wing:LEchop 0.05
 despmtr wing:TEchop 0.05
@@ -31,7 +32,7 @@ despmtr wing:spar_a2 0.0
 
 despmtr wing:aspect 3.2
 despmtr wing:c1 48.0
-despmtr wing:c2 40.0
+despmtr wing:c2 40.7
 despmtr wing:c3 20.7
 despmtr wing:c4 4.15
 despmtr wing:sweep1LE 70.0
@@ -707,3 +708,4 @@ end
 |||||
 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 ||
+|||

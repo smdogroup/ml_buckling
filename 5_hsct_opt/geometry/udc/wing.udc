@@ -57,7 +57,7 @@ interface x3 out 0
 interface x4 out 0
 interface nOML out 0
 
-interface useBlend in 1
+interface useBlend in 1 #1
 
 # string output for variable # of OML capsGroups that were made
 interface x1_LE out 0
@@ -345,6 +345,7 @@ ifthen struct EQ 1 # struct mode
    endif # useBlend EQ 1 check
    
    ifthen useBlend EQ 0
+      #throw 999
       select face 3
       select add 7
         attribute capsGroup $rib1
@@ -408,7 +409,9 @@ ifthen struct EQ 1 # struct mode
    endif # useBlend EQ 0 check
    
    # join OML and internal structure
-   union 
+   union
+
+   #throw 999 
    
    # ATTRIBUTES
    # ---------------------------------------
@@ -436,6 +439,14 @@ ifthen struct EQ 1 # struct mode
         AND HAS tagComp=OML
         AND ADJ2FACE capsGroup=!$rib+iOML
         AND ADJ2FACE capsGroup=LEspar
+        SET capsGroup=!$OML+iOML
+        SET has_group=yes
+        
+        # OML faces between rib and TE face
+        FACE HAS has_group=no
+        AND HAS tagComp=OML
+        AND ADJ2FACE capsGroup=!$rib+iOML
+        AND ADJ2FACE capsGroup=TEspar
         SET capsGroup=!$OML+iOML
         SET has_group=yes
      patend
@@ -479,7 +490,10 @@ ifthen struct EQ 1 # struct mode
    endif
    
    ifthen allOMLgroups EQ 1
-   
+  
+      select face $capsGroup $*
+      attribute has_group $no
+ 
       udprim editAttr filename <<     
          # reset has_group on OML faces
          FACE HAS tagComp=OML
@@ -547,6 +561,34 @@ ifthen struct EQ 1 # struct mode
                SET prevGroup=!$OML+iOML
                SET has_group=yes
             patend
+            
+         patend
+      >>
+
+      select face
+      attribute adj $none 
+
+      udprim editAttr filename <<
+          face adj2face capsGroup=TEspar
+          and has tagComp=OML
+          set adj=tespar
+      >>
+
+      udprim editAttr filename <<
+          patbeg iOML3 nribs-1
+             patbeg ispar3 nspars
+                face has adj=tespar
+                and has prevGroup=!$OML+iOML3
+                and has tagComp2=OMLtop
+                and adj2face capsGroup=!$spar+ispar3
+                set capsGroup=!$OMLtop+iOML3+$-+(ispar3+1)
+
+                face has adj=tespar
+                and has prevGroup=!$OML+iOML3
+                and has tagComp2=OMLbot
+                and adj2face capsGroup=!$spar+ispar3
+                set capsGroup=!$OMLbot+iOML3+$-+(ispar3+1)
+             patend
          patend
       >>
 
@@ -554,43 +596,65 @@ ifthen struct EQ 1 # struct mode
          # set spar capsGroups (all panels)
          patbeg ispar2 nspars
             patbeg iOML2 nribs-1
-               FACE HAS capsGroup=!$spar+ispar2
+               FACE HAS has_group=no
+               AND HAS capsGroup=!$spar+ispar2
                AND ADJ2FACE prevGroup=!$OML+iOML2
                SET capsGroup=!$spar+ispar2+$-+iOML2
+               SET has_group=yes
             patend
          patend
 
          patbeg iOML2 nribs-1
-            FACE HAS capsGroup=LEspar
+            FACE HAS has_group=no
+            AND HAS capsGroup=LEspar
             AND ADJ2FACE prevGroup=!$OML+iOML2
             SET capsGroup=!$LEspar+$-+iOML2
+            SET has_group=yes
 
-            FACE HAS capsGroup=TEspar
+            FACE HAS has_group=no
+            AND HAS capsGroup=TEspar
             AND ADJ2FACE prevGroup=!$OML+iOML2
             SET capsGroup=!$TEspar+$-+iOML2
+            SET has_group=yes
          patend
 
          # set rib capsGroups (all panels)
          patbeg irib2 nribs-1
             patbeg ispace2 nspars+1
-               FACE HAS capsGroup=!$rib+irib2
+               FACE HAS has_group=no
+               AND HAS capsGroup=!$rib+irib2
                AND ADJ2FACE capsGroup=!$OMLtop+irib2+$-+ispace2
                SET capsGroup=!$rib+irib2+$-+ispace2
                SET prevGroup=!$rib+irib2
+               SET has_group=yes               
+
+               FACE HAS has_group=no
+               AND HAS capsGroup=!$rib+irib2
+               AND ADJ2FACE capsGroup=!$OMLbot+irib2+$-+ispace2
+               SET capsGroup=!$rib+irib2+$-+ispace2
+               SET prevGroup=!$rib+irib2
+               SET has_group=yes
             patend
          patend
          patbeg ispace2 nspars+1
-            FACE HAS capsGroup=!$rib+nribs
+            FACE HAS has_group=no
+            AND HAS capsGroup=!$rib+nribs
             AND ADJ2FACE capsGroup=!$OMLtop+(nribs-1)+$-+ispace2
             SET capsGroup=!$rib+nribs+$-+ispace2
             SET prevGroup=!$rib+irib2
+            SET has_group=yes
          patend
       >>
    endif
    
    # add root constraint to wing
-   select face $prevGroup $rib1
-   attribute capsConstraint $root
+   ifthen allOMLgroups EQ 1
+      select face $prevGroup $rib1
+      attribute capsConstraint $root
+   else
+      select face $capsGroup $rib1
+      attribute capsConstraint $root
+   endif
 
    # assign capsMesh attributes to edges and fix root constraint
    udprim editAttr filename <<
@@ -667,4 +731,8 @@ end
 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 |
-||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+||
+||
+|
+|
