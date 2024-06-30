@@ -50,7 +50,7 @@ tacs_model = caps2tacs.TacsModel.build(
 tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative test to pass
     edge_pt_min=2,
     edge_pt_max=20,
-    global_mesh_size=0.3,
+    global_mesh_size=0.05,
     max_surf_offset=0.2,
     max_dihedral_angle=15,
 ).register_to(
