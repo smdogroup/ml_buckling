@@ -1,7 +1,7 @@
 Discipline structural
 	var LENGTH 0.15
-	var spitch 0.200001425
-	var pthick 0.019999985750142498
-	var sheight 0.05000014249715001
-	var sthick 0.019999985750427496
+	var spitch 0.5
+	var pthick 0.015932314383677617
+	var sheight 0.03408444350110269
+	var sthick 0.017042221750551347
 	var WIDTH 0.1
