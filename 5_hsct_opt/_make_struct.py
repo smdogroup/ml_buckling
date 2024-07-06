@@ -4,8 +4,14 @@ Sean P. Engelstad, Georgia Tech 2023
 Local machine optimization for the panel thicknesses using all OML and LE panels (more design variables) but no shape variables
 """
 
-# import openmdao.api as om
 from funtofem import *
+from pyoptsparse import SNOPT, Optimization
+
+# script inputs
+hot_start = False
+store_history = True
+
+# import openmdao.api as om
 from mpi4py import MPI
 from tacs import caps2tacs
 import os
@@ -15,24 +21,22 @@ comm = MPI.COMM_WORLD
 base_dir = os.path.dirname(os.path.abspath(__file__))
 csm_path = os.path.join(base_dir, "geometry", "hsct.csm")
 
-from _closed_form_callback import closed_form_callback as callback
-
 # F2F MODEL and SHAPE MODELS
 # ----------------------------------------
 
-f2f_model = FUNtoFEMmodel("test")
+f2f_model = FUNtoFEMmodel("temp")
 tacs_model = caps2tacs.TacsModel.build(
     csm_file=csm_path,
     comm=comm,
-    problem_name="capsStruct0",
+    problem_name="capsStruct1",
     active_procs=[0],
     verbosity=1,
 )
 tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative test to pass
     edge_pt_min=2,
-    edge_pt_max=100,
+    edge_pt_max=20,
     mesh_elements="Mixed",
-    global_mesh_size=0.005,
+    global_mesh_size=0.05,
     max_surf_offset=0.2,
     max_dihedral_angle=15,
 ).register_to(
@@ -52,9 +56,8 @@ for proc in tacs_aim.active_procs:
     if comm.rank == proc:
         aim = tacs_model.mesh_aim.aim
         aim.input.Mesh_Sizing = {
-            # due to triangular faces, the chord, span lead to bad elements in triangular faces, control these by global mesh size now
-            #"chord": {"numEdgePoints": 20},
-            #"span": {"numEdgePoints": 8},
+            "chord": {"numEdgePoints": 20},
+            "span": {"numEdgePoints": 8},
             "vert": {"numEdgePoints": 4},
         }
         # "LEribFace": {"tessParams": [0.03, 0.1, 3]},
@@ -62,6 +65,8 @@ for proc in tacs_aim.active_procs:
 
 # add tacs constraints in
 caps2tacs.PinConstraint("root").register_to(tacs_model)
+# caps2tacs.PinConstraint("station2").register_to(tacs_model)
+# caps2tacs.TemperatureConstraint("midplane", temperature=0).register_to(tacs_model)
 
 # BODIES AND STRUCT DVs
 # -------------------------------------------------
@@ -88,24 +93,22 @@ for prefix in ["OMLtop", "OMLbot"]:
     component_groups += [f"{prefix}5-{ispar}" for ispar in range(12,41+1)]
     component_groups += [f"{prefix}6-{ispar}" for ispar in range(15,41+1)]
     component_groups += [f"{prefix}7-{ispar}" for ispar in range(18,41+1)]
-    component_groups += [f"{prefix}8-{ispar}" for ispar in range(21,41+1)]
+    component_groups += [f"{prefix}8-{ispar}" for ispar in range(20,41+1)]
     component_groups += [f"{prefix}9-{ispar}" for ispar in range(23,41+1)]
     component_groups += [f"{prefix}10-{ispar}" for ispar in range(24,41+1)]
-    component_groups += [f"{prefix}11-{ispar}" for ispar in range(26,39+1)]
-    component_groups += [f"{prefix}11-41"]
-    component_groups += [f"{prefix}12-{ispar}" for ispar in range(27,40+1)]
-    component_groups += [f"{prefix}13-{ispar}" for ispar in range(28,40+1)]
-    component_groups += [f"{prefix}14-{ispar}" for ispar in range(29,40+1)]
-    component_groups += [f"{prefix}15-{ispar}" for ispar in range(30,40+1)]
-    component_groups += [f"{prefix}16-{ispar}" for ispar in range(31,38+1)]
-    component_groups += [f"{prefix}16-40"]
-    component_groups += [f"{prefix}17-{ispar}" for ispar in range(32,39+1)]
-    component_groups += [f"{prefix}18-{ispar}" for ispar in range(33,39+1)]
-    component_groups += [f"{prefix}19-{ispar}" for ispar in range(34,39+1)]
+    component_groups += [f"{prefix}11-{ispar}" for ispar in range(26,41+1)]
+    component_groups += [f"{prefix}12-{ispar}" for ispar in range(27,41+1)]
+    component_groups += [f"{prefix}13-{ispar}" for ispar in range(28,41+1)]
+    component_groups += [f"{prefix}14-{ispar}" for ispar in range(29,41+1)]
+    component_groups += [f"{prefix}15-{ispar}" for ispar in range(30,41+1)]
+    component_groups += [f"{prefix}16-{ispar}" for ispar in range(31,41+1)]
+    component_groups += [f"{prefix}17-{ispar}" for ispar in range(32,41+1)]
+    component_groups += [f"{prefix}18-{ispar}" for ispar in range(33,41+1)]
+    component_groups += [f"{prefix}19-{ispar}" for ispar in range(34,41+1)]
 
 # add rib component groups based on OML ones
 rib_groups = ["rib"+comp[6:] for comp in component_groups if "OMLtop" in comp]
-rib_groups += [f"rib20-{ispar}" for ispar in range(35,39+1)]
+rib_groups += [f"rib20-{ispar}" for ispar in range(35,41+1)]
 component_groups += rib_groups
 
 # add spar component groups
@@ -130,7 +133,7 @@ component_groups += [f"spar16-{iOML}" for iOML in range(1,6+1)]
 component_groups += [f"spar17-{iOML}" for iOML in range(1,6+1)]
 component_groups += [f"spar18-{iOML}" for iOML in range(1,7+1)]
 component_groups += [f"spar19-{iOML}" for iOML in range(1,7+1)]
-component_groups += [f"spar20-{iOML}" for iOML in range(1,7+1)]
+component_groups += [f"spar20-{iOML}" for iOML in range(1,8+1)]
 component_groups += [f"spar21-{iOML}" for iOML in range(1,8+1)]
 component_groups += [f"spar22-{iOML}" for iOML in range(1,8+1)]
 component_groups += [f"spar23-{iOML}" for iOML in range(1,9+1)]
@@ -149,8 +152,8 @@ component_groups += [f"spar35-{iOML}" for iOML in range(1,19+1)]
 component_groups += [f"spar36-{iOML}" for iOML in range(1,19+1)]
 component_groups += [f"spar37-{iOML}" for iOML in range(1,19+1)]
 component_groups += [f"spar38-{iOML}" for iOML in range(1,19+1)]
-component_groups += [f"spar39-{iOML}" for iOML in range(1,16+1)]
-component_groups += [f"spar40-{iOML}" for iOML in range(1,11+1)]
+component_groups += [f"spar39-{iOML}" for iOML in range(1,19+1)]
+component_groups += [f"spar40-{iOML}" for iOML in range(1,19+1)]
 
 component_groups = sorted(component_groups)
 
@@ -212,12 +215,6 @@ wing.register_to(f2f_model)
 # --------------------------------------------------
 
 tacs_aim.setup_aim()
-
-#tacs_aim.pre_analysis()
-if comm.rank == 0:
-    egads_aim = tacs_model.mesh_aim
-    egads_aim.aim.runAnalysis()
-    egads_aim.aim.geometry.view()
-exit()
+tacs_aim.pre_analysis()
 
 
