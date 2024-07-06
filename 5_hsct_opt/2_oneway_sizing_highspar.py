@@ -4,6 +4,7 @@ Sean P. Engelstad, Georgia Tech 2023
 Local machine optimization for the panel thicknesses using all OML and LE panels (more design variables) but no shape variables
 """
 
+from funtofem import *
 from pyoptsparse import SNOPT, Optimization
 
 # script inputs
@@ -11,7 +12,6 @@ hot_start = False
 store_history = True
 
 # import openmdao.api as om
-from funtofem import *
 from mpi4py import MPI
 from tacs import caps2tacs
 import os

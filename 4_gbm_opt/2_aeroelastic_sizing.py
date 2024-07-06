@@ -4,21 +4,24 @@ Sean P. Engelstad, Georgia Tech 2023
 Local machine optimization for the panel thicknesses using nribs-1 OML panels and nribs-1 LE panels
 """
 
+from funtofem import *
 import time
 from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
 
 # import openmdao.api as om
-from funtofem import *
 from mpi4py import MPI
 from tacs import caps2tacs
 import os
 
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--procs", type=int, default=6)
+# note there's a weird bug where total # of procs needs to match
+# #TACS procs with FUN3D
+parent_parser.add_argument("--procs", type=int, default=48)
 parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
+parent_parser.add_argument("--deriv", type=bool, default=False)
 args = parent_parser.parse_args()
 
 if args.useML:
@@ -181,7 +184,7 @@ pull_up.set_stop_criterion(
     post_adjoint_coupling_freq=1,
 )
 
-clift = Function.lift(body=0).register_to(pull_up)
+clift = Function.lift().register_to(pull_up)
 pull_up_ks = (
     Function.ksfailure(ks_weight=10.0, safety_factor=1.5)
     .optimize(scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-cruise")
@@ -209,7 +212,7 @@ mass_frame = 25e3  # kg
 mass_fuel_res = 2e3  # kg
 LGM = mass_payload + mass_frame + mass_fuel_res + 2 * mass_wing
 LGW = 9.81 * LGM  # kg => N
-pull_up_lift = clift * 2 * q_sl 
+pull_up_lift = clift * 2 * q_sl #already multiplied by area 
 mod_lift = 1.5 # for numerical case, just lower weight of vehicle so AOA settles at 8,9 deg
 pull_up_LF = mod_lift * pull_up_lift - 2.5 * LGW
 pull_up_LF.set_name("pull_up_LF").optimize(
@@ -282,6 +285,7 @@ solvers.flow = Fun3d14Interface(
      f2f_model,
      fun3d_dir="cfd",
      adjoint_options={"getgrad" : True, "outer_loop_krylov" : True},
+     #adjoint_options={"getgrad" : True},
      forward_stop_tolerance=5e-13,
      forward_min_tolerance=1e-10, #1e-10
      adjoint_stop_tolerance=5e-12,
@@ -316,8 +320,7 @@ f2f_driver = FUNtoFEMnlbgs(
     reload_funtofem_states=False,
 )
 
-test_derivatives = False
-if test_derivatives:  # test using the finite difference test
+if args.deriv:  # test using the finite difference test
     # load the previous design
     # design_in_file = os.path.join(base_dir, "design", "sizing-oneway.txt")
     # f2f_model.read_design_variables_file(comm, design_in_file)
@@ -360,7 +363,7 @@ history_file = os.path.join(design_folder, "ML-AE.hst" if args.useML else "CF-AE
 # f2f_model.read_design_variables_file(comm, design_out_file)
 
 manager = OptimizationManager(
-    tacs_driver,
+    f2f_driver,
     design_out_file=design_out_file,
     hot_start=args.hotstart,
     debug=True,

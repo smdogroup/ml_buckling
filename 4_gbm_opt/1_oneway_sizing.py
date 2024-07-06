@@ -4,13 +4,13 @@ Sean P. Engelstad, Georgia Tech 2023
 Local machine optimization for the panel thicknesses using nribs-1 OML panels and nribs-1 LE panels
 """
 
+from funtofem import *
 import time
 from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
 
 # import openmdao.api as om
-from funtofem import *
 from mpi4py import MPI
 from tacs import caps2tacs
 import os
