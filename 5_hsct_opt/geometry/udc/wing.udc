@@ -104,17 +104,22 @@ set x2 x1+dy1*tan_sweep1LE
 set x3 x2+dy2*tan_sweep1LE
 set x4 x3+dy3*tan_sweep2LE
 
+# solve modified c3,c4 so TE straight
+set c2_v2 (x1+c1*(1-TEchop)-x2)/(1-TEchop)
+set c3_v2 (x1+c1*(1-TEchop)-x3)/(1-TEchop)
+set c4_v2 (x1+c1*(1-TEchop)-x4)/(1-TEchop)
+
 # thickness to chord ratios
 set tc1 thick1/c1
-set tc2 thick2/c2
-set tc3 thick3/c3
-set tc4 thick4/c4
+set tc2 thick2/c2_v2
+set tc3 thick3/c3_v2
+set tc4 thick4/c4_v2
 
 # regular wing solid
 udparg $/wingSolid tc1 tc1 tc2 tc2
 udparg $/wingSolid tc3 tc3 tc4 tc4
-udparg $/wingSolid c1 c1 c2 c2
-udparg $/wingSolid c3 c3 c4 c4
+udparg $/wingSolid c1 c1 c2 c2_v2
+udparg $/wingSolid c3 c3_v2 c4 c4_v2
 udparg $/wingSolid x1 x1 x2 x2 
 udparg $/wingSolid x3 x3 x4 x4
 udparg $/wingSolid dz1 dz1 dz2 dz2 
@@ -158,8 +163,8 @@ ifthen struct EQ 1 # struct mode
    # chopSolid
     udparg $/wingSolid tc1 tc1 tc2 tc2
       udparg $/wingSolid tc3 tc3 tc4 tc4
-      udparg $/wingSolid c1 c1 c2 c2
-      udparg $/wingSolid c3 c3 c4 c4
+      udparg $/wingSolid c1 c1 c2 c2_v2
+      udparg $/wingSolid c3 c3_v2 c4 c4_v2
       udparg $/wingSolid x1 x1 x2 x2 
       udparg $/wingSolid x3 x3 x4 x4
       udparg $/wingSolid dz1 dz1 dz2 dz2 
@@ -179,8 +184,8 @@ ifthen struct EQ 1 # struct mode
       throw 999 #deprecated for now
       udparg $/wingSolid tc1 tc1 tc2 tc2
          udparg $/wingSolid tc3 tc3 tc4 tc4
-         udparg $/wingSolid c1 c1 c2 c2
-         udparg $/wingSolid c3 c3 c4 c4
+         udparg $/wingSolid c1 c1 c2 c2_v2
+         udparg $/wingSolid c3 c3_v2 c4 c4_v2
          udparg $/wingSolid x1 x1 x2 x2 
          udparg $/wingSolid x3 x3 x4 x4
          udparg $/wingSolid dz1 dz1 dz2 dz2 
@@ -203,8 +208,8 @@ ifthen struct EQ 1 # struct mode
       throw 999 #deprecated for now
       udparg $/wingSolid tc1 tc1 tc2 tc2
          udparg $/wingSolid tc3 tc3 tc4 tc4
-         udparg $/wingSolid c1 c1 c2 c2
-         udparg $/wingSolid c3 c3 c4 c4
+         udparg $/wingSolid c1 c1 c2 c2_v2
+         udparg $/wingSolid c3 c3_v2 c4 c4_v2
          udparg $/wingSolid x1 x1 x2 x2 
          udparg $/wingSolid x3 x3 x4 x4
          udparg $/wingSolid dz1 dz1 dz2 dz2 
@@ -274,8 +279,8 @@ ifthen struct EQ 1 # struct mode
      attribute tagMidplane $none
    udparg $/wingSolid tc1 tc1 tc2 tc2
       udparg $/wingSolid tc3 tc3 tc4 tc4
-      udparg $/wingSolid c1 c1 c2 c2
-      udparg $/wingSolid c3 c3 c4 c4
+      udparg $/wingSolid c1 c1 c2 c2_v2
+      udparg $/wingSolid c3 c3_v2 c4 c4_v2
       udparg $/wingSolid x1 x1 x2 x2 
       udparg $/wingSolid x3 x3 x4 x4
       udparg $/wingSolid dz1 dz1 dz2 dz2 
@@ -736,3 +741,4 @@ end
 ||
 |
 |
+|||

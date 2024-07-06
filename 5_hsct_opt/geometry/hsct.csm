@@ -32,7 +32,7 @@ despmtr wing:spar_a2 0.0
 
 despmtr wing:aspect 3.2
 despmtr wing:c1 48.0
-despmtr wing:c2 40.7
+despmtr wing:c2 40.4
 despmtr wing:c3 20.7
 despmtr wing:c4 4.15
 despmtr wing:sweep1LE 70.0
