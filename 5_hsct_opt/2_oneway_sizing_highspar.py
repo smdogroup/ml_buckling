@@ -18,7 +18,7 @@ import os
 import argparse
 
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--procs", type=int, default=6)
+parent_parser.add_argument("--procs", type=int, default=48)
 parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
 parent_parser.add_argument("--newMesh", type=bool, default=False)

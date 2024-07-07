@@ -350,7 +350,7 @@ if args.deriv:  # test using the finite difference test
 # -------------------------------------------------------------
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
-# design_in_file = os.path.join(base_dir, "design", "sizing.txt")
+design_in_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
 design_out_file = os.path.join(base_dir, "design", "ML-AE.txt" if args.useML else "CF-AE.txt")
 
 design_folder = os.path.join(base_dir, "design")
@@ -359,8 +359,7 @@ if not os.path.exists(design_folder) and comm.rank == 0:
 history_file = os.path.join(design_folder, "ML-AE.hst" if args.useML else "CF-AE.hst")
 
 # reload previous design
-# not needed since we are hot starting
-# f2f_model.read_design_variables_file(comm, design_out_file)
+f2f_model.read_design_variables_file(comm, design_in_file)
 
 manager = OptimizationManager(
     f2f_driver,
