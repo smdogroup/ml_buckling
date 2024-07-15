@@ -15,6 +15,17 @@ Re - 7.3817e8
 y+ = 15
 Wall spacing - 1e-4 m
 
+# Climb flight condition
+Altitude - sea level
+Mach number - 0.4
+Tinf - 300 K
+speed of sound - 340 m/s
+density - 1.225 kg / m^3
+length - 40 m (change to just wing)
+VInf - 136 m/s
+dynamic viscosity (mu) - 1.18e-5 Pa*s
+Re - 5.7e8
+
 # Concept Based on NASA TM - HSCT Manuscript
 NOTE : Figure 4.21 is a great view of the Mach 2.4 geometry.
 Target TOGW - 750,000 lb or 3,336,166 N aka 3.3 MN

@@ -30,7 +30,7 @@
   flux_construction       = 'roe'
   flux_limiter            = 'hminmod'
   smooth_limiter_coeff    = 1.0
-  freeze_limiter_iteration = 200
+  freeze_limiter_iteration = 0
 /
 &nonlinear_solver_parameters
   time_accuracy = "steady"
@@ -38,8 +38,8 @@
   subiterations =          0
   schedule_iteration(1:2) = 1,150
   schedule_cfl(1:2) = 2.0, 100.0
-  schedule_cflturb(1:2) = 5.0,50.0
-  hanim = .true.
+  schedule_cflturb(1:2) = 5.0,10.0
+  hanim = .false.
 /
 &hanim
   cfl_increase_factor = 1.2

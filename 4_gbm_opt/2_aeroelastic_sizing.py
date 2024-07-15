@@ -361,11 +361,16 @@ history_file = os.path.join(design_folder, "ML-AE.hst" if args.useML else "CF-AE
 # reload previous design
 f2f_model.read_design_variables_file(comm, design_in_file)
 
+# change dv bounds relative to previous
+for var in f2f_model.get_variables():
+    var.upper = var.value * 1.3
+    var.lower = var.value / 1.3
+
 manager = OptimizationManager(
     f2f_driver,
     design_out_file=design_out_file,
     hot_start=args.hotstart,
-    debug=True,
+    debug=False,
     hot_start_file=history_file,
     sparse=True,
 )
