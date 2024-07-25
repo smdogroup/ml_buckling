@@ -208,17 +208,17 @@ for icomp, comp in enumerate(component_groups):
     elif "OML" in comp:
         panelThick = 0.1
     Variable.structural(f"{comp}-T", value=panelThick).set_bounds(
-        lower=0.002, upper=0.1, scale=100.0
+        lower=2e-3 if "OML" in comp else 1e-4, upper=0.1, scale=100.0
     ).register_to(wing)
 
     # stiffener height
     Variable.structural(f"{comp}-sheight", value=0.05).set_bounds(
-        lower=0.002, upper=0.1, scale=10.0
+        lower=2e-3 if "OML" in comp else 1e-4, upper=0.1, scale=10.0
     ).register_to(wing)
 
     # stiffener thickness
     Variable.structural(f"{comp}-sthick", value=0.02).set_bounds(
-        lower=0.002, upper=0.1, scale=100.0
+        lower=2e-3 if "OML" in comp else 1e-4, upper=0.1, scale=100.0
     ).register_to(wing)
 
     Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
