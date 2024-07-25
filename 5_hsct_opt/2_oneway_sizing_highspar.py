@@ -8,7 +8,7 @@ from funtofem import *
 from pyoptsparse import SNOPT, Optimization
 
 # script inputs
-hot_start = False
+#hot_start = False
 store_history = True
 
 # import openmdao.api as om
@@ -18,11 +18,13 @@ import os
 import argparse
 
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--procs", type=int, default=48)
+parent_parser.add_argument("--procs", type=int, default=128)
 parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
 parent_parser.add_argument("--newMesh", type=bool, default=False)
 args = parent_parser.parse_args()
+
+hot_start = args.hotstart
 
 comm = MPI.COMM_WORLD
 
