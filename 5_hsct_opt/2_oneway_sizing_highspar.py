@@ -438,7 +438,7 @@ snoptimizer = SNOPT(
         "Major iterations limit": 4000,
         "Minor iterations limit": 150000000,
         "Iterations limit": 100000000,
-        # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
+        "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
         "Nonderivative linesearch": True, # turns off derivative linesearch
         "Linesearch tolerance": 0.9,
         "Difference interval": 1e-6,
