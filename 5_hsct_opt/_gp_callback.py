@@ -38,33 +38,35 @@ def gp_callback_generator(tacs_component_names):
         # get the panelGPs object associated with this tacs component
         panelGPs = panelGP_dict[compDescript]
 
-        # Create the orthotropic layup
+        # need to use orthotropic ply for this class, but
+        # use isotropic properties though
+        E = 114e9
+        nu = 0.361
+        G = E / 2.0 / (1+nu)
+    
         ortho_prop = constitutive.MaterialProperties(
-            rho=1.55e3,  # density kg/m^3
-            E1=117.9e9, # Young's modulus in 11 direction (Pa)
-            E2=9.7e9, # Young's modulus in 22 direction (Pa)
-            G12=4.8e9, # in-plane 1-2 shear modulus (Pa)
-            G13=4.8e9, # Transverse 1-3 shear modulus (Pa)
-            G23=4.8e9, # Transverse 2-3 shear modulus (Pa)
-            nu12=0.35,  # 1-2 poisson's ratio
-            T1=1648e6,  # Tensile strength in 1 direction (Pa)
-            C1=1034e6,  # Compressive strength in 1 direction (Pa)
-            T2=64e6,  # Tensile strength in 2 direction (Pa)
-            C2=228e6,  # Compressive strength in 2 direction (Pa)
-            S12=71e6,  # Shear strength direction (Pa)
+            rho=4.43e3,  # density kg/m^3
+            E1=114e9, # Young's modulus in 11 direction (Pa)
+            E2=114e9, # Young's modulus in 22 direction (Pa)
+            G12=G, # in-plane 1-2 shear modulus (Pa)
+            G13=G, # Transverse 1-3 shear modulus (Pa)
+            G23=G, # Transverse 2-3 shear modulus (Pa)
+            nu12=0.361,  # 1-2 poisson's ratio
+            T1=880e6,  # Tensile strength in 1 direction (Pa)
+            C1=880e6,  # Compressive strength in 1 direction (Pa)
+            T2=880e6,  # Tensile strength in 2 direction (Pa)
+            C2=880e6,  # Compressive strength in 2 direction (Pa)
+            S12=880e6,  # Shear strength direction (Pa)
         )
         ortho_ply = constitutive.OrthotropicPly(1.0, ortho_prop)
-
+    
         # case by case initial ply angles
         if "OML" in compDescript:
-            plyAngles = np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype))
-            panelPlyFractions = np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0
-            refAxis = np.array([0.34968083, 0.93686889, 0.0])
+            refAxis = np.array([0.0, 1.0, 0.0])
         else:
-            plyAngles = np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype))
-            panelPlyFractions = np.array([10.0, 35.0, 35.0, 20.0], dtype=dtype) / 100.0
             refAxis = np.array([0.0, 0.0, 1.0])
-
+    
+    
         # The ordering of the DVs used by the GPBladeStiffenedShell model is:
         # - panel length
         # - stiffener pitch
@@ -93,12 +95,12 @@ def gp_callback_generator(tacs_component_names):
             panelLength=0.5, # choose wrong initial value first to check if it corrects in FUNtoFEM
             stiffenerPitch=0.2,
             panelThick=1.5e-2,
-            panelPlyAngles=plyAngles,
-            panelPlyFracs=panelPlyFractions,
+            panelPlyAngles=np.array([0.0], dtype=dtype),
+            panelPlyFracs=np.array([1.0], dtype=dtype),
             stiffenerHeight=0.075,
             stiffenerThick=1e-2,
-            stiffenerPlyAngles=plyAngles,
-            stiffenerPlyFracs=np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0,
+            stiffenerPlyAngles=np.array([0.0], dtype=dtype),
+            stiffenerPlyFracs=np.array([1.0], dtype=dtype),
             panelWidth=0.5, # choose wrong initial value first to check if it corrects in FUNtoFEM
             flangeFraction=0.8,
             panelLengthNum=dvNum,
@@ -111,7 +113,7 @@ def gp_callback_generator(tacs_component_names):
         )
         # Set the KS weight really low so that all failure modes make a
         # significant contribution to the failure function derivatives
-        con.setKSWeight(20.0)
+        con.setKSWeight(100.0)  #20.0
 
         con.setStiffenerPitchBounds(0.05, 0.5)
         con.setPanelThicknessBounds(0.002, 0.1)
@@ -126,12 +128,9 @@ def gp_callback_generator(tacs_component_names):
         for descript in elemDescripts:
             if descript == "CQUAD4":
                 elem = elements.Quad4Shell(transform, con)
-            elif descript == "CQUAD9":
-                elem = elements.Quad9Shell(transform, con)
-            elif descript == "CQUAD16":
-                elem = elements.Quad16Shell(transform, con)
-            elif descript in ["CTRIA3", "CTRIAR"]:
+            elif descript == "CTRIA3":
                 elem = elements.Tri3Shell(transform, con)
+
             elemList += [elem]
 
         return elemList, DVscales

@@ -198,29 +198,23 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     # stiffener pitch variable
-    Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
+    Variable.structural(f"{comp}-spitch", value=0.40).set_bounds(
         lower=0.05, upper=0.5, scale=1.0
     ).register_to(wing)
 
     # panel thickness variable, shortened DV name for ESP/CAPS, nastran requirement here
-    if "rib" in comp:
-        panelThick = 0.2
-    elif "spar" in comp:
-        panelThick = 0.4
-    elif "OML" in comp:
-        panelThick = 0.1
-    Variable.structural(f"{comp}-T", value=panelThick).set_bounds(
-        lower=2e-3 if "OML" in comp else 1e-4, upper=0.1, scale=100.0
+    Variable.structural(f"{comp}-pthick", value=0.1).set_bounds(
+        lower=2e-3 if "OML" in comp else 1e-4, upper=0.2, scale=100.0
     ).register_to(wing)
 
     # stiffener height
-    Variable.structural(f"{comp}-sheight", value=0.05).set_bounds(
-        lower=2e-3 if "OML" in comp else 1e-4, upper=0.1, scale=10.0
+    Variable.structural(f"{comp}-sheight", value=0.2).set_bounds(
+        lower=2e-3 if "OML" in comp else 1e-4, upper=0.4, scale=10.0
     ).register_to(wing)
 
     # stiffener thickness
-    Variable.structural(f"{comp}-sthick", value=0.02).set_bounds(
-        lower=2e-3 if "OML" in comp else 1e-4, upper=0.1, scale=100.0
+    Variable.structural(f"{comp}-sthick", value=0.1).set_bounds(
+        lower=2e-3 if "OML" in comp else 1e-4, upper=0.4, scale=100.0
     ).register_to(wing)
 
     Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
@@ -243,7 +237,7 @@ wing.register_to(f2f_model)
 
 # make a funtofem scenario
 climb = Scenario.steady("climb_turb", steps=350, uncoupled_steps=200)  # 2000
-Function.ksfailure(ks_weight=20.0, safety_factor=1.5).optimize(
+Function.ksfailure(ks_weight=100.0, safety_factor=1.5).optimize(
     scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-climb"
 ).register_to(climb)
 Function.mass().optimize(
@@ -266,7 +260,7 @@ nribs = 20
 nspars = 40
 nOML = nribs - 1
 
-adj_types = ["T", "sthick", "sheight"]
+adj_types = ["pthick", "sthick", "sheight"]
 adj_values = [2.5e-3, 2.5e-3, 10e-3]
 
 adj_prefix_lists = []
@@ -333,7 +327,7 @@ for j, prefix in enumerate(prefix_lists):
         print(f"reg rel comp funcs {ncomp}")
         if j < n2 - 1: print("\033[1A", end="")
 
-    skin_var = f2f_model.get_variables(f"{prefix}-T")
+    skin_var = f2f_model.get_variables(f"{prefix}-pthick")
     sthick_var = f2f_model.get_variables(f"{prefix}-sthick")
     sheight_var = f2f_model.get_variables(f"{prefix}-sheight")
     spitch_var = f2f_model.get_variables(f"{prefix}-spitch")
