@@ -253,6 +253,7 @@ manager = OptimizationManager(
     hot_start=hot_start,
     hot_start_file=hot_start_file,
     debug=True,
+    sparse=True,
 )
 
 # create the pyoptsparse optimization problem

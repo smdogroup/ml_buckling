@@ -15,23 +15,8 @@ store_history = True
 from mpi4py import MPI
 from tacs import caps2tacs
 import os
-import argparse
-
-parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--procs", type=int, default=48)
-parent_parser.add_argument("--hotstart", type=bool, default=False)
-parent_parser.add_argument("--useML", type=bool, default=False)
-parent_parser.add_argument("--newMesh", type=bool, default=False)
-args = parent_parser.parse_args()
 
 comm = MPI.COMM_WORLD
-
-if args.useML:
-    from _gp_callback import gp_callback_generator
-    model_name = "ML-oneway"
-else:
-    from _closed_form_callback import closed_form_callback as callback
-    model_name = "CF-oneway"
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 csm_path = os.path.join(base_dir, "geometry", "hsct.csm")
@@ -39,7 +24,7 @@ csm_path = os.path.join(base_dir, "geometry", "hsct.csm")
 # F2F MODEL and SHAPE MODELS
 # ----------------------------------------
 
-f2f_model = FUNtoFEMmodel(model_name)
+f2f_model = FUNtoFEMmodel("temp")
 tacs_model = caps2tacs.TacsModel.build(
     csm_file=csm_path,
     comm=comm,
@@ -49,11 +34,11 @@ tacs_model = caps2tacs.TacsModel.build(
 )
 tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative test to pass
     edge_pt_min=2,
-    edge_pt_max=20,
+    edge_pt_max=300,
     mesh_elements="Mixed",
-    global_mesh_size=0.05,
-    max_surf_offset=0.2,
-    max_dihedral_angle=15,
+    global_mesh_size=0.004,
+    max_surf_offset=0.01,
+    max_dihedral_angle=5,
 ).register_to(
     tacs_model
 )
@@ -67,14 +52,14 @@ tacs_aim.set_config_parameter("wing:includeLE", 0)
 tacs_aim.set_config_parameter("wing:includeTE", 0)
 tacs_aim.set_config_parameter("wing:nspars", 40) # same # as concorde
 
-for proc in tacs_aim.active_procs:
-    if comm.rank == proc:
-        aim = tacs_model.mesh_aim.aim
-        aim.input.Mesh_Sizing = {
-            "chord": {"numEdgePoints": 20},
-            "span": {"numEdgePoints": 8},
-            "vert": {"numEdgePoints": 4},
-        }
+#for proc in tacs_aim.active_procs:
+#    if comm.rank == proc:
+#        aim = tacs_model.mesh_aim.aim
+#        aim.input.Mesh_Sizing = {
+#            "chord": {"numEdgePoints": 20},
+#            "span": {"numEdgePoints": 8},
+#            "vert": {"numEdgePoints": 4},
+#        }
         # "LEribFace": {"tessParams": [0.03, 0.1, 3]},
         # "LEribEdge": {"numEdgePoints": 20},
 
@@ -175,9 +160,6 @@ component_groups = sorted(component_groups)
 #print(f"component group 89 = {component_groups[89]}")
 #exit()
 
-if args.useML:
-    callback = gp_callback_generator(component_groups)
-
 for icomp, comp in enumerate(component_groups):
     caps2tacs.CompositeProperty.null(comp, null_material).register_to(tacs_model)
 
@@ -233,186 +215,6 @@ wing.register_to(f2f_model)
 # --------------------------------------------------
 
 tacs_aim.setup_aim()
-if args.newMesh:
-    tacs_aim.pre_analysis()
+tacs_aim.pre_analysis()
 
-# SCENARIOS
-# ----------------------------------------------------
 
-# make a funtofem scenario
-climb = Scenario.steady("climb_turb", steps=350, uncoupled_steps=200)  # 2000
-Function.ksfailure(ks_weight=20.0, safety_factor=1.5).optimize(
-    scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-climb"
-).register_to(climb)
-Function.mass().optimize(
-    scale=1.0e-4, objective=True, plot=True, plot_name="mass"
-).register_to(climb)
-climb.set_temperature(T_ref=216, T_inf=216)
-climb.set_flow_ref_vals(qinf=3.16e4)
-climb.register_to(f2f_model)
-
-# COMPOSITE FUNCTIONS
-# -------------------------------------------------------
-# TBD, this will be a bit tricky here, prob just need some None checks
-
-# skin thickness adjacency constraints
-variables = f2f_model.get_variables()
-adjacency_scale = 10.0
-thick_adj = 2.5e-3
-
-comp_groups = ["OMLtop", "OMLbot", "LEspar", "TEspar"] + [f"spar{ispar}" for ispar in range(1, nspars+1)]
-comp_nums = [nOML for i in range(len(comp_groups))]
-adj_types = ["T"]
-adj_types += ["sthick", "sheight"]
-adj_values = [thick_adj, thick_adj, 10e-3]
-
-for igroup, comp_group in enumerate(comp_groups):
-    comp_num = comp_nums[igroup]
-    for icomp in range(1, comp_num):
-        # no constraints across sob (higher stress there)
-        for iadj, adj_type in enumerate(adj_types):
-            adj_value = adj_values[iadj]
-            name = f"{comp_group}{icomp}-{adj_type}"
-            # print(f"name = {name}", flush=True)
-            left_var = f2f_model.get_variables(f"{comp_group}{icomp}-{adj_type}")
-            right_var = f2f_model.get_variables(f"{comp_group}{icomp+1}-{adj_type}")
-            # print(f"left var = {left_var}, right var = {right_var}")
-            if left_var is not None and right_var is not None:
-                adj_constr = left_var - right_var
-                adj_constr.set_name(f"{comp_group}{icomp}-adj_{adj_type}").optimize(
-                    lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-                ).register_to(f2f_model)
-
-    for icomp in range(1, comp_num + 1):
-        skin_var = f2f_model.get_variables(f"{comp_group}{icomp}-T")
-        sthick_var = f2f_model.get_variables(f"{comp_group}{icomp}-sthick")
-        sheight_var = f2f_model.get_variables(f"{comp_group}{icomp}-sheight")
-        spitch_var = f2f_model.get_variables(f"{comp_group}{icomp}-spitch")
-
-        # stiffener - skin thickness adjacency here
-        if skin_var is not None and sthick_var is not None:
-            adj_value = thick_adj
-            adj_constr = skin_var - sthick_var
-            adj_constr.set_name(f"{comp_group}{icomp}-skin_stiff_T").optimize(
-                lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-            ).register_to(f2f_model)
-
-        # minimum stiffener spacing pitch > 2 * height
-        if spitch_var is not None and sheight_var is not None:
-            min_spacing_constr = spitch_var - 2 * sheight_var
-            min_spacing_constr.set_name(f"{comp_group}{icomp}-sspacing").optimize(
-                lower=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
-
-        # minimum stiffener AR
-        if sheight_var is not None and sthick_var is not None:
-            min_stiff_AR = sheight_var - 2.0 * sthick_var
-            min_stiff_AR.set_name(f"{comp_group}{icomp}-minstiffAR").optimize(
-                    lower=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
-
-        # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
-        if sheight_var is not None and sthick_var is not None:
-            max_stiff_AR = sheight_var - 8.0 * sthick_var
-            max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
-                    upper=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
-
-# DISCIPLINE INTERFACES AND DRIVERS
-# -----------------------------------------------------
-
-solvers = SolverManager(comm)
-# solvers.flow = Fun3dInterface(comm, f2f_model, fun3d_dir="meshes")
-solvers.structural = TacsSteadyInterface.create_from_bdf(
-    model=f2f_model,
-    comm=comm,
-    nprocs=args.procs,
-    bdf_file=tacs_aim.root_dat_file if args.newMesh else "struct/tacs.dat",
-    prefix=tacs_aim.root_analysis_dir if args.newMesh else "struct",
-    callback=callback,
-    panel_length_dv_index=0,
-    panel_width_dv_index=5,
-)
-
-# read in aero loads
-aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_turb_loads.txt")
-
-transfer_settings = TransferSettings(npts=200)
-
-# build the shape driver from the file
-tacs_driver = OnewayStructDriver.prime_loads_from_file(
-    filename=aero_loads_file,
-    solvers=solvers,
-    model=f2f_model,
-    nprocs=args.procs,
-    transfer_settings=transfer_settings,
-    init_transfer=True,
-)
-
-# PYOPTSPARSE OPTMIZATION
-# -------------------------------------------------------------
-
-# create an OptimizationManager object for the pyoptsparse optimization problem
-design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
-
-manager = OptimizationManager(
-    tacs_driver, design_out_file=design_out_file, hot_start=args.hotstart, debug=True, sparse=True
-)
-
-f2f_model.read_design_variables_file(comm, "design/state-sizing.txt")
-
-# create the pyoptsparse optimization problem
-opt_problem = Optimization("hsctOpt", manager.eval_functions)
-
-# add funtofem model variables to pyoptsparse
-manager.register_to_problem(opt_problem)
-
-# run an SNOPT optimization
-
-design_folder = os.path.join(base_dir, "design")
-if not os.path.exists(design_folder):
-    os.mkdir(design_folder)
-history_file = os.path.join(design_folder, "ML-sizing.hst" if args.useML else "CF-sizing.hst")
-store_history_file = history_file if store_history else None
-hot_start_file = history_file if hot_start else None
-
-snoptimizer = SNOPT(
-    options={
-        "Print frequency": 1000,
-        "Summary frequency": 10000000,
-        "Major feasibility tolerance": 1e-6,
-        "Major optimality tolerance": 1e-6,
-        "Verify level": 0,
-        "Major iterations limit": 4000,
-        "Minor iterations limit": 150000000,
-        "Iterations limit": 100000000,
-        # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
-        "Nonderivative linesearch": True, # turns off derivative linesearch
-        "Linesearch tolerance": 0.9,
-        "Difference interval": 1e-6,
-        "Function precision": 1e-10,
-        "New superbasics limit": 2000,
-        "Penalty parameter": 1.0, # had this off for faster opt in the single panel case
-        # however ksfailure becomes too large with this off. W/ on merit function goes down too slowly though
-        # try intermediate value btw 0 and 1 (smaller penalty)
-        # this may be the most important switch to change for opt performance w/ ksfailure in the opt
-        # TODO : could try higher penalty parameter like 50 or higher and see if that helps reduce iteration count..
-        #   because it often increases the penalty parameter a lot near the optimal solution anyways
-        "Scale option": 1,
-        "Hessian updates": 40,
-        "Print file": os.path.join("SNOPT_print.out"),
-        "Summary file": os.path.join("SNOPT_summary.out"),
-    }
-)
-
-sol = snoptimizer(
-    opt_problem,
-    sens=manager.eval_gradients,
-    storeHistory=history_file, #None
-    hotStart=history_file if args.hotstart else None,
-)
-
-# print final solution
-sol_xdict = sol.xStar
-if comm.rank == 0:
-    print(f"Final solution = {sol_xdict}", flush=True)

@@ -43,43 +43,43 @@ f2f_model = FUNtoFEMmodel(model_name)
 tacs_model = caps2tacs.TacsModel.build(
     csm_file=csm_path,
     comm=comm,
-    problem_name="capsStruct1",
+    problem_name="capsStruct2",
     active_procs=[0],
     verbosity=1,
 )
-tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative test to pass
-    edge_pt_min=2,
-    edge_pt_max=20,
-    mesh_elements="Mixed",
-    global_mesh_size=0.05,
-    max_surf_offset=0.2,
-    max_dihedral_angle=15,
-).register_to(
-    tacs_model
-)
-f2f_model.structural = tacs_model
+#tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative test to pass
+#    edge_pt_min=2,
+#    edge_pt_max=20,
+#    mesh_elements="Mixed",
+#    global_mesh_size=0.05,
+#    max_surf_offset=0.2,
+#    max_dihedral_angle=15,
+#).register_to(
+#    tacs_model
+#)
+#f2f_model.structural = tacs_model
 
-tacs_aim = tacs_model.tacs_aim
-tacs_aim.set_config_parameter("mode:flow", 0)
-tacs_aim.set_config_parameter("mode:struct", 1)
-tacs_aim.set_config_parameter("wing:allOMLgroups", 1)
-tacs_aim.set_config_parameter("wing:includeLE", 0)
-tacs_aim.set_config_parameter("wing:includeTE", 0)
-tacs_aim.set_config_parameter("wing:nspars", 40) # same # as concorde
+#tacs_aim = tacs_model.tacs_aim
+#tacs_aim.set_config_parameter("mode:flow", 0)
+#tacs_aim.set_config_parameter("mode:struct", 1)
+#tacs_aim.set_config_parameter("wing:allOMLgroups", 1)
+#tacs_aim.set_config_parameter("wing:includeLE", 0)
+#tacs_aim.set_config_parameter("wing:includeTE", 0)
+#tacs_aim.set_config_parameter("wing:nspars", 40) # same # as concorde
 
-for proc in tacs_aim.active_procs:
-    if comm.rank == proc:
-        aim = tacs_model.mesh_aim.aim
-        aim.input.Mesh_Sizing = {
-            "chord": {"numEdgePoints": 20},
-            "span": {"numEdgePoints": 8},
-            "vert": {"numEdgePoints": 4},
-        }
+#for proc in tacs_aim.active_procs:
+#    if comm.rank == proc:
+#        aim = tacs_model.mesh_aim.aim
+#        aim.input.Mesh_Sizing = {
+#            "chord": {"numEdgePoints": 20},
+#            "span": {"numEdgePoints": 8},
+#            "vert": {"numEdgePoints": 4},
+#        }
         # "LEribFace": {"tessParams": [0.03, 0.1, 3]},
         # "LEribEdge": {"numEdgePoints": 20},
 
 # add tacs constraints in
-caps2tacs.PinConstraint("root").register_to(tacs_model)
+#caps2tacs.PinConstraint("root").register_to(tacs_model)
 # caps2tacs.PinConstraint("station2").register_to(tacs_model)
 # caps2tacs.TemperatureConstraint("midplane", temperature=0).register_to(tacs_model)
 
@@ -90,10 +90,12 @@ wing = Body.aeroelastic("wing", boundary=5)
 # aerothermoelastic
 
 # setup the material and shell properties
-null_material = caps2tacs.Orthotropic.null().register_to(tacs_model)
+#null_material = caps2tacs.Orthotropic.null().register_to(tacs_model)
 
-nribs = int(tacs_model.get_config_parameter("wing:nribs"))
-nspars = int(tacs_model.get_config_parameter("wing:nspars"))
+nribs = 20
+nspars = 40
+#nribs = int(tacs_model.get_config_parameter("wing:nribs"))
+#nspars = int(tacs_model.get_config_parameter("wing:nspars"))
 nOML = nribs - 1
 
 # NOTE : the feature in ESP/CAPS that gives you the names of all capsGroups
@@ -179,7 +181,7 @@ if args.useML:
     callback = gp_callback_generator(component_groups)
 
 for icomp, comp in enumerate(component_groups):
-    caps2tacs.CompositeProperty.null(comp, null_material).register_to(tacs_model)
+    #caps2tacs.CompositeProperty.null(comp, null_material).register_to(tacs_model)
 
     # NOTE : need to make the struct DVs in TACS in the same order as the blade callback
     # which is done by components and then a local order
@@ -232,9 +234,9 @@ wing.register_to(f2f_model)
 # INITIAL STRUCTURE MESH, SINCE NO STRUCT SHAPE VARS
 # --------------------------------------------------
 
-tacs_aim.setup_aim()
-if args.newMesh:
-    tacs_aim.pre_analysis()
+#tacs_aim.setup_aim()
+#if args.newMesh:
+#    tacs_aim.pre_analysis()
 
 # SCENARIOS
 # ----------------------------------------------------
@@ -349,17 +351,20 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
     init_transfer=True,
 )
 
+tacs_driver.solve_forward()
+exit()
+
 # PYOPTSPARSE OPTMIZATION
 # -------------------------------------------------------------
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
+f2f_model.read_design_variables_file(comm, "design/state-sizing.txt")
+
 
 manager = OptimizationManager(
-    tacs_driver, design_out_file=design_out_file, hot_start=args.hotstart, debug=True, sparse=True
+    tacs_driver, design_out_file=design_out_file, hot_start=args.hotstart, debug=True
 )
-
-f2f_model.read_design_variables_file(comm, "design/state-sizing.txt")
 
 # create the pyoptsparse optimization problem
 opt_problem = Optimization("hsctOpt", manager.eval_functions)

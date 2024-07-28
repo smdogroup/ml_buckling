@@ -257,7 +257,7 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
 design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
 
 manager = OptimizationManager(
-    tacs_driver, design_out_file=design_out_file, hot_start=hot_start, debug=True
+    tacs_driver, design_out_file=design_out_file, hot_start=hot_start, debug=True, sparse=True
 )
 
 # create the pyoptsparse optimization problem
