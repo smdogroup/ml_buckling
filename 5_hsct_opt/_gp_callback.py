@@ -122,12 +122,17 @@ def gp_callback_generator(tacs_component_names):
         transform = elements.ShellRefAxisTransform(refAxis)
 
         # --- Create the element object ---
-        if elemDescripts[0] == "CQUAD4":
-            elem = elements.Quad4Shell(transform, con)
-        elif elemDescripts[0] == "CQUAD9":
-            elem = elements.Quad9Shell(transform, con)
-        elif elemDescripts[0] == "CQUAD16":
-            elem = elements.Quad16Shell(transform, con)
+        elemList = []
+        for descript in elemDescripts:
+            if descript == "CQUAD4":
+                elem = elements.Quad4Shell(transform, con)
+            elif descript == "CQUAD9":
+                elem = elements.Quad9Shell(transform, con)
+            elif descript == "CQUAD16":
+                elem = elements.Quad16Shell(transform, con)
+            elif descript in ["CTRIA3", "CTRIAR"]:
+                elem = elements.Tri3Shell(transform, con)
+            elemList += [elem]
 
-        return elem, DVscales
+        return elemList, DVscales
     return gp_callback
