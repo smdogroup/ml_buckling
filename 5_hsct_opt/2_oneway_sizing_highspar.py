@@ -307,7 +307,7 @@ for i,prefix_list in enumerate(adj_prefix_lists):
         right_var = f2f_model.get_variables(f"{right_prefix}-{adj_type}")
         if left_var is not None and right_var is not None:
             adj_constr = left_var - right_var
-            adj_constr.set_name(f"{left_prefix}-adj_{adj_type}").optimize(
+            adj_constr.set_name(f"{left_prefix}-adj{i}_{adj_type}").optimize(
                 lower=-adj_value, upper=adj_value, scale=10.0, objective=False
             ).register_to(f2f_model)
             ncomp += 1
