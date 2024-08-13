@@ -80,9 +80,9 @@ nribs = int(tacs_model.get_config_parameter("wing:nribs"))
 nspars = int(tacs_model.get_config_parameter("wing:nspars"))
 nOML = nribs - 1
 
-component_groups = [f"rib{irib}" for irib in range(1, nribs+1)]
-component_groups += [f"spar{ispar}" for ispar in range(1, nspars+1)]
-component_groups += [f"OML{iOML}" for iOML in range(1, nOML+1)]
+component_groups = [f"rib{irib}" for irib in range(1, nribs + 1)]
+component_groups += [f"spar{ispar}" for ispar in range(1, nspars + 1)]
+component_groups += [f"OML{iOML}" for iOML in range(1, nOML + 1)]
 component_groups += [f"{prefix}spar" for prefix in ["LE", "TE"]]
 
 for icomp, comp in enumerate(component_groups):
@@ -98,9 +98,15 @@ for icomp, comp in enumerate(component_groups):
         panel_length = 0.36
     elif "OML" in comp:
         panel_length = 0.65
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.LENGTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0, state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
     # stiffener pitch variable
     Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
@@ -128,9 +134,15 @@ for icomp, comp in enumerate(component_groups):
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0,  state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
 
 # register the wing body to the model

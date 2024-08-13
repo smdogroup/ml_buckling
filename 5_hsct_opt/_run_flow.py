@@ -7,7 +7,7 @@ from mpi4py import MPI
 import os
 
 case = "turbulent"
-#case = "inviscid"
+# case = "inviscid"
 
 comm = MPI.COMM_WORLD
 
@@ -19,7 +19,9 @@ wing.register_to(f2f_model)
 if case == "inviscid":
     climb = Scenario.steady("climb_inviscid", steps=3000)  # 2000
 elif case == "turbulent":
-    climb = Scenario.steady("climb_turb", steps=150, forward_coupling_frequency=30, uncoupled_steps=100)
+    climb = Scenario.steady(
+        "climb_turb", steps=150, forward_coupling_frequency=30, uncoupled_steps=100
+    )
 Function.lift().register_to(climb)
 Function.drag().register_to(climb)
 climb.set_temperature(T_ref=216, T_inf=216)
@@ -32,7 +34,11 @@ climb.register_to(f2f_model)
 
 solvers = SolverManager(comm)
 solvers.flow = Fun3d14Interface(
-    comm, f2f_model, fun3d_dir="cfd", forward_stop_tolerance=1e-13, forward_min_tolerance=1e-8
+    comm,
+    f2f_model,
+    fun3d_dir="cfd",
+    forward_stop_tolerance=1e-13,
+    forward_min_tolerance=1e-8,
 )
 my_transfer_settings = TransferSettings(npts=200)
 fun3d_driver = OnewayAeroDriver(

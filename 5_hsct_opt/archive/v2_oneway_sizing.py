@@ -8,7 +8,6 @@ from funtofem import *
 from pyoptsparse import SNOPT, Optimization
 import gc  # garbage collection
 import psutil, os
-import numpy as np
 
 # script inputs
 # hot_start = False
@@ -275,95 +274,17 @@ climb.set_temperature(T_ref=216, T_inf=216)
 climb.set_flow_ref_vals(qinf=3.16e4)
 climb.register_to(f2f_model)
 
-# NON-ADJACENCY COMPOSITE FUNCTIONS [not just variables involved]
-# ---------------------------------------------------------------
-
-# There are None for this optimization problem
-# the adjacency constraints come at a later section near the optimizer..
-
-# DISCIPLINE INTERFACES AND DRIVERS
-# -----------------------------------------------------
-
-solvers = SolverManager(comm)
-# solvers.flow = Fun3dInterface(comm, f2f_model, fun3d_dir="meshes")
-solvers.structural = TacsSteadyInterface.create_from_bdf(
-    model=f2f_model,
-    comm=comm,
-    nprocs=args.procs,
-    bdf_file=tacs_aim.root_dat_file if args.newMesh else "struct/tacs.dat",
-    prefix=tacs_aim.root_analysis_dir if args.newMesh else "struct",
-    callback=callback,
-    panel_length_dv_index=0,
-    panel_width_dv_index=5,
-)
-
-f2f_model.print_memory_size(comm, root=0, starting_message="After solvers")
-
-
-# read in aero loads
-aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_turb_loads.txt")
-
-transfer_settings = TransferSettings(npts=200)
-
-# build the shape driver from the file
-tacs_driver = OnewayStructDriver.prime_loads_from_file(
-    filename=aero_loads_file,
-    solvers=solvers,
-    model=f2f_model,
-    nprocs=args.procs,
-    transfer_settings=transfer_settings,
-    init_transfer=True,
-)
-
-f2f_model.print_memory_size(comm, root=0, starting_message="After driver")
-
-mem4 = process_memory()
-# dmem3 = mem4 - mem3
-dmem3 = mem4 - mem1
-print(f"memory added during solvers, drivers = {dmem3} GB, total = {mem4} GB")
-# exit()
-
-# PYOPTSPARSE OPTMIZATION
-# -------------------------------------------------------------
-
-# create an OptimizationManager object for the pyoptsparse optimization problem
-design_out_file = os.path.join(
-    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
-)
-
-# f2f_model.read_design_variables_file(comm, "design/state-sizing.txt")
-
-opt_manager = OptimizationManager(
-    tacs_driver,
-    design_out_file=design_out_file,
-    hot_start=hot_start,
-    plot_hist=False,
-    debug=True,
-    sparse=True,
-)
-
-# create the pyoptsparse optimization problem
-opt_problem = Optimization("hsctOpt", opt_manager.eval_functions)
-
-# add funtofem model variables to pyoptsparse
-opt_manager.register_to_problem(opt_problem)
-
-# VARS_ONLY / SPARSE LINEAR COMPOSITE FUNCTIONS
+# COMPOSITE FUNCTIONS
 # -------------------------------------------------------
 # TBD, this will be a bit tricky here, prob just need some None checks
 f2f_model.print_memory_size(comm, root=0, starting_message="Before composite functions")
 
-# it's far more memory efficient to not register these ~13k composite functions below
-# directly into the f2f_model [took up like 20 GB of data on my desktop computer]
-# instead, it's more efficient to directly build a pyoptsparse sparse linear constraint object
-# then delete the composite function and it only takes up like 2 GB!
-
-# this was a 2 day investigation into python memory management. ended up realizing that
-# even if I later delete the composite functions in the funtofem model and free up the space.
-# python never gives back that RAM => which is kind of bizarre, but a TEDTalk on python memory confirmed this.
-# so better to never allocate that much memory in the first place.. another option was to try and use
-# __slots__ [tuple-based] instead of __dict__ [dictionary-based] version of compositeFunctions to store the memory [smaller memory
-#  because tuple-based is immutable object]. However, better to never allocate that much memory if we don't need to in the first place.
+mem2 = process_memory()
+dmem1 = mem2 - mem1
+print(
+    f"memory added before the composite functions = {dmem1:.8e} GB, total = {mem2:.8e} GB"
+)
+# exit()
 
 # skin thickness adjacency constraints
 variables = f2f_model.get_variables()
@@ -417,18 +338,9 @@ adj_prefix_lists += [
 # exit()
 
 
-def get_var_index(variable):
-    for ivar, var in enumerate(f2f_model.get_variables(optim=True)):
-        if var == variable:
-            return ivar
-
-
 n = len(adj_prefix_lists)
 if comm.rank == 0:
     print(f"starting adj functions up to {3*len(adj_prefix_lists)}", flush=True)
-
-nvariables = len(f2f_model.get_variables(optim=True))
-# nvariables = 6456 # TODO : Fix this later.. [said it was 9684 instead of 6456 when I used len(...)]
 
 for i, prefix_list in enumerate(adj_prefix_lists):
     left_prefix = prefix_list[0]
@@ -446,12 +358,15 @@ for i, prefix_list in enumerate(adj_prefix_lists):
             adj_constr = left_var - right_var
             adj_constr.set_name(f"{left_prefix}-adj{i}_{adj_type}").optimize(
                 lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-            ).setup_sparse_gradient(f2f_model)
+            ).register_to(f2f_model)
 
-            opt_manager.register_sparse_constraint(opt_problem, adj_constr)
+            # check the size of this function
+            size_constr = sys.getsizeof(adj_constr)
+            # print(f"size_constr {adj_constr.name} = {size_constr}\n")
+            # exit()
+            ncomp += 1
 
             del adj_constr
-            ncomp += 1
 
 if comm.rank == 0:
     print(f"done with adjacency functons..")
@@ -498,54 +413,149 @@ for j, prefix in enumerate(prefix_lists):
         adj_constr = skin_var - sthick_var
         adj_constr.set_name(f"{prefix}-skin_stiff_T").optimize(
             lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-        ).setup_sparse_gradient(f2f_model)
+        ).register_to(f2f_model)
+        ncomp += 1
 
-        opt_manager.register_sparse_constraint(opt_problem, adj_constr)
+        # check the size of this function
+        size_constr = sys.getsizeof(adj_constr)
+        # print(f"size_constr {adj_constr.name} = {size_constr}\n")
 
         del adj_constr
-        ncomp += 1
 
         # minimum stiffener spacing pitch > 2 * height
     if spitch_var is not None and sheight_var is not None:
         min_spacing_constr = spitch_var - 2 * sheight_var
         min_spacing_constr.set_name(f"{prefix}-sspacing").optimize(
             lower=0.0, scale=1.0, objective=False
-        ).setup_sparse_gradient(f2f_model)
-
-        opt_manager.register_sparse_constraint(opt_problem, min_spacing_constr)
-
-        del min_spacing_constr
+        ).register_to(f2f_model)
         ncomp += 1
+
+        # check the size of this function
+        size_constr = sys.getsizeof(min_spacing_constr)
+        # print(f"size_constr {min_spacing_constr.name} = {size_constr}\n")
+
+        del size_constr
 
     # minimum stiffener AR
     if sheight_var is not None and sthick_var is not None:
         min_stiff_AR = sheight_var - 2.0 * sthick_var
         min_stiff_AR.set_name(f"{prefix}-minstiffAR").optimize(
             lower=0.0, scale=1.0, objective=False
-        ).setup_sparse_gradient(f2f_model)
+        ).register_to(f2f_model)
+        ncomp += 1
 
-        opt_manager.register_sparse_constraint(opt_problem, min_stiff_AR)
+        # check the size of this function
+        size_constr = sys.getsizeof(min_stiff_AR)
+        # print(f"size_constr {min_stiff_AR.name} = {size_constr}\n")
 
         del min_stiff_AR
-        ncomp += 1
 
     # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
     if sheight_var is not None and sthick_var is not None:
         max_stiff_AR = sheight_var - 8.0 * sthick_var
         max_stiff_AR.set_name(f"{prefix}-maxstiffAR").optimize(
             upper=0.0, scale=1.0, objective=False
-        ).setup_sparse_gradient(f2f_model)
+        ).register_to(f2f_model)
+        ncomp += 1
 
-        opt_manager.register_sparse_constraint(opt_problem, max_stiff_AR)
+        # check the size of this function
+        size_constr = sys.getsizeof(max_stiff_AR)
+        # print(f"size_constr {max_stiff_AR.name} = {size_constr}\n")
 
         del max_stiff_AR
-        ncomp += 1
 
 if comm.rank == 0:
     print(f"number of composite functions = {ncomp}", flush=True)
+# exit()
 
-# return to Optimization
-# -------------------------------------
+f2f_model.print_memory_size(
+    comm, root=0, starting_message="After composite functions, before solver, optimizer"
+)
+# exit()
+
+mem3 = process_memory()
+dmem2 = mem3 - mem2
+print(
+    f"memory added during the composite functions = {dmem2:.8e} GB, total = {mem3:.8e} GB"
+)
+# exit()
+
+# check reference count of composite functions at this step (so I can figure out how to delete them and save space..)
+vars_only_cfuncs = [cfunc for cfunc in f2f_model.composite_functions if cfunc.vars_only]
+first_vars_only_cfunc = vars_only_cfuncs[0]
+del vars_only_cfuncs
+# first_vars_only_cfunc = None
+print(f"ref count = {sys.getrefcount(first_vars_only_cfunc)}")
+first_vars_only_cfunc = None
+# del vars_only_cfuncs[0]
+# print(f"ref count2 = {sys.getrefcount(vars_only_cfuncs[0])}")
+# exit()
+
+# DISCIPLINE INTERFACES AND DRIVERS
+# -----------------------------------------------------
+
+solvers = SolverManager(comm)
+# solvers.flow = Fun3dInterface(comm, f2f_model, fun3d_dir="meshes")
+solvers.structural = TacsSteadyInterface.create_from_bdf(
+    model=f2f_model,
+    comm=comm,
+    nprocs=args.procs,
+    bdf_file=tacs_aim.root_dat_file if args.newMesh else "struct/tacs.dat",
+    prefix=tacs_aim.root_analysis_dir if args.newMesh else "struct",
+    callback=callback,
+    panel_length_dv_index=0,
+    panel_width_dv_index=5,
+)
+
+f2f_model.print_memory_size(comm, root=0, starting_message="After solvers")
+
+
+# read in aero loads
+aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_turb_loads.txt")
+
+transfer_settings = TransferSettings(npts=200)
+
+# build the shape driver from the file
+tacs_driver = OnewayStructDriver.prime_loads_from_file(
+    filename=aero_loads_file,
+    solvers=solvers,
+    model=f2f_model,
+    nprocs=args.procs,
+    transfer_settings=transfer_settings,
+    init_transfer=True,
+)
+
+f2f_model.print_memory_size(comm, root=0, starting_message="After driver")
+
+mem4 = process_memory()
+dmem3 = mem4 - mem3
+print(f"memory added during solvers, drivers = {dmem3} GB, total = {mem4} GB")
+# exit()
+
+# PYOPTSPARSE OPTMIZATION
+# -------------------------------------------------------------
+
+# create an OptimizationManager object for the pyoptsparse optimization problem
+design_out_file = os.path.join(
+    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+)
+
+# f2f_model.read_design_variables_file(comm, "design/state-sizing.txt")
+
+manager = OptimizationManager(
+    tacs_driver,
+    design_out_file=design_out_file,
+    hot_start=hot_start,
+    plot_hist=False,
+    debug=True,
+    sparse=True,
+)
+
+# create the pyoptsparse optimization problem
+opt_problem = Optimization("hsctOpt", manager.eval_functions)
+
+# add funtofem model variables to pyoptsparse
+manager.register_to_problem(opt_problem)
 
 mem5 = process_memory()
 dmem = mem5 - mem4
@@ -567,7 +577,7 @@ print(
     f"memory added while registering to optimization problem (w/ cfunc clearing) = {dmem} GB, total = {mem6} GB"
 )
 print("Did it actually clear out that memory for composite functions?")
-# exit()
+exit()
 
 # run an SNOPT optimization
 
@@ -607,7 +617,7 @@ snoptimizer = SNOPT(
 
 sol = snoptimizer(
     opt_problem,
-    sens=opt_manager.eval_gradients,
+    sens=manager.eval_gradients,
     storeHistory=history_file,
     hotStart=history_file if args.hotstart else None,
 )

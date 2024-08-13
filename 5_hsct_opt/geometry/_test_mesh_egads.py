@@ -49,9 +49,13 @@ if comm.rank == 0:
     egads_tess_aim.input.Mesh_Sizing = {
         "Farfield": {"tessParams": [5.0, 0.1, 20.0]},
         "SymmetryY": {"tessParams": [4.0, 0.1, 20.0]},
-        "wingMesh": {"tessParams": [0.1, 0.1, 15.0], "Edge_Point_Min" : 20, "Edge_Point_Max" : 50},
+        "wingMesh": {
+            "tessParams": [0.1, 0.1, 15.0],
+            "Edge_Point_Min": 20,
+            "Edge_Point_Max": 50,
+        },
         "rootEdgeMesh": {
-        "numEdgePoints": 80,
+            "numEdgePoints": 80,
             "edgeDistribution": "Tanh",
             "initialNodeSpacing": [0, 0.05],
         },
@@ -61,7 +65,7 @@ if comm.rank == 0:
             "initialNodeSpacing": [0, 0.05],
         },
     }
-    
+
     # egads_tess_aim.runAnalysis()
     # egads_tess_aim.geometry.view()
     # exit()
@@ -82,12 +86,12 @@ else:
 
 FluidMeshOptions = {"egadsTessAIM": {}, "aflr3AIM": {}}
 
-#FluidMeshOptions["egadsTessAIM"]["Mesh_Sizing"] = {
+# FluidMeshOptions["egadsTessAIM"]["Mesh_Sizing"] = {
 #    "leEdgeMesh": {"scaleFactor": 0.08},
 #    "teEdgeMesh": {"scaleFactor": 0.25},
 #    "tipEdgeMesh": {"scaleFactor": 0.2},
 #    "wingMesh": {"scaleFactor": 1.0},
-#}
+# }
 
 mesh_aim.saveDictOptions(FluidMeshOptions)
 

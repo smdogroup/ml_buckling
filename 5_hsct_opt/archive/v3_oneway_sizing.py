@@ -348,22 +348,10 @@ opt_problem = Optimization("hsctOpt", opt_manager.eval_functions)
 # add funtofem model variables to pyoptsparse
 opt_manager.register_to_problem(opt_problem)
 
-# VARS_ONLY / SPARSE LINEAR COMPOSITE FUNCTIONS
-# -------------------------------------------------------
-# TBD, this will be a bit tricky here, prob just need some None checks
-f2f_model.print_memory_size(comm, root=0, starting_message="Before composite functions")
-
-# it's far more memory efficient to not register these ~13k composite functions below
-# directly into the f2f_model [took up like 20 GB of data on my desktop computer]
-# instead, it's more efficient to directly build a pyoptsparse sparse linear constraint object
-# then delete the composite function and it only takes up like 2 GB!
-
-# this was a 2 day investigation into python memory management. ended up realizing that
-# even if I later delete the composite functions in the funtofem model and free up the space.
-# python never gives back that RAM => which is kind of bizarre, but a TEDTalk on python memory confirmed this.
-# so better to never allocate that much memory in the first place.. another option was to try and use
-# __slots__ [tuple-based] instead of __dict__ [dictionary-based] version of compositeFunctions to store the memory [smaller memory
-#  because tuple-based is immutable object]. However, better to never allocate that much memory if we don't need to in the first place.
+# # COMPOSITE FUNCTIONS
+# # -------------------------------------------------------
+# # TBD, this will be a bit tricky here, prob just need some None checks
+# f2f_model.print_memory_size(comm, root=0, starting_message="Before composite functions")
 
 # skin thickness adjacency constraints
 variables = f2f_model.get_variables()
@@ -443,15 +431,49 @@ for i, prefix_list in enumerate(adj_prefix_lists):
         left_var = f2f_model.get_variables(f"{left_prefix}-{adj_type}")
         right_var = f2f_model.get_variables(f"{right_prefix}-{adj_type}")
         if left_var is not None and right_var is not None:
-            adj_constr = left_var - right_var
-            adj_constr.set_name(f"{left_prefix}-adj{i}_{adj_type}").optimize(
-                lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-            ).setup_sparse_gradient(f2f_model)
+            # adj_constr = left_var - right_var
+            # adj_constr.set_name(f"{left_prefix}-adj{i}_{adj_type}").optimize(
+            #     lower=-adj_value, upper=adj_value, scale=10.0, objective=False
+            # ).setup_sparse_gradient(f2f_model)
 
-            opt_manager.register_sparse_constraint(opt_problem, adj_constr)
+            # opt_manager.register_sparse_constraint(opt_problem, adj_constr)
 
-            del adj_constr
+            rows = np.array([0] * 2)
+            cols = np.array([get_var_index(left_var), get_var_index(right_var)])
+            vals = np.array([1.0, -1.0])
+            sparse_gradient = {
+                "coo": [rows, cols, vals],
+                "shape": (1, nvariables),
+            }
+
+            opt_problem.addCon(
+                f"{left_prefix}-adj{i}_{adj_type}",
+                lower=-adj_value,
+                upper=adj_value,
+                scale=10.0,
+                linear=True,
+                wrt=["vars"],
+                jac={"vars": sparse_gradient},
+            )
+
+            # func = adj_constr
+            # opt_problem.addCon(
+            #     func.full_name,
+            #     lower=func.lower,
+            #     upper=func.upper,
+            #     scale=func.scale,
+            #     linear=True,
+            #     wrt=['vars'],
+            #     jac={'vars': func.sparse_gradient},
+            # )
+
+            # check the size of this function
+            # size_constr = sys.getsizeof(adj_constr)
+            # print(f"size_constr {adj_constr.name} = {size_constr}\n")
+            # exit()
             ncomp += 1
+
+            # del adj_constr
 
 if comm.rank == 0:
     print(f"done with adjacency functons..")
@@ -495,54 +517,154 @@ for j, prefix in enumerate(prefix_lists):
     # stiffener - skin thickness adjacency here
     if skin_var is not None and sthick_var is not None:
         adj_value = thick_adj
-        adj_constr = skin_var - sthick_var
-        adj_constr.set_name(f"{prefix}-skin_stiff_T").optimize(
-            lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-        ).setup_sparse_gradient(f2f_model)
+        # adj_constr = skin_var - sthick_var
+        # adj_constr.set_name(f"{prefix}-skin_stiff_T").optimize(
+        #     lower=-adj_value, upper=adj_value, scale=10.0, objective=False
+        # ).register_to(f2f_model)
+        # ncomp += 1
 
-        opt_manager.register_sparse_constraint(opt_problem, adj_constr)
+        rows = np.array([0] * 2)
+        cols = np.array([get_var_index(skin_var), get_var_index(sthick_var)])
+        vals = np.array([1.0, -1.0])
+        sparse_gradient = {
+            "coo": [rows, cols, vals],
+            "shape": (1, nvariables),
+        }
 
-        del adj_constr
-        ncomp += 1
+        opt_problem.addCon(
+            f"{prefix}-skin_stiff_T",
+            lower=-adj_value,
+            upper=adj_value,
+            scale=10.0,
+            linear=True,
+            wrt=["vars"],
+            jac={"vars": sparse_gradient},
+        )
+
+        # check the size of this function
+        # size_constr = sys.getsizeof(adj_constr)
+        # print(f"size_constr {adj_constr.name} = {size_constr}\n")
+
+        # del adj_constr
 
         # minimum stiffener spacing pitch > 2 * height
     if spitch_var is not None and sheight_var is not None:
         min_spacing_constr = spitch_var - 2 * sheight_var
-        min_spacing_constr.set_name(f"{prefix}-sspacing").optimize(
-            lower=0.0, scale=1.0, objective=False
-        ).setup_sparse_gradient(f2f_model)
-
-        opt_manager.register_sparse_constraint(opt_problem, min_spacing_constr)
-
-        del min_spacing_constr
+        # min_spacing_constr.set_name(f"{prefix}-sspacing").optimize(
+        #     lower=0.0, scale=1.0, objective=False
+        # ).register_to(f2f_model)
         ncomp += 1
+
+        rows = np.array([0] * 2)
+        cols = np.array([get_var_index(spitch_var), get_var_index(sheight_var)])
+        vals = np.array([1.0, -2.0])
+        sparse_gradient = {
+            "coo": [rows, cols, vals],
+            "shape": (1, nvariables),
+        }
+
+        opt_problem.addCon(
+            f"{prefix}-sspacing",
+            lower=0.0,
+            upper=None,
+            scale=1.0,
+            linear=True,
+            wrt=["vars"],
+            jac={"vars": sparse_gradient},
+        )
+
+        # # check the size of this function
+        # size_constr = sys.getsizeof(min_spacing_constr)
+        # #print(f"size_constr {min_spacing_constr.name} = {size_constr}\n")
+
+        # del size_constr
 
     # minimum stiffener AR
     if sheight_var is not None and sthick_var is not None:
         min_stiff_AR = sheight_var - 2.0 * sthick_var
-        min_stiff_AR.set_name(f"{prefix}-minstiffAR").optimize(
-            lower=0.0, scale=1.0, objective=False
-        ).setup_sparse_gradient(f2f_model)
-
-        opt_manager.register_sparse_constraint(opt_problem, min_stiff_AR)
-
-        del min_stiff_AR
+        # min_stiff_AR.set_name(f"{prefix}-minstiffAR").optimize(
+        #         lower=0.0, scale=1.0, objective=False
+        # ).register_to(f2f_model)
         ncomp += 1
+
+        rows = np.array([0] * 2)
+        cols = np.array([get_var_index(sheight_var), get_var_index(sthick_var)])
+        vals = np.array([1.0, -2.0])
+        sparse_gradient = {
+            "coo": [rows, cols, vals],
+            "shape": (1, nvariables),
+        }
+
+        opt_problem.addCon(
+            f"{prefix}-minstiffAR",
+            lower=0.0,
+            upper=None,
+            scale=1.0,
+            linear=True,
+            wrt=["vars"],
+            jac={"vars": sparse_gradient},
+        )
+
+        # # check the size of this function
+        # size_constr = sys.getsizeof(min_stiff_AR)
+        # #print(f"size_constr {min_stiff_AR.name} = {size_constr}\n")
+
+        # del min_stiff_AR
 
     # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
     if sheight_var is not None and sthick_var is not None:
         max_stiff_AR = sheight_var - 8.0 * sthick_var
-        max_stiff_AR.set_name(f"{prefix}-maxstiffAR").optimize(
-            upper=0.0, scale=1.0, objective=False
-        ).setup_sparse_gradient(f2f_model)
-
-        opt_manager.register_sparse_constraint(opt_problem, max_stiff_AR)
-
-        del max_stiff_AR
+        # max_stiff_AR.set_name(f"{prefix}-maxstiffAR").optimize(
+        #         upper=0.0, scale=1.0, objective=False
+        # ).register_to(f2f_model)
         ncomp += 1
+
+        rows = np.array([0] * 2)
+        cols = np.array([get_var_index(sheight_var), get_var_index(sthick_var)])
+        vals = np.array([1.0, -8.0])
+        sparse_gradient = {
+            "coo": [rows, cols, vals],
+            "shape": (1, nvariables),
+        }
+
+        opt_problem.addCon(
+            f"{prefix}-maxstiffAR",
+            lower=None,
+            upper=0.0,
+            scale=1.0,
+            linear=True,
+            wrt=["vars"],
+            jac={"vars": sparse_gradient},
+        )
+
+        # # check the size of this function
+        # size_constr = sys.getsizeof(max_stiff_AR)
+        # #print(f"size_constr {max_stiff_AR.name} = {size_constr}\n")
+
+        # del max_stiff_AR
 
 if comm.rank == 0:
     print(f"number of composite functions = {ncomp}", flush=True)
+# exit()
+
+# f2f_model.print_memory_size(comm, root=0, starting_message="After composite functions, before solver, optimizer")
+# # exit()
+
+# mem3 = process_memory()
+# dmem2 = mem3 - mem2
+# print(f"memory added during the composite functions = {dmem2:.8e} GB, total = {mem3:.8e} GB")
+# # exit()
+
+# check reference count of composite functions at this step (so I can figure out how to delete them and save space..)
+vars_only_cfuncs = [cfunc for cfunc in f2f_model.composite_functions if cfunc.vars_only]
+# first_vars_only_cfunc = vars_only_cfuncs[0]
+# del vars_only_cfuncs
+# # first_vars_only_cfunc = None
+# print(f"ref count = {sys.getrefcount(first_vars_only_cfunc)}")
+# first_vars_only_cfunc = None
+# del vars_only_cfuncs[0]
+# print(f"ref count2 = {sys.getrefcount(vars_only_cfuncs[0])}")
+# exit()
 
 # return to Optimization
 # -------------------------------------

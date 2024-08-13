@@ -69,7 +69,7 @@ mesh_aim.saveDictOptions(FluidMeshOptions)
 
 if comm.rank == 0:
     aflr3_aim = mesh_aim.volume_aim.aim
-    aflr3_aim.input.Mesh_Format = "Tecplot" # so I can view in Tecplot
+    aflr3_aim.input.Mesh_Format = "Tecplot"  # so I can view in Tecplot
 
 Fun3dBC.SymmetryY(caps_group="SymmetryY").register_to(fun3d_model)
 Fun3dBC.Farfield(caps_group="Farfield").register_to(fun3d_model)
