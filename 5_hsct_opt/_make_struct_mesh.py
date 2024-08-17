@@ -55,20 +55,16 @@ tacs_aim.set_config_parameter("wing:nspars", 40)  # same # as concorde
 for proc in tacs_aim.active_procs:
     if comm.rank == proc:
         egads_aim = tacs_model.mesh_aim.aim
-        egads_aim.input.TFI_Templates = (
-            False  # turn this off since results in horrible spiderweb elements here
-        )
-
-# for proc in tacs_aim.active_procs:
-#    if comm.rank == proc:
-#        aim = tacs_model.mesh_aim.aim
-#        aim.input.Mesh_Sizing = {
-#            "chord": {"numEdgePoints": 20},
-#            "span": {"numEdgePoints": 8},
-#            "vert": {"numEdgePoints": 4},
-#        }
-# "LEribFace": {"tessParams": [0.03, 0.1, 3]},
-# "LEribEdge": {"numEdgePoints": 20},
+        # turn off quading for OML faces
+        egads_aim.input.TFI_Templates = False
+        # turn off all other TFI_Templates for internal struct
+        # and set # elems to 8 in Z direction [vert is half/midplane edges]
+        egads_aim.input.Mesh_Sizing = {
+            "rib" : {"TFI_Templates" : True},
+            "spar" : {"TFI_Templates" : True},
+            "vert": {"numEdgePoints": 4},
+            "vert2" : {"numEdgePoints" : 8},
+        }
 
 # add tacs constraints in
 caps2tacs.PinConstraint("root").register_to(tacs_model)

@@ -614,12 +614,14 @@ ifthen struct EQ 1 # struct mode
             AND HAS capsGroup=LEspar
             AND ADJ2FACE prevGroup=!$OML+iOML2
             SET capsGroup=!$LEspar+$-+iOML2
+            SET prevGroup=LEspar
             SET has_group=yes
 
             FACE HAS has_group=no
             AND HAS capsGroup=TEspar
             AND ADJ2FACE prevGroup=!$OML+iOML2
             SET capsGroup=!$TEspar+$-+iOML2
+            SET prevGroup=TEspar
             SET has_group=yes
          patend
 
@@ -686,6 +688,26 @@ ifthen struct EQ 1 # struct mode
       EDGE ADJ2FACE tagComp=rib
       AND ADJ2FACE tagComp=spar
       SET capsMesh=vert
+   
+      # vert2 => midplane
+      # outer LE,TE + rib1, ribN don't have midplane on them
+      # so at these corners need different capsMesh settings
+      EDGE ADJ2FACE prevGroup=rib1
+      AND ADJ2FACE prevGroup=LEspar
+      SET capsMesh=vert2
+   
+      EDGE ADJ2FACE prevGroup=rib1
+      AND ADJ2FACE prevGroup=TEspar
+      SET capsMesh=vert2
+   
+      EDGE ADJ2FACE prevGroup=!$rib+nribs
+      AND ADJ2FACE prevGroup=LEspar
+      SET capsMesh=vert2
+   
+      EDGE ADJ2FACE prevGroup=!$rib+nribs
+      AND ADJ2FACE prevGroup=TEspar
+      SET capsMesh=vert2
+      # end of vert2 settings
 
       EDGE ADJ2FACE tagComp=rib
       AND ADJ2FACE tagComp=OML
@@ -741,4 +763,4 @@ end
 ||
 |
 |
-|||
+||||
