@@ -648,7 +648,7 @@ ifthen struct EQ 1 # struct mode
             AND HAS capsGroup=!$rib+nribs
             AND ADJ2FACE capsGroup=!$OMLtop+(nribs-1)+$-+ispace2
             SET capsGroup=!$rib+nribs+$-+ispace2
-            SET prevGroup=!$rib+irib2
+            SET prevGroup=!$rib+nribs
             SET has_group=yes
          patend
       >>
@@ -763,4 +763,4 @@ end
 ||
 |
 |
-||||
+|||||
