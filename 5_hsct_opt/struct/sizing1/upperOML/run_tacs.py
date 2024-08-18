@@ -8,7 +8,7 @@ comm = MPI.COMM_WORLD
 # TACSinterface is being buggy right now
 
 # read the sizing txt file
-hdl = open("../sizing.txt", "r")
+hdl = open("../sCF-izing.txt", "r")
 lines = hdl.readlines()
 hdl.close()
 des_dict = {}
@@ -22,7 +22,7 @@ for line in lines:
 names = list(des_dict.keys())
 names2 = []
 for name in names:
-    if "OML" in name or "LE" in name and not ("spar" in name):
+    if "OMLtop" in name:
         names2 += [name]
 names3 = np.sort(np.array(names2))
 # print(f"names3 = {names3}")

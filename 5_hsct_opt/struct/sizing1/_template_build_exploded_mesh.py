@@ -43,13 +43,14 @@ tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative t
 f2f_model.structural = tacs_model
 
 # run this with 3 procs in mpi and this should work!
-exploded_view = comm.rank + 1  # 0 (off), 1 (upperOML), 2 (internalStruc), 3(lowerOML)
+# 0 (off), 1 (upperOML), 2 (internalStruc), 3(lowerOML)
+exploded_view = comm.rank + 1
 # exploded_view = 2
 
 tacs_aim = tacs_model.tacs_aim
 tacs_aim.set_config_parameter("mode:flow", 0)
 tacs_aim.set_config_parameter("mode:struct", 1)
-tacs_aim.set_config_parameter("wing:allOMLgroups", 1)
+tacs_aim.set_config_parameter("wing:allOMLgroups", 0)
 tacs_aim.set_config_parameter("wing:includeTE", 0)
 # set each value on a separate aim (not in parallel)
 tacs_aim.geometry.cfgpmtr["wing:exploded"].value = exploded_view
@@ -113,59 +114,9 @@ if exploded_view in [0, 2]:
             lower=0.001, upper=0.15, scale=100.0
         ).register_to(wing)
 
-# some mistake in the math for checking which panels available
-# so temporarily just using lists and CSM file geometry
-first_panels_dict = {
-    1: 1,
-    2: 1,
-    3: 2,
-    4: 2,
-    5: 3,
-    6: 3,
-    7: 4,
-    8: 5,
-    9: 5,
-    10: 6,
-    11: 6,
-    12: 6,
-    13: 6,
-    14: 7,
-    15: 7,
-    16: 7,
-    17: 7,
-    18: 8,
-    19: 8,
-}
-
-for iOML in range(1, nOML + 1):
-
-    for ispar in range(1, nspars + 1):
-
-        # temporarily just using dict to make the check
-        if ispar >= first_panels_dict[iOML]:
-            if exploded_view == 1:
-                # then add these OML groups
-                name = f"OMLtop{iOML}-{ispar}"
-                prop = caps2tacs.ShellProperty(
-                    caps_group=name, material=titanium_alloy, membrane_thickness=0.04
-                ).register_to(tacs_model)
-                Variable.structural(name, value=0.01).set_bounds(
-                    lower=0.001, upper=0.15, scale=100.0
-                ).register_to(wing)
-
-            if exploded_view == 3:
-                name = f"OMLbot{iOML}-{ispar}"
-                prop = caps2tacs.ShellProperty(
-                    caps_group=name, material=titanium_alloy, membrane_thickness=0.04
-                ).register_to(tacs_model)
-                Variable.structural(name, value=0.01).set_bounds(
-                    lower=0.001, upper=0.15, scale=100.0
-                ).register_to(wing)
-
-    # after last spar
-    ispar = nspars + 1
-    if exploded_view == 1:
-        name = f"OMLtop{iOML}-{ispar}"
+if exploded_view in [0, 1, 3]:
+    for iOML in range(1, nOML + 1):
+        name = f"OML{iOML}"
         prop = caps2tacs.ShellProperty(
             caps_group=name, material=titanium_alloy, membrane_thickness=0.04
         ).register_to(tacs_model)
@@ -173,14 +124,13 @@ for iOML in range(1, nOML + 1):
             lower=0.001, upper=0.15, scale=100.0
         ).register_to(wing)
 
-    if exploded_view == 3:
-        name = f"OMLbot{iOML}-{ispar}"
-        prop = caps2tacs.ShellProperty(
-            caps_group=name, material=titanium_alloy, membrane_thickness=0.04
-        ).register_to(tacs_model)
-        Variable.structural(name, value=0.01).set_bounds(
-            lower=0.001, upper=0.15, scale=100.0
-        ).register_to(wing)
+        # name = f"LE{iOML}"
+        # prop = caps2tacs.ShellProperty(
+        #     caps_group=name, material=titanium_alloy, membrane_thickness=0.04
+        # ).register_to(tacs_model)
+        # Variable.structural(name, value=0.01).set_bounds(
+        #     lower=0.001, upper=0.15, scale=100.0
+        # ).register_to(wing)
 
 # register the wing body to the model
 wing.register_to(f2f_model)

@@ -8,7 +8,7 @@ comm = MPI.COMM_WORLD
 # TACSinterface is being buggy right now
 
 # read the sizing txt file
-hdl = open("../sizing.txt", "r")
+hdl = open("../CF-sizing.txt", "r")
 lines = hdl.readlines()
 hdl.close()
 des_dict = {}
