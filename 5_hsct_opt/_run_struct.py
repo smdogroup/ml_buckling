@@ -39,7 +39,7 @@ f2f_model = FUNtoFEMmodel(model_name)
 tacs_model = caps2tacs.TacsModel.build(
     csm_file=csm_path,
     comm=comm,
-    problem_name="capsStruct2",
+    problem_name="capsStruct",
     active_procs=[0],
     verbosity=1,
 )
@@ -183,14 +183,8 @@ for icomp, comp in enumerate(component_groups):
     # which is done by components and then a local order
 
     # panel length variable
-    if "rib" in comp:
-        panel_length = 0.38
-    elif "sp" in comp:
-        panel_length = 0.36
-    elif "OML" in comp:
-        panel_length = 0.65
     Variable.structural(
-        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=0.1
     ).set_bounds(
         lower=0.0,
         scale=1.0,
@@ -205,13 +199,7 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     # panel thickness variable, shortened DV name for ESP/CAPS, nastran requirement here
-    if "rib" in comp:
-        panelThick = 0.2
-    elif "spar" in comp:
-        panelThick = 0.4
-    elif "OML" in comp:
-        panelThick = 0.1
-    Variable.structural(f"{comp}-T", value=panelThick).set_bounds(
+    Variable.structural(f"{comp}-T", value=0.01).set_bounds(
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
@@ -226,7 +214,7 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     Variable.structural(
-        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=0.1
     ).set_bounds(
         lower=0.0,
         scale=1.0,
@@ -260,75 +248,6 @@ Function.mass().optimize(
 climb.set_temperature(T_ref=216, T_inf=216)
 climb.set_flow_ref_vals(qinf=3.16e4)
 climb.register_to(f2f_model)
-
-# COMPOSITE FUNCTIONS
-# -------------------------------------------------------
-# TBD, this will be a bit tricky here, prob just need some None checks
-
-# skin thickness adjacency constraints
-variables = f2f_model.get_variables()
-adjacency_scale = 10.0
-thick_adj = 2.5e-3
-
-comp_groups = ["OMLtop", "OMLbot", "LEspar", "TEspar"] + [
-    f"spar{ispar}" for ispar in range(1, nspars + 1)
-]
-comp_nums = [nOML for i in range(len(comp_groups))]
-adj_types = ["T"]
-adj_types += ["sthick", "sheight"]
-adj_values = [thick_adj, thick_adj, 10e-3]
-
-for igroup, comp_group in enumerate(comp_groups):
-    comp_num = comp_nums[igroup]
-    for icomp in range(1, comp_num):
-        # no constraints across sob (higher stress there)
-        for iadj, adj_type in enumerate(adj_types):
-            adj_value = adj_values[iadj]
-            name = f"{comp_group}{icomp}-{adj_type}"
-            # print(f"name = {name}", flush=True)
-            left_var = f2f_model.get_variables(f"{comp_group}{icomp}-{adj_type}")
-            right_var = f2f_model.get_variables(f"{comp_group}{icomp+1}-{adj_type}")
-            # print(f"left var = {left_var}, right var = {right_var}")
-            if left_var is not None and right_var is not None:
-                adj_constr = left_var - right_var
-                adj_constr.set_name(f"{comp_group}{icomp}-adj_{adj_type}").optimize(
-                    lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-                ).register_to(f2f_model)
-
-    for icomp in range(1, comp_num + 1):
-        skin_var = f2f_model.get_variables(f"{comp_group}{icomp}-T")
-        sthick_var = f2f_model.get_variables(f"{comp_group}{icomp}-sthick")
-        sheight_var = f2f_model.get_variables(f"{comp_group}{icomp}-sheight")
-        spitch_var = f2f_model.get_variables(f"{comp_group}{icomp}-spitch")
-
-        # stiffener - skin thickness adjacency here
-        if skin_var is not None and sthick_var is not None:
-            adj_value = thick_adj
-            adj_constr = skin_var - sthick_var
-            adj_constr.set_name(f"{comp_group}{icomp}-skin_stiff_T").optimize(
-                lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-            ).register_to(f2f_model)
-
-        # minimum stiffener spacing pitch > 2 * height
-        if spitch_var is not None and sheight_var is not None:
-            min_spacing_constr = spitch_var - 2 * sheight_var
-            min_spacing_constr.set_name(f"{comp_group}{icomp}-sspacing").optimize(
-                lower=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
-
-        # minimum stiffener AR
-        if sheight_var is not None and sthick_var is not None:
-            min_stiff_AR = sheight_var - 2.0 * sthick_var
-            min_stiff_AR.set_name(f"{comp_group}{icomp}-minstiffAR").optimize(
-                lower=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
-
-        # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
-        if sheight_var is not None and sthick_var is not None:
-            max_stiff_AR = sheight_var - 8.0 * sthick_var
-            max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
-                upper=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
 
 # DISCIPLINE INTERFACES AND DRIVERS
 # -----------------------------------------------------

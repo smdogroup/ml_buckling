@@ -16,6 +16,10 @@ comm = MPI.COMM_WORLD
 base_dir = os.path.dirname(os.path.abspath(__file__))
 csm_path = os.path.join(base_dir, "..", "..", "geometry", "hsct.csm")
 
+import sys
+sys.path.append("../../")
+from _closed_form_callback import closed_form_callback as callback
+
 nprocs = 3
 
 # F2F MODEL and SHAPE MODELS
@@ -184,14 +188,8 @@ for icomp, comp in enumerate(component_groups):
     # which is done by components and then a local order
 
     # panel length variable
-    if "rib" in comp:
-        panel_length = 0.38
-    elif "sp" in comp:
-        panel_length = 0.36
-    elif "OML" in comp:
-        panel_length = 0.65
     Variable.structural(
-        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=0.1
     ).set_bounds(
         lower=0.0,
         scale=1.0,
@@ -206,13 +204,7 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     # panel thickness variable, shortened DV name for ESP/CAPS, nastran requirement here
-    if "rib" in comp:
-        panelThick = 0.2
-    elif "spar" in comp:
-        panelThick = 0.4
-    elif "OML" in comp:
-        panelThick = 0.1
-    Variable.structural(f"{comp}-T", value=panelThick).set_bounds(
+    Variable.structural(f"{comp}-T", value=0.01).set_bounds(
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
@@ -227,7 +219,7 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     Variable.structural(
-        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=0.1
     ).set_bounds(
         lower=0.0,
         scale=1.0,
@@ -240,8 +232,179 @@ for icomp, comp in enumerate(component_groups):
 # register the wing body to the model
 wing.register_to(f2f_model)
 
+f2f_model.read_design_variables_file(comm, "CF-sizing.txt")
+
 # INITIAL STRUCTURE MESH, SINCE NO STRUCT SHAPE VARS
 # --------------------------------------------------
 
 tacs_aim.setup_aim()
 tacs_aim.pre_analysis()
+
+# DISCIPLINE INTERFACES AND DRIVERS
+# -----------------------------------------------------
+
+from funtofem import TacsPanelDimensions, TacsOutputGenerator, TacsSteadyInterface, TransferSettings, OnewayStructDriver
+from tacs import pytacs
+import numpy as np
+
+for proc in tacs_aim.active_procs:
+    if comm.rank == proc:
+        # run the TACS analysis in each capsExploded_{comm.rank} directory
+
+        solvers = SolverManager(comm)
+
+        # manually build the TacsSteadyInterface
+        # Split the communicator
+        world_rank = comm.rank
+        if comm.rank == proc:
+            color = 1
+        else:
+            color = MPI.UNDEFINED
+        tacs_comm = comm.Split(color, world_rank)
+
+        assembler = None
+        f5 = None
+        Fvec = None
+        tacs_panel_dimensions = TacsPanelDimensions(
+            comm=comm,
+            panel_length_dv_index=0,
+            panel_width_dv_index=5,
+        )
+        if world_rank < nprocs:
+            # Create the assembler class
+            fea_assembler = pytacs.pyTACS(tacs_aim.root_dat_file, tacs_comm, options={})
+
+            """
+            Automatically adds structural variables from the BDF / DAT file into TACS
+            as long as you have added them with the same name in the DAT file.
+
+            Uses a custom funtofem callback to create thermoelastic shells which are unavailable
+            in pytacs default callback. And creates the DVs in the correct order in TACS based on DVPREL cards.
+            """
+
+            # get dict of struct DVs from the bodies and structural variables
+            # only supports thickness DVs for the structure currently
+            structDV_dict = {}
+            variables = f2f_model.get_variables()
+            structDV_names = []
+
+            # Get the structural variables from the global list of variables.
+            struct_variables = []
+            for var in variables:
+                if var.analysis_type == "structural":
+                    struct_variables.append(var)
+                    structDV_dict[var.name.lower()] = var.value
+                    structDV_names.append(var.name.lower())
+
+            # Set up constitutive objects and elements in pyTACS
+            fea_assembler.initialize(callback)
+            
+            # if panel_length_dv_index is not None:
+            tacs_panel_dimensions.panel_length_constr = (
+                fea_assembler.createPanelLengthConstraint("PanelLengthCon")
+            )
+            tacs_panel_dimensions.panel_length_constr.addConstraint(
+                TacsSteadyInterface.LENGTH_CONSTR,
+                dvIndex=tacs_panel_dimensions.panel_length_dv_index,
+            )
+
+            # if panel_width_dv_index is not None:
+            tacs_panel_dimensions.panel_width_constr = (
+                fea_assembler.createPanelWidthConstraint("PanelWidthCon")
+            )
+            tacs_panel_dimensions.panel_width_constr.addConstraint(
+                TacsSteadyInterface.WIDTH_CONSTR, dvIndex=tacs_panel_dimensions.panel_width_dv_index
+            )
+
+            # Retrieve the assembler from pyTACS fea_assembler object
+            assembler = fea_assembler.assembler
+
+            # Set the output file creator
+            f5 = fea_assembler.outputViewer
+
+        # Create the output generator
+        gen_output = TacsOutputGenerator(prefix, f5=f5)
+
+        # get struct ids for coordinate derivatives and .sens file
+        struct_id = None
+        if assembler is not None:
+            # get list of local node IDs with global size, with -1 for nodes not owned by this proc
+            num_nodes = fea_assembler.meshLoader.bdfInfo.nnodes
+            bdfNodes = range(num_nodes)
+            local_tacs_ids = fea_assembler.meshLoader.getLocalNodeIDsFromGlobal(
+                bdfNodes, nastranOrdering=False
+            )
+
+            """
+            the local_tacs_ids list maps nastran nodes to tacs indices with:
+                local_tacs_ids[nastran_node-1] = local_tacs_id
+            Only a subset of all tacs ids are owned by each processor
+                note: tacs_ids in [0, #local_tacs_ids], #local_tacs_ids <= nnodes
+                for nastran nodes not on this processor, local_tacs_id[nastran_node-1] = -1
+
+            The next lines of code invert this map to the list 'struct_id' with:
+                struct_id[local_tacs_id] = nastran_node
+
+            This is then later used by funtofem_model.write_sensitivity_file method to write
+            ESP/CAPS nastran_CAPS.sens files for the tacsAIM to compute shape derivatives
+            """
+
+            # get number of non -1 tacs ids, total number of actual tacs_ids
+            n_tacs_ids = len([tacs_id for tacs_id in local_tacs_ids if tacs_id != -1])
+
+            # reverse the tacs id to nastran ids map since we want tacs_id => nastran_id - 1
+            nastran_ids = np.zeros((n_tacs_ids), dtype=np.int64)
+            for nastran_id_m1, tacs_id in enumerate(local_tacs_ids):
+                if tacs_id != -1:
+                    nastran_ids[tacs_id] = int(nastran_id_m1 + 1)
+
+            # convert back to list of nastran_ids owned by this processor in order
+            struct_id = list(nastran_ids)
+
+        # We might need to clean up this code. This is making educated guesses
+        # about what index the temperature is stored. This could be wrong if things
+        # change later. May query from TACS directly?
+        thermal_idx = -1
+        if assembler is not None and thermal_index == -1:
+            varsPerNode = assembler.getVarsPerNode()
+
+            # This is the likely index of the temperature variable
+            if varsPerNode == 1:  # Thermal only
+                thermal_index = 0
+            elif varsPerNode == 4:  # Solid + thermal
+                thermal_index = 3
+            elif varsPerNode >= 7:  # Shell or beam + thermal
+                thermal_index = varsPerNode - 1
+
+        # Broad cast the thermal index to ensure it's the same on all procs
+        thermal_index = comm.bcast(thermal_index, root=0)
+
+        # Create the tacs interface
+        solvers.structural = TacsSteadyInterface(
+            comm,
+            f2f_model,
+            assembler,
+            gen_output,
+            struct_id=struct_id,
+            tacs_comm=tacs_comm,
+            tacs_panel_dimensions=tacs_panel_dimensions,
+        )
+
+        # read in aero loads
+        aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_turb_loads.txt")
+
+        transfer_settings = TransferSettings(npts=200)
+
+        # build the shape driver from the file
+        tacs_driver = OnewayStructDriver.prime_loads_from_file(
+            filename=aero_loads_file,
+            solvers=solvers,
+            model=f2f_model,
+            nprocs=1,
+            transfer_settings=transfer_settings,
+            init_transfer=True,
+        )
+
+        # f2f_model.read_design_variables_file(comm, "design/CF-sizing.txt")
+
+        tacs_driver.solve_forward()
