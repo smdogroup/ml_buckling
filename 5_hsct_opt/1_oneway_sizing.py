@@ -203,14 +203,8 @@ for icomp, comp in enumerate(component_groups):
     # which is done by components and then a local order
 
     # panel length variable
-    if "rib" in comp:
-        panel_length = 0.38
-    elif "sp" in comp:
-        panel_length = 0.36
-    elif "OML" in comp:
-        panel_length = 0.65
     Variable.structural(
-        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=0.1
     ).set_bounds(
         lower=0.0,
         scale=1.0,
@@ -240,7 +234,7 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     Variable.structural(
-        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=0.1
     ).set_bounds(
         lower=0.0,
         scale=1.0,

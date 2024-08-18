@@ -1,5 +1,5 @@
 """
-Sean P. Engelstad, Georgia Tech 2023
+Sean P. Engelstad, Georgia Tech 2024
 
 build the exploded meshes for the structural analysis for paraview
 """
