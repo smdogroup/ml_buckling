@@ -179,7 +179,7 @@ component_groups += [f"spar40-{iOML}" for iOML in range(1, 19 + 1)]
 
 component_groups = sorted(component_groups)
 
-component_groups = [group for group in component_groups if ("rib" in group or "spar" in group)]
+component_groups = [group for group in component_groups if "OMLbot" in group]
 
 # print(f"component group 89 = {component_groups[89]}")
 # exit()
@@ -372,77 +372,6 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
     init_transfer=True,
 )
 
+f2f_model.read_design_variables_file(comm, "../../../design/CF-sizing.txt")
+
 tacs_driver.solve_forward()
-exit()
-
-# PYOPTSPARSE OPTMIZATION
-# -------------------------------------------------------------
-
-# create an OptimizationManager object for the pyoptsparse optimization problem
-design_out_file = os.path.join(
-    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
-)
-f2f_model.read_design_variables_file(comm, "design/state-sizing.txt")
-
-
-manager = OptimizationManager(
-    tacs_driver, design_out_file=design_out_file, hot_start=args.hotstart, debug=True
-)
-
-# create the pyoptsparse optimization problem
-opt_problem = Optimization("hsctOpt", manager.eval_functions)
-
-# add funtofem model variables to pyoptsparse
-manager.register_to_problem(opt_problem)
-
-# run an SNOPT optimization
-
-design_folder = os.path.join(base_dir, "design")
-if not os.path.exists(design_folder):
-    os.mkdir(design_folder)
-history_file = os.path.join(
-    design_folder, "ML-sizing.hst" if args.useML else "CF-sizing.hst"
-)
-store_history_file = history_file if store_history else None
-hot_start_file = history_file if hot_start else None
-
-snoptimizer = SNOPT(
-    options={
-        "Print frequency": 1000,
-        "Summary frequency": 10000000,
-        "Major feasibility tolerance": 1e-6,
-        "Major optimality tolerance": 1e-6,
-        "Verify level": 0,
-        "Major iterations limit": 4000,
-        "Minor iterations limit": 150000000,
-        "Iterations limit": 100000000,
-        # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
-        "Nonderivative linesearch": True,  # turns off derivative linesearch
-        "Linesearch tolerance": 0.9,
-        "Difference interval": 1e-6,
-        "Function precision": 1e-10,
-        "New superbasics limit": 2000,
-        "Penalty parameter": 1.0,  # had this off for faster opt in the single panel case
-        # however ksfailure becomes too large with this off. W/ on merit function goes down too slowly though
-        # try intermediate value btw 0 and 1 (smaller penalty)
-        # this may be the most important switch to change for opt performance w/ ksfailure in the opt
-        # TODO : could try higher penalty parameter like 50 or higher and see if that helps reduce iteration count..
-        #   because it often increases the penalty parameter a lot near the optimal solution anyways
-        "Scale option": 1,
-        "Hessian updates": 40,
-        "Print file": os.path.join("SNOPT_print.out"),
-        "Summary file": os.path.join("SNOPT_summary.out"),
-    }
-)
-
-sol = snoptimizer(
-    opt_problem,
-    sens=manager.eval_gradients,
-    storeHistory=history_file,  # None
-    hotStart=history_file if args.hotstart else None,
-)
-
-# print final solution
-sol_xdict = sol.xStar
-if comm.rank == 0:
-    print(f"Final solution = {sol_xdict}", flush=True)
