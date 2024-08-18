@@ -5,11 +5,6 @@ Local machine optimization for the panel thicknesses using all OML and LE panels
 """
 
 from funtofem import *
-from pyoptsparse import SNOPT, Optimization
-
-# script inputs
-# hot_st
-store_history = True
 
 # import openmdao.api as om
 from mpi4py import MPI
@@ -97,7 +92,15 @@ nOML = nribs - 1
 # failed to list all of them since it hit the character limit in the textbox
 # so I basically had to count the ranges of all capsGroups myself..
 component_groups = []
-for prefix in ["OMLtop", "OMLbot"]:
+
+if exploded_view == 1:
+    prefix_list = ["OMLtop"]
+elif exploded_view == 3:
+    prefix_list = ["OMLbot"]
+else:
+    prefix_list = ["OMLtop"]
+
+for prefix in prefix_list:
     component_groups += [f"{prefix}1-{ispar}" for ispar in range(1, 41 + 1)]
     component_groups += [f"{prefix}2-{ispar}" for ispar in range(3, 41 + 1)]
     component_groups += [f"{prefix}3-{ispar}" for ispar in range(6, 41 + 1)]
@@ -119,54 +122,56 @@ for prefix in ["OMLtop", "OMLbot"]:
     component_groups += [f"{prefix}19-{ispar}" for ispar in range(34, 41 + 1)]
 
 # add rib component groups based on OML ones
-rib_groups = ["rib" + comp[6:] for comp in component_groups if "OMLtop" in comp]
-rib_groups += [f"rib20-{ispar}" for ispar in range(35, 41 + 1)]
-component_groups += rib_groups
-
+if exploded_view == 2:
+    rib_groups = ["rib" + comp[6:] for comp in component_groups if "OMLtop" in comp]
+    rib_groups += [f"rib20-{ispar}" for ispar in range(35, 41 + 1)]
+    component_groups = rib_groups # overwrite not += so only does ribs
+    
 # add spar component groups
-component_groups += [f"LEspar-{iOML}" for iOML in range(1, 19 + 1)]
-component_groups += [f"TEspar-{iOML}" for iOML in range(1, 19 + 1)]
-component_groups += [f"spar1-{iOML}" for iOML in range(1, 1 + 1)]
-component_groups += [f"spar2-{iOML}" for iOML in range(1, 1 + 1)]
-component_groups += [f"spar3-{iOML}" for iOML in range(1, 2 + 1)]
-component_groups += [f"spar4-{iOML}" for iOML in range(1, 2 + 1)]
-component_groups += [f"spar5-{iOML}" for iOML in range(1, 2 + 1)]
-component_groups += [f"spar6-{iOML}" for iOML in range(1, 3 + 1)]
-component_groups += [f"spar7-{iOML}" for iOML in range(1, 3 + 1)]
-component_groups += [f"spar8-{iOML}" for iOML in range(1, 3 + 1)]
-component_groups += [f"spar9-{iOML}" for iOML in range(1, 4 + 1)]
-component_groups += [f"spar10-{iOML}" for iOML in range(1, 4 + 1)]
-component_groups += [f"spar11-{iOML}" for iOML in range(1, 4 + 1)]
-component_groups += [f"spar12-{iOML}" for iOML in range(1, 5 + 1)]
-component_groups += [f"spar13-{iOML}" for iOML in range(1, 5 + 1)]
-component_groups += [f"spar14-{iOML}" for iOML in range(1, 5 + 1)]
-component_groups += [f"spar15-{iOML}" for iOML in range(1, 6 + 1)]
-component_groups += [f"spar16-{iOML}" for iOML in range(1, 6 + 1)]
-component_groups += [f"spar17-{iOML}" for iOML in range(1, 6 + 1)]
-component_groups += [f"spar18-{iOML}" for iOML in range(1, 7 + 1)]
-component_groups += [f"spar19-{iOML}" for iOML in range(1, 7 + 1)]
-component_groups += [f"spar20-{iOML}" for iOML in range(1, 8 + 1)]
-component_groups += [f"spar21-{iOML}" for iOML in range(1, 8 + 1)]
-component_groups += [f"spar22-{iOML}" for iOML in range(1, 8 + 1)]
-component_groups += [f"spar23-{iOML}" for iOML in range(1, 9 + 1)]
-component_groups += [f"spar24-{iOML}" for iOML in range(1, 10 + 1)]
-component_groups += [f"spar25-{iOML}" for iOML in range(1, 10 + 1)]
-component_groups += [f"spar26-{iOML}" for iOML in range(1, 11 + 1)]
-component_groups += [f"spar27-{iOML}" for iOML in range(1, 12 + 1)]
-component_groups += [f"spar28-{iOML}" for iOML in range(1, 13 + 1)]
-component_groups += [f"spar29-{iOML}" for iOML in range(1, 14 + 1)]
-component_groups += [f"spar30-{iOML}" for iOML in range(1, 15 + 1)]
-component_groups += [f"spar31-{iOML}" for iOML in range(1, 16 + 1)]
-component_groups += [f"spar32-{iOML}" for iOML in range(1, 17 + 1)]
-component_groups += [f"spar33-{iOML}" for iOML in range(1, 18 + 1)]
-component_groups += [f"spar34-{iOML}" for iOML in range(1, 19 + 1)]
-component_groups += [f"spar35-{iOML}" for iOML in range(1, 19 + 1)]
-component_groups += [f"spar36-{iOML}" for iOML in range(1, 19 + 1)]
-component_groups += [f"spar37-{iOML}" for iOML in range(1, 19 + 1)]
-component_groups += [f"spar38-{iOML}" for iOML in range(1, 19 + 1)]
-component_groups += [f"spar39-{iOML}" for iOML in range(1, 19 + 1)]
-component_groups += [f"spar40-{iOML}" for iOML in range(1, 19 + 1)]
-
+if exploded_view == 2:
+    component_groups += [f"LEspar-{iOML}" for iOML in range(1, 19 + 1)]
+    component_groups += [f"TEspar-{iOML}" for iOML in range(1, 19 + 1)]
+    component_groups += [f"spar1-{iOML}" for iOML in range(1, 1 + 1)]
+    component_groups += [f"spar2-{iOML}" for iOML in range(1, 1 + 1)]
+    component_groups += [f"spar3-{iOML}" for iOML in range(1, 2 + 1)]
+    component_groups += [f"spar4-{iOML}" for iOML in range(1, 2 + 1)]
+    component_groups += [f"spar5-{iOML}" for iOML in range(1, 2 + 1)]
+    component_groups += [f"spar6-{iOML}" for iOML in range(1, 3 + 1)]
+    component_groups += [f"spar7-{iOML}" for iOML in range(1, 3 + 1)]
+    component_groups += [f"spar8-{iOML}" for iOML in range(1, 3 + 1)]
+    component_groups += [f"spar9-{iOML}" for iOML in range(1, 4 + 1)]
+    component_groups += [f"spar10-{iOML}" for iOML in range(1, 4 + 1)]
+    component_groups += [f"spar11-{iOML}" for iOML in range(1, 4 + 1)]
+    component_groups += [f"spar12-{iOML}" for iOML in range(1, 5 + 1)]
+    component_groups += [f"spar13-{iOML}" for iOML in range(1, 5 + 1)]
+    component_groups += [f"spar14-{iOML}" for iOML in range(1, 5 + 1)]
+    component_groups += [f"spar15-{iOML}" for iOML in range(1, 6 + 1)]
+    component_groups += [f"spar16-{iOML}" for iOML in range(1, 6 + 1)]
+    component_groups += [f"spar17-{iOML}" for iOML in range(1, 6 + 1)]
+    component_groups += [f"spar18-{iOML}" for iOML in range(1, 7 + 1)]
+    component_groups += [f"spar19-{iOML}" for iOML in range(1, 7 + 1)]
+    component_groups += [f"spar20-{iOML}" for iOML in range(1, 8 + 1)]
+    component_groups += [f"spar21-{iOML}" for iOML in range(1, 8 + 1)]
+    component_groups += [f"spar22-{iOML}" for iOML in range(1, 8 + 1)]
+    component_groups += [f"spar23-{iOML}" for iOML in range(1, 9 + 1)]
+    component_groups += [f"spar24-{iOML}" for iOML in range(1, 10 + 1)]
+    component_groups += [f"spar25-{iOML}" for iOML in range(1, 10 + 1)]
+    component_groups += [f"spar26-{iOML}" for iOML in range(1, 11 + 1)]
+    component_groups += [f"spar27-{iOML}" for iOML in range(1, 12 + 1)]
+    component_groups += [f"spar28-{iOML}" for iOML in range(1, 13 + 1)]
+    component_groups += [f"spar29-{iOML}" for iOML in range(1, 14 + 1)]
+    component_groups += [f"spar30-{iOML}" for iOML in range(1, 15 + 1)]
+    component_groups += [f"spar31-{iOML}" for iOML in range(1, 16 + 1)]
+    component_groups += [f"spar32-{iOML}" for iOML in range(1, 17 + 1)]
+    component_groups += [f"spar33-{iOML}" for iOML in range(1, 18 + 1)]
+    component_groups += [f"spar34-{iOML}" for iOML in range(1, 19 + 1)]
+    component_groups += [f"spar35-{iOML}" for iOML in range(1, 19 + 1)]
+    component_groups += [f"spar36-{iOML}" for iOML in range(1, 19 + 1)]
+    component_groups += [f"spar37-{iOML}" for iOML in range(1, 19 + 1)]
+    component_groups += [f"spar38-{iOML}" for iOML in range(1, 19 + 1)]
+    component_groups += [f"spar39-{iOML}" for iOML in range(1, 19 + 1)]
+    component_groups += [f"spar40-{iOML}" for iOML in range(1, 19 + 1)]
+    
 component_groups = sorted(component_groups)
 
 # print(f"component group 89 = {component_groups[89]}")
