@@ -368,7 +368,8 @@ elif kernel_option == 10:
         xi_kernel = 0.1 * xp[0] * xq[0]
         if debug: print(f"xi kernel = {xi_kernel}")
 
-        inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3]) + SE_kernel + 0.1 * xp[0] * xq[0] + 0.02 * xp[2] * xq[2]
+        # now have quadratic gamma kernel
+        inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3])**2 + SE_kernel + 0.1 * xp[0] * xq[0] + 0.02 * xp[2] * xq[2]
         if debug: print(f"inner kernel = {inner_kernel}")
         return inner_kernel
 
