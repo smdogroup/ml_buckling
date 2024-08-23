@@ -21,7 +21,7 @@ parent_parser.add_argument("--load", type=str)
 parent_parser.add_argument("--plotraw", type=bool, default=False)
 parent_parser.add_argument("--plotmodel", type=bool, default=False)
 parent_parser.add_argument("--resid", type=bool, default=False)
-parent_parser.add_argument("--kernel", type=int, default=9) #7 before..
+parent_parser.add_argument("--kernel", type=int, default=9)
 parent_parser.add_argument("--archive", type=bool, default=False)
 
 args = parent_parser.parse_args()
@@ -336,6 +336,38 @@ elif kernel_option == 9:
         inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3]) + SE_kernel + 0.1 * xp[0] * xq[0]
         if debug: print(f"inner kernel = {inner_kernel}")
         return inner_kernel * (1 + 0.01 * xp[2] * xq[2])
+    
+elif kernel_option == 10:
+    # want to get lower RMSE
+    # this is latest one as of 8/22/2024
+    # zeta 
+
+    def kernel(xp, xq, theta, debug=False):
+        # xp, xq are Nx1,Mx1 vectors (ln(1+xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
+        vec = xp - xq
+
+        d1 = vec[1]  # first two entries
+        d2 = vec[2]
+        d3 = vec[3]
+
+        BL_kernel = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
+        if debug: print(f"BL_kernel = {BL_kernel}")
+        SE_kernel = (
+            0.02
+            * np.exp(-0.5 * (d1 ** 2 / 0.2**2 ))
+            * soft_relu(1 - soft_abs(xp[1]))
+            * soft_relu(1 - soft_abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
+        )
+        if debug: print(f"SE kernel = {SE_kernel}")
+        gamma_kernel = 1.0 + 0.1 * xp[3] * xq[3]
+        if debug: print(f"gamma vals = {xp[3]}, {xq[3]}")
+        if debug: print(f"gamma kernel = {gamma_kernel}")
+        xi_kernel = 0.1 * xp[0] * xq[0]
+        if debug: print(f"xi kernel = {xi_kernel}")
+
+        inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3]) + SE_kernel + 0.1 * xp[0] * xq[0] + 0.01 * xp[2] * xq[2]
+        if debug: print(f"inner kernel = {inner_kernel}")
+        return inner_kernel
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
@@ -782,7 +814,6 @@ if args.plotmodel:
                             "o",
                             color=colors[igamma],
                             zorder=1+igamma,
-                            label=r"$\log(1+\gamma)" + f"\ in\ [{gamma_bin[0]:.1f},{gamma_bin[1]:.1f}" + r"]$",
                         )
 
                     # predict the models, with the same colors, no labels
@@ -810,7 +841,8 @@ if args.plotmodel:
                         f_plot,
                         "--",
                         color=colors[igamma],
-                        zorder=1
+                        zorder=1,
+                        label=r"$\log(1+\gamma)" + f"\ in\ [{gamma_bin[0]:.1f},{gamma_bin[1]:.1f}" + r"]$",
                     )
 
                 plt.legend()
@@ -862,7 +894,6 @@ if args.plotmodel:
                             "o",
                             color=colors[izeta],
                             zorder=1+izeta,
-                            label=r"$\log(1+10^3\zeta)" + f"\ in\ [{zeta_bin[0]:.1f},{zeta_bin[1]:.1f}" + r"]$"
                         )
 
                     # predict the models, with the same colors, no labels
@@ -890,7 +921,8 @@ if args.plotmodel:
                         f_plot,
                         "--",
                         color=colors[izeta],
-                        zorder=1
+                        zorder=1,
+                        label=r"$\log(1+10^3\zeta)" + f"\ in\ [{zeta_bin[0]:.1f},{zeta_bin[1]:.1f}" + r"]$"
                     )
 
                 plt.legend()
@@ -943,7 +975,6 @@ if args.plotmodel:
                             "o",
                             color=colors[ixi],
                             zorder=1+ixi,
-                            label=r"$\log(1+\xi)" f"\ in\ [{xi_bin[0]:.1f},{xi_bin[1]:.1f}" + r"]$"
                         )
 
                     # plot the model now
@@ -971,7 +1002,8 @@ if args.plotmodel:
                         f_plot,
                         "--",
                         color=colors[ixi],
-                        zorder=1
+                        zorder=1,
+                        label=r"$\log(1+\xi)" f"\ in\ [{xi_bin[0]:.1f},{xi_bin[1]:.1f}" + r"]$"
                     )
                     
 

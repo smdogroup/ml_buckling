@@ -12,7 +12,7 @@ import os
 import argparse
 
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--procs", type=int, default=48)
+parent_parser.add_argument("--procs", type=int, default=4)
 parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
 parent_parser.add_argument("--newMesh", type=bool, default=False)
@@ -199,7 +199,7 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     # panel thickness variable, shortened DV name for ESP/CAPS, nastran requirement here
-    Variable.structural(f"{comp}-T", value=0.01).set_bounds(
+    Variable.structural(f"{comp}-pthick", value=0.01).set_bounds(
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
@@ -283,4 +283,9 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
 f2f_model.read_design_variables_file(comm, "design/CF-sizing.txt")
 
 tacs_driver.solve_forward()
+
+# print out the function values
+if comm.rank == 0:
+    for func in f2f_model.get_functions(optim=True):
+        print(f"func {func.name} = {func.value.real}")
 
