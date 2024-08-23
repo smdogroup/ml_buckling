@@ -352,9 +352,10 @@ elif kernel_option == 10:
 
         BL_kernel = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
         if debug: print(f"BL_kernel = {BL_kernel}")
+        # 0.02 was factor here before
+        SE_factor = 0.2 * np.exp(-0.5 * (d1**2 / 0.2**2 + d3**2 / 0.3**2))
         SE_kernel = (
-            0.02
-            * np.exp(-0.5 * (d1 ** 2 / 0.2**2 ))
+            SE_factor
             * soft_relu(1 - soft_abs(xp[1]))
             * soft_relu(1 - soft_abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
         )
@@ -365,7 +366,7 @@ elif kernel_option == 10:
         xi_kernel = 0.1 * xp[0] * xq[0]
         if debug: print(f"xi kernel = {xi_kernel}")
 
-        inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3]) + SE_kernel + 0.1 * xp[0] * xq[0] + 0.01 * xp[2] * xq[2]
+        inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3]) + SE_kernel + 0.1 * xp[0] * xq[0] + 0.05 * xp[2] * xq[2]
         if debug: print(f"inner kernel = {inner_kernel}")
         return inner_kernel
 

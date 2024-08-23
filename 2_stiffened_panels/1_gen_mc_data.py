@@ -42,7 +42,7 @@ comm.Barrier()
 
 inner_ct = 0
 
-for material in mlb.CompositeMaterial.get_materials()[1:]:
+for material in mlb.CompositeMaterial.get_materials()[0:1]:
     for ply_angle in np.linspace(0.0, 90.0, 8)[3:]:
         plate_material = material(
             ply_angles=[ply_angle], ply_fractions=[1.0], ref_axis=[1, 0, 0]
@@ -64,9 +64,10 @@ for material in mlb.CompositeMaterial.get_materials()[1:]:
 
             for SHR in SHR_vec:
 
-                SHR = 1.2
+                #SHR = 1.2
 
-                for num_stiff in [1, 3, 5]:
+                #for num_stiff in [1, 3, 5]:
+                for num_stiff in [3]: # different number of stiffeners introduces too much noise in the data
 
                     log_AR_vec = np.linspace(np.log(0.2), np.log(8.0), 15)
                     AR_vec = np.exp(log_AR_vec)

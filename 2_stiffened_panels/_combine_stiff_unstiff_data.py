@@ -31,14 +31,28 @@ data_folder = os.path.join(cpath, "data")
 if not os.path.exists(data_folder) and comm.rank == 0:
     os.mkdir(data_folder)
 
-stiffened_csv = os.path.join(raw_data_folder, args.load + "_stiffened.csv")
+stiffened_csv = os.path.join(raw_data_folder, args.load + "_raw_stiffened.csv")
 stiff_df = pd.read_csv(stiffened_csv)
+
+n_stiff_vec = stiff_df["n_stiff"].to_numpy()
+print(f"{n_stiff_vec=}")
+# print(f"first val = {type(n_stiff_vec[0])}")
 
 X = stiff_df[["xi", "rho_0", "zeta", "gamma", "lambda_star"]].to_numpy()
 pred_type = stiff_df["pred_type"].to_numpy()
 if args.load == "Nx":
     pred_mask = pred_type == "global"
+    print(f"{pred_mask=}, {pred_mask.shape}")
+    # print(f"X shape {X.shape}")
     X = X[pred_mask,:]
+    # print(f"X shape {X.shape}")
+    three_stiff_mask = n_stiff_vec[pred_mask] == 3
+
+else:
+    three_stiff_mask = n_stiff_vec == 3
+    
+# print(f"{three_stiff_mask=}, {three_stiff_mask.shape}")
+X = X[three_stiff_mask,:]
 
 # convert xi to log(1+xi)
 X[:,0] += 1.0
