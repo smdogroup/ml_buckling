@@ -1,3 +1,6 @@
 *.bdf
 _buckling*
 _static*
+SNOPT*
+*.txt
+*.hst
