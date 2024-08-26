@@ -7,11 +7,19 @@ from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil, random
 from pyoptsparse import SNOPT, Optimization
+from mpi4py import MPI
+
+# parallel matrix solving in OpenBLAS from np.linalg.solve
+from os import environ
+environ['OMP_NUM_THREADS'] = '4'
+from _saved_kernel import kernel
 
 """
 @Author : Sean Engelstad
 Train the model using hyperparameter optimization for -log p(y|X,theta) objective function
 """
+
+comm = MPI.COMM_WORLD
 
 np.random.seed(1234567)
 
@@ -58,75 +66,60 @@ def soft_abs(x, rho=10):
 # kernel_option == 10
 
 theta0 = np.array([
-    0.1, # BL_kernel constant
-    0.05, # SE kernel factor
-    0.2, # length scale for rho0 direction
-    0.3, # length scale for gamma direction
-    1.0, # boundary of window kernel rho0 direction
-    0.3, # boundary of gamma SE window kernel
-    1.0, # gamma kernel constant
-    0.1, # gamma kernel slope
-    0.1, # xi kernel slope
-    0.02, # zeta kernel slope
-    1e-1, # sigma_n noise
+    0.1, # 0 - BL_kernel constant
+    0.05, # 1 - SE kernel factor
+    0.2, # 2 - length scale for rho0 direction
+    0.3, # 3 - length scale for gamma direction
+    0.01, # 4 - SE kernel factor for secondary dimensions (lower)
+    0.5, # 5 - length scale for xi dimension
+    0.3, # 6 - length scale for zeta dimensions
+    1.0, # 7 - boundary of window kernel rho0 direction
+    0.3, # 8 - boundary of gamma SE window kernel
+    1.0, # 9 - gamma kernel constant
+    0.1, # 10 - gamma kernel slope
+    0.1, # 11 - xi kernel linear slope
+    0.01, # 12 - xi kernel quadratic slope
+    0.02, # 13 - zeta kernel linear slope
+    0.01, # 14 - zeta kernel quad slope
+    1e-1, # 15 - sigma_n noise
 ])
 
 # opt_soln1 = OrderedDict([('theta', array([0.29999694, 0.96247034, 0.44112862, 0.23071223, 1.16697047,
 #        0.69797125, 2.79486572, 0.8514289 , 0.9999892 , 0.01616109,
 #        0.89938449]))])
+ntheta = theta0.shape[0] # 14 right now
 
 bounds = [
-    [0.02, 0.3], # BL_kernel constant
-    [0.01, 1.0], # SE kernel factor
-    [0.05, 1.0], # length scale for rho0 direction
-    [0.05, 1.0], # length scale for gamma direction
-    [0.5, 2.0], # boundary of window kernel rho0 direction
-    [0.1, 1.0], # boundary of gamma SE window kernel
-    [0.01, 5.0], # gamma kernel constant
-    [0.01, 3.0], # gamma kernel slope
-    [0.01, 3.0], # xi kernel slope
-    [1e-3, 0.1], # zeta kernel slope
-    [1e-3, 1e0], # sigma_n noise
+    [0.02, 0.3], # 0 - BL_kernel constant
+    [0.01, 1.0], # 1 - SE kernel factor
+    [0.05, 1.0], # 2 - length scale for rho0 direction
+    [0.05, 1.0], # 3 - length scale for gamma direction
+    [1e-3, 0.3], # 4 - SE kernel factor for secondary dimensions (lower)
+    [0.1, 1.0],  # 5 - length scale for xi dimension
+    [0.1, 1.0],  # 6 - length scale for zeta dimensions
+    [0.5, 2.0],  # 7 - boundary of window kernel rho0 direction
+    [0.1, 1.0],  # 8 - boundary of gamma SE window kernel
+    [0.01, 5.0], # 9 - gamma kernel constant
+    [0.01, 3.0], # 10 - gamma kernel slope
+    [0.01, 3.0], # 11 - xi kernel slope
+    [1e-3, 0.1], # 12 - xi kernel quadratic slope
+    [1e-3, 0.1], # 13 - zeta kernel slope
+    [1e-3, 0.1], # 14 - zeta kernel quad slope
+    [1e-3, 1e0], # 15 - sigma_n noise
 ]
 lbounds = np.array([bound[0] for bound in bounds])
 ubounds = np.array([bound[1] for bound in bounds])
 
-def kernel(xp, xq, theta, include_sigma=True):
-    # xp, xq are Nx1,Mx1 vectors (ln(1+xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-    vec = xp - xq
-
-    d1 = vec[1] # rho0 direction
-    d2 = vec[2] # zeta direction
-    d3 = vec[3] # gamma direction
-
-    BL_kernel = theta[0] + soft_relu(-xp[1]) * soft_relu(-xq[1])
-    # 0.02 was factor here before
-    SE_factor = theta[1] * np.exp(-0.5 * (d1**2 / theta[2]**2 + d3**2 / theta[3]**2))
-    SE_kernel = (
-        SE_factor
-        * soft_relu(theta[4] - soft_abs(xp[1]))
-        * soft_relu(theta[4] - soft_abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
-        * soft_relu(theta[5] - xp[3])
-        * soft_relu(theta[5] - xq[3]) # correlate only low values of gamma together
-    )
-    gamma_kernel = theta[6] + theta[7] * xp[3] * xq[3]
-    xi_kernel = theta[8] * xp[0] * xq[0]
-    zeta_kernel = theta[9] * xp[2] * xq[2]
-    sigma_n = theta[10]
-
-    inner_kernel = BL_kernel * gamma_kernel**2 + SE_kernel + xi_kernel + zeta_kernel
-    # return inner_kernel + sigma_n**2 * include_sigma
-    return inner_kernel
-
 def kernel_deriv(xp, xq, theta, idx, include_sigma=True):
     """compute derivative of kernel function above w.r.t. the dv index"""
     # use complex-step method here as it is very convenient
-    dtheta = np.zeros((11,))
+    dtheta = np.zeros((ntheta,))
     dtheta[idx] = 1e-30
     f1 = kernel(xp, xq, theta + dtheta * 1j, include_sigma=True)
     return np.imag(f1) / 1e-30
 
-print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
+if comm.rank == 0:
+    print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
 # randomly permute the arrays
 rand_perm = np.random.permutation(N_data)
@@ -154,7 +147,7 @@ def nMAP(theta):
             [kernel(X_train[i, :], X_train[j, :], theta) for i in range(n_train)]
             for j in range(n_train)
         ]
-    ) + theta[10]**2 * np.eye(n_train)
+    ) + theta[ntheta-1]**2 * np.eye(n_train)
 
     alpha = np.linalg.solve(K_y, Y_train)
     term1 = (0.5 * Y_train.T @ alpha)[0,0]
@@ -181,7 +174,7 @@ def nMAP_grad(theta, can_print=False):
             [kernel(X_train[i, :], X_train[j, :], theta) for i in range(n_train)]
             for j in range(n_train)
         ]
-    ) + theta[10]**2 * np.eye(n_train)
+    ) + theta[ntheta-1]**2 * np.eye(n_train)
 
     # forward part (not gradient yet)
     alpha = np.linalg.solve(K_y, Y_train)
@@ -191,20 +184,19 @@ def nMAP_grad(theta, can_print=False):
     nmap = term1 + term2 + term3
 
     # now get the gradient..
-    ntheta = theta.shape[0]
     grad = np.zeros((ntheta,))
     for itheta in range(ntheta):
         if can_print: print(f"\tgetting grad entry theta{itheta}")
         # get dK/dtheta_j
-        if itheta < 10:
+        if itheta < (ntheta-1):
             Kgrad = np.array(
                 [
                     [kernel_deriv(X_train[i, :], X_train[j, :], theta, itheta) for i in range(n_train)]
                     for j in range(n_train)
                 ]
             )
-        elif itheta == 10:
-            Kgrad = 2 * theta[10] * np.eye(n_train)
+        elif itheta == (ntheta-1):
+            Kgrad = 2 * theta[ntheta-1] * np.eye(n_train)
 
         # compute inner matrix terms
         term1_inner = alpha @ alpha.T @ Kgrad
@@ -237,7 +229,7 @@ if args.debug1:
 if args.checkderivs:
     print("\nChecking nMAP gradient with complex-step method..")
     # use complex-step method to check the derivatives
-    dtheta = np.random.rand(11)
+    dtheta = np.random.rand(ntheta)
     f1,_ = nMAP(theta0 + dtheta * 1e-30 * 1j)
     cs_deriv = np.imag(f1) / 1e-30
 
@@ -303,7 +295,8 @@ def nMAP_pyos(theta_dict):
     func_val,alpha = nMAP(theta)
     avg_rel_err = post_evaluate(theta,alpha)
     funcs = {"obj" : func_val}
-    print(f"{func_val=}, {avg_rel_err=}, {theta=}")
+    if comm.rank == 0:
+        print(f"{func_val=}, {avg_rel_err=}, {theta=}")
     return funcs, False # fail = False
 
 def nMAP_grad_pyos(theta_dict, funcs):
@@ -316,7 +309,7 @@ def nMAP_grad_pyos(theta_dict, funcs):
 optProb = Optimization("nMap hyperparameter optimization", nMAP_pyos)
 
 # Design Variables
-optProb.addVarGroup("theta", 11, lower=lbounds, value=theta0, upper=ubounds)
+optProb.addVarGroup("theta", ntheta, lower=lbounds, value=theta0, upper=ubounds)
 optProb.addObj("obj")
 
 # Optimizer

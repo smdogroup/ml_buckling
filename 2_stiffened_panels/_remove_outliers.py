@@ -17,7 +17,7 @@ np.random.seed(1234567)
 
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--load", type=str)
+parent_parser.add_argument("--load", type=str, default="Nx")
 
 args = parent_parser.parse_args()
 
@@ -151,6 +151,23 @@ if _remove_outliers:
     n_removed2 = len(_remove_indices)
     print(f"removed {n_removed2-n_removed} data points outside of realistic design bounds : now {N_data} data points left")
     # exit()
+
+# remove any additional regions of bad data from observing the model and convergence study results..
+# unstiffened panel data is good quality and self-consistent
+gamma_zero_mask = X[:,3] < 0.01
+# gamma > 0 models worked best with low xi
+xi_mask = np.logical_and(0.2 <= X[:,0], X[:,0] <= 0.4)
+zeta_mask = np.logical_and(0.0 <= X[:,2], X[:,2] <= 1.0)
+gamma_large_mask = X[:,3] > 0.0
+stiff_mask = np.logical_and(xi_mask, zeta_mask)
+stiff_mask = np.logical_and(stiff_mask, gamma_large_mask)
+
+verified_data_mask = np.logical_or(gamma_zero_mask, stiff_mask)
+
+X = X[verified_data_mask,:]
+Y = Y[verified_data_mask,:]
+
+print(f"removed unverified models => only {X.shape[0]} models left")
 
 # write out to Nx_stiffened2.csv
 # X = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()

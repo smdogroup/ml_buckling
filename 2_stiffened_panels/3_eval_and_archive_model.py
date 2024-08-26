@@ -6,6 +6,7 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil, random
+from _saved_kernel import kernel, theta_opt
 
 """
 This time I'll try a Gaussian Process model to fit the axial critical load surrogate model
@@ -17,12 +18,13 @@ np.random.seed(1234567)
 
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--load", type=str)
-parent_parser.add_argument("--plotraw", type=bool, default=False)
-parent_parser.add_argument("--plotmodel", type=bool, default=False)
-parent_parser.add_argument("--resid", type=bool, default=False)
-parent_parser.add_argument("--kernel", type=int, default=9)
-parent_parser.add_argument("--archive", type=bool, default=False)
+parent_parser.add_argument("--load", type=str, default="Nx")
+parent_parser.add_argument('--plotraw', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--plotmodel2d', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--plotmodel3d', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--resid', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--clear', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--archive', default=False, action=argparse.BooleanOptionalAction)
 
 args = parent_parser.parse_args()
 
@@ -32,7 +34,7 @@ load = args.load
 
 # load the Nxcrit dataset
 load_prefix = "Nx_stiffened" if load == "Nx" else "Nxy"
-csv_filename = f"{load}_stiffened"
+csv_filename = f"{load}_stiffened2" if load == "Nx" else f"{load}_stiffened"
 df = pd.read_csv("data/" + csv_filename + ".csv")
 
 # extract only the model columns
@@ -43,335 +45,8 @@ Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 N_data = X.shape[0]
 
 # n_train = int(0.9 * N_data)
-n_train = 3000 # 1000, 4000
+n_train = 2000
 n_test = min([4000, N_data-n_train])
-
-
-def relu(x):
-    return max([0.0, x])
-
-def soft_relu(x, rho=10):
-    return 1.0 / rho * np.log(1 + np.exp(rho * x))
-
-def soft_abs(x, rho=10):
-    return 1.0 / rho * np.log(np.exp(rho*x) + np.exp(-rho*x))
-
-sigma_n = 1e-1 #1e-1 was old value
-
-# this one was a pretty good model except for high gamma, middle rho0 for one region of the design
-kernel_option = args.kernel # best is 7 right now
-if kernel_option == 1:
-    def kernel(xp, xq, theta):
-        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        # log(xi) direction
-        kernel0 = 1.0 + xp[0] * xq[0]
-
-        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2_1 = 1.0 + 0.2 * xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2_2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        # log(gamma) direction
-        kernel3_1 = 1.0 + 0.2 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-        kernel3_2 = xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-
-        # log(rho_0) direction
-        # idea here is to combine linear kernel on (rho0, gamma, zeta) for rho0 outside [-1,1] the tails
-        #    using weaker linear functions in gamma, zeta directions (by + const)
-        #    also the rho0 of course is actually bilinear
-        # then use weak SE term to cover the oscillations in rho0 and in this example we use regular 
-        #     linear kernels without a constant term because then it couples the gamma = 0 to high gamma data too much
-        #     and messes up the mode switching zones
-        #     put this in the paper.
-
-        #* np.exp(-0.5 * (xp[3] + xq[3]) / 1.0) # 0.2, # * np.exp(-0.5 * (d1 ** 2 / (0.2 ** 2))
-        kernel123 = (0.1 + soft_relu(-xp[1]) * soft_relu(-xq[1])) * kernel2_1 * kernel3_1 + \
-            0.1 * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2)) * \
-            soft_relu(1 - abs(xp[1])) * \
-            soft_relu(1 - abs(xq[1])) * kernel2_2 * kernel3_2
-        
-        return kernel0 * kernel123
-
-elif kernel_option == 2:
-    def kernel(xp, xq, theta):
-        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        # log(xi) direction
-        kernel0 = 0.1 + xp[0] * xq[0]
-        # log(rho_0) direction
-        kernel1 = (
-            soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1 +
-            0.1 #* np.exp(-0.5 * (xp[3] + xq[3]) / 1.0) # 0.2
-            # * np.exp(-0.5 * (d1 ** 2 / (0.2 ** 2))
-            * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2))
-            * soft_relu(1 - abs(xp[1]))
-            * soft_relu(1 - abs(xq[1]))
-        )
-        # log(zeta) direction
-        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        # log(gamma) direction
-        kernel3 = xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-        return kernel0 * kernel1 * kernel2 * kernel3
-    
-elif kernel_option == 3:
-    def kernel(xp, xq, theta):
-        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        # log(xi) direction
-        kernel0 = 1.0 + xp[0] * xq[0]
-        # log(rho_0) direction
-        kernel1_1 = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
-        kernel1_2 = (
-            0.1 #* np.exp(-0.5 * (xp[3] + xq[3]) / 1.0) # 0.2
-            # * np.exp(-0.5 * (d1 ** 2 / (0.2 ** 2))
-            * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2))
-            * soft_relu(1 - abs(xp[1]))
-            * soft_relu(1 - abs(xq[1]))
-        )
-        # log(zeta) direction
-        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2 = (1.0 + 0.2 * xp[2] * xq[2])**2 + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        # log(gamma) direction
-        kernel3 = 1.0 + 0.5 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-        return kernel1_1 * kernel0 * kernel2 * kernel3 #+ kernel1_2  # add perturbations separately
-    
-elif kernel_option == 4:
-    # this one works great with the xi dimension and doesn't have any funky d/dgamma slopes becoming negative
-    # at higher xi values
-
-    def kernel(xp, xq, theta):
-        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        # log(xi) direction
-        kernel0 = 1.0 + xp[0] * xq[0]
-        # log(rho_0) direction
-        kernel1_1 = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
-        kernel1_2 = (
-            0.1 #* np.exp(-0.5 * (xp[3] + xq[3]) / 1.0) # 0.2
-            # * np.exp(-0.5 * (d1 ** 2 / (0.2 ** 2))
-            * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2))
-            * soft_relu(1 - abs(xp[1]))
-            * soft_relu(1 - abs(xq[1]))
-        )
-        # log(zeta) direction
-        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2 = (1.0 + 0.2 * xp[2] * xq[2])**2 + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        # log(gamma) direction
-        kernel3 = 1.0 + 0.5 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-        return kernel1_1 + kernel0 + kernel2 + kernel3 #+ kernel1_2  # add perturbations separately
-    
-elif kernel_option == 5:
-    # didn't work that well and I think it's the multiplication
-    # it was not related to the SE term on dimension 1
-    def kernel(xp, xq, theta):
-        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        # log(xi) direction
-        kernel0 = 0.1 + xp[0] * xq[0]
-        # log(rho_0) direction
-        kernel1 = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
-
-        kernel1_2 = (
-            1.0 + 0.03
-            * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2))
-            * soft_relu(1 - abs(xp[1]))
-            * soft_relu(1 - abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
-        )
-        
-        # log(zeta) direction
-        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        # log(gamma) direction
-        kernel3 = xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-        
-        return kernel0 * kernel1 * kernel2 * kernel3 * kernel1_2
-    
-elif kernel_option == 6:
-    # yeah that helps, this is a reasonable model => but there's too much oscillation from the SE kernel term
-    # maybe try and add xi, gamma, zeta product to the kernel1_2 term
-    def kernel(xp, xq, theta):
-        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        # log(xi) direction
-        kernel0 = 1.0 + xp[0] * xq[0]
-        # log(rho_0) direction
-        kernel1_1 = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
-
-        kernel1_2 = (
-            1.0 + 0.01
-            * np.exp(-0.5 * (d1 ** 2 / (0.2 + (xp[3] + xq[3]) / 2.0) ** 2))
-            * soft_relu(1 - abs(xp[1]))
-            * soft_relu(1 - abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
-        )
-        
-        # log(zeta) direction
-        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2 = (1.0 + 0.2 * xp[2] * xq[2])**2 + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        # log(gamma) direction
-        kernel3 = 1.0 + 0.5 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-        
-        return (kernel0 + kernel1_1 + kernel2 + kernel3) * kernel1_2
-    
-elif kernel_option == 7:
-    # This one worked great! Captured more of the local data with a tuned value of the
-    # SE coefficient to 0.02 and the linear terms are of a different style from the 
-    # bilinear and SE part of rho0. 
-    def kernel(xp, xq, theta):
-        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        # log(xi) direction
-        kernel0 = 1.0 + xp[0] * xq[0]
-        # log(rho_0) direction
-        kernel1_1 = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
-
-        kernel1_2 = (
-            1.0 + 0.02
-            * np.exp(-0.5 * (d1 ** 2 / 0.2**2 ))
-            * soft_relu(1 - abs(xp[1]))
-            * soft_relu(1 - abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
-        )
-        
-        # log(zeta) direction
-        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2 = (1.0 + 0.2 * xp[2] * xq[2])**2 + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        # log(gamma) direction
-        kernel3 = 1.0 + 0.5 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-        
-        return kernel1_1 * (kernel0 + kernel2 + kernel3) + kernel1_2 * kernel0 * kernel2 * kernel3
-    
-elif kernel_option == 8:
-    # This one worked great! Captured more of the local data with a tuned value of the
-    # SE coefficient to 0.02 and the linear terms are of a different style from the 
-    # bilinear and SE part of rho0. 
-    def kernel(xp, xq, theta):
-        # xp, xq are Nx1,Mx1 vectors (ln(xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        # log(xi) direction
-        kernel0 = 1.0 + xp[0] * xq[0]
-        # log(rho_0) direction
-        kernel1_1 = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
-
-        kernel1_2 = (
-            1.0 + 0.02
-            * np.exp(-0.5 * (d1 ** 2 / 0.2**2 ))
-            * soft_relu(1 - abs(xp[1]))
-            * soft_relu(1 - abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
-        )
-        
-        # log(zeta) direction
-        #  kernel2 = xp[2] * xq[2] + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        kernel2 = (1.0 + 0.2 * xp[2] * xq[2])**2 + 0.1 * np.exp(-0.5 * d2 ** 2 / 9.0)
-        # log(gamma) direction
-        kernel3 = 1.0 + 0.5 * xp[3] * xq[3] + 0.1 * np.exp(-0.5 * d3 ** 2 / 9.0)
-        
-        return kernel1_1 * (kernel0 + kernel2 + kernel3) + kernel1_2 * kernel0 * kernel2 * kernel3
-
-elif kernel_option == 9:
-    # This one worked great! Captured more of the local data with a tuned value of the
-    # SE coefficient to 0.02 and the linear terms are of a different style from the 
-    # bilinear and SE part of rho0. 
-    def kernel(xp, xq, theta, debug=False):
-        # xp, xq are Nx1,Mx1 vectors (ln(1+xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        BL_kernel = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
-        if debug: print(f"BL_kernel = {BL_kernel}")
-        SE_kernel = (
-            0.02
-            * np.exp(-0.5 * (d1 ** 2 / 0.2**2 ))
-            * soft_relu(1 - soft_abs(xp[1]))
-            * soft_relu(1 - soft_abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
-        )
-        if debug: print(f"SE kernel = {SE_kernel}")
-        gamma_kernel = 1.0 + 0.1 * xp[3] * xq[3]
-        if debug: print(f"gamma vals = {xp[3]}, {xq[3]}")
-        if debug: print(f"gamma kernel = {gamma_kernel}")
-        xi_kernel = 0.1 * xp[0] * xq[0]
-        if debug: print(f"xi kernel = {xi_kernel}")
-
-        inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3]) + SE_kernel + 0.1 * xp[0] * xq[0]
-        if debug: print(f"inner kernel = {inner_kernel}")
-        return inner_kernel * (1 + 0.01 * xp[2] * xq[2])
-    
-elif kernel_option == 10:
-    # want to get lower RMSE
-    # this is latest one as of 8/22/2024
-    # zeta 
-
-    def kernel(xp, xq, theta, debug=False):
-        # xp, xq are Nx1,Mx1 vectors (ln(1+xi), ln(rho_0), ln(1 + 10^3 * zeta), ln(1 + gamma))
-        vec = xp - xq
-
-        d1 = vec[1]  # first two entries
-        d2 = vec[2]
-        d3 = vec[3]
-
-        BL_kernel = soft_relu(-xp[1]) * soft_relu(-xq[1]) + 0.1
-        if debug: print(f"BL_kernel = {BL_kernel}")
-        # 0.02 was factor here before
-        SE_factor = 0.05 * np.exp(-0.5 * (d1**2 / 0.2**2 + d3**2 / 0.3**2))
-        SE_kernel = (
-            SE_factor
-            * soft_relu(1 - soft_abs(xp[1]))
-            * soft_relu(1 - soft_abs(xq[1])) #* np.exp(-0.5 * d3 ** 2 / 9.0)
-            * soft_relu(0.3 - xp[3])
-            * soft_relu(0.3 - xq[3]) # correlate only low values of gamma together
-        )
-        if debug: print(f"SE kernel = {SE_kernel}")
-        gamma_kernel = 1.0 + 0.1 * xp[3] * xq[3]
-        if debug: print(f"gamma vals = {xp[3]}, {xq[3]}")
-        if debug: print(f"gamma kernel = {gamma_kernel}")
-        xi_kernel = 0.1 * xp[0] * xq[0]
-        if debug: print(f"xi kernel = {xi_kernel}")
-
-        # now have quadratic gamma kernel
-        inner_kernel = BL_kernel * (1.0 + 0.1 * xp[3] * xq[3])**2 + SE_kernel + 0.1 * xp[0] * xq[0] + 0.02 * xp[2] * xq[2]
-        if debug: print(f"inner kernel = {inner_kernel}")
-        return inner_kernel
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
@@ -395,103 +70,6 @@ gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0] ]
 rand_perm = np.random.permutation(N_data)
 X = X[rand_perm, :]
 Y = Y[rand_perm, :]
-
-# REMOVE THE OUTLIERS in local 4d regions
-# Step 1 - remove any gamma > 0 points below the curve (there aren't many)
-# but these are definitely outliers / bad points
-_remove_outliers = args.load == "Nx" # TBD on using it for the Nxy data
-if _remove_outliers:
-    _remove_indices = []
-    _full_indices = np.array([_ for _ in range(N_data)])
-
-    for ixi, xi_bin in enumerate(xi_bins):
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
-        avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
-
-        for izeta, zeta_bin in enumerate(zeta_bins):
-            zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
-            avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
-            xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
-
-            for irho0, rho0_bin in enumerate(rho0_bins):
-                rho0_mask = np.logical_and(rho0_bin[0] <= X[:,1], X[:,1] <= rho0_bin[1])
-                mask = np.logical_and(xi_zeta_mask, rho0_mask)
-
-                # for each gamma > 0 data point
-                gm_lg0_mask = np.logical_and(mask, X[:,3] > 0.0)
-                gm_eq0_mask = np.logical_and(mask, X[:,3] == 0.0)
-
-                if np.sum(gm_eq0_mask) == 0: continue
-
-                # do a local linear regression of the gamma == 0.0 data
-                # so that we can check whether the data point is below gamma == 0.0 surface
-                X_local = X[gm_eq0_mask, :3]
-                Y_local = Y[gm_eq0_mask, :]
-                wstar_local = np.linalg.solve(X_local.T @ X_local + 1e-4, X_local.T @ Y_local)
-
-                # now for each point in the gamma > 0 set check if below the gamma == 0.0 surface
-                X_gm_lg0 = X[gm_lg0_mask, :3]
-                Y_gm_lg0 = Y[gm_lg0_mask, :]
-                Y_pred = X_gm_lg0 @ wstar_local
-                Y_resid = Y_gm_lg0 - Y_pred
-                gm_lg0_indices = _full_indices[gm_lg0_mask]
-                for i,glob_index in enumerate(gm_lg0_indices):
-                    if Y_resid[i] < 0.0:
-                        _remove_indices += [glob_index]
-
-    n_removed = len(_remove_indices)
-    print(f"removed {n_removed} outliers : now {N_data} data points left")
-
-    """
-    Please note, I have removed some of the potentially bad data points here
-    to make the model better. Some values of high zeta, xi, gamma are hard to mesh converge
-    depending on how many stiffeners there are. Data quality is very important in training machine learning models.
-    Especially if you want them to extrapolate well to high values of gamma, xi, zeta as best you can.
-    Some case studies on individual FEA models is probably also warranted. Also, some trends here might be correct
-    as high values of gamma for instance might reduce the gamma slope due to mode distortion. But this is unclear.
-    And needs more investigation first.
-    """
-    # also remove some of the bad data based on inspecting the 2d plots
-    # some seemed like they are not mesh converged for high AR, high gamma, or this is mode distortion?
-    large_xi_mask = X[:,0] >= 0.8
-    large_rho0_mask = X[:,1] >= 0.0
-    large_gm_mask = X[:,3] > 0.0
-    mask = np.logical_and(large_xi_mask, large_rho0_mask)
-    mask = np.logical_and(mask, large_gm_mask)
-    new_remove_indices = _full_indices[mask]
-    _remove_indices += list(new_remove_indices)
-
-    # remove zeta > 2 from dataset as it messes up the zeta profiles
-    # zeta > 2 is very unrealistic for aircraft wings as it represents pretty thick plates
-    # and wings are lightweight, thin plate structures.
-    zeta_mask = X[:,2] > 2.0
-    _remove_indices += list(_full_indices[zeta_mask])
-
-    # remove xi > 1.0 as the stiffened data is too close to unstiffened data here as gamma inc
-    # that it messes up the slopes (might be mesh convergence related) => hard to mesh converge high xi, gamma
-    # other parts of the literature also state that 0 < xi < 1.0 for all realistic designs
-    #xi_mask = X[:,0] >= 0.8
-    xi_mask = X[:,0] >= 0.4
-    #_remove_indices += list(_full_indices[xi_mask])
-
-    # remove last xi_bin
-    #xi_bins = xi_bins[:-1]
-
-
-    # keep the non outlier data
-    _keep_indices = [_ for  _ in range(N_data) if not(_ in _remove_indices)]
-    X = X[_keep_indices,:]
-    Y = Y[_keep_indices,:]
-
-    N_data = X.shape[0]
-
-    # update n_test based on remaining data
-    n_test = min([4000, N_data-n_train])
-
-    n_removed2 = len(_remove_indices)
-    print(f"removed {n_removed2-n_removed} data points outside of realistic design bounds : now {N_data} data points left")
-    # exit()
-
 
 # 2d plots
 _plot_2d = True
@@ -531,7 +109,7 @@ for ifolder, folder in enumerate(
         GP_folder,
     ]
 ):
-    if ifolder > 0 and os.path.exists(folder):
+    if ifolder > 0 and os.path.exists(folder) and args.clear:
         shutil.rmtree(folder)
     if not os.path.exists(folder):
         os.mkdir(folder)
@@ -554,40 +132,25 @@ X_test = X[test_indices[:n_test], :]
 Y_train = Y[train_indices, :]
 Y_test = Y[test_indices[:n_test], :]
 
-# TRAIN THE MODEL HYPERPARAMETERS
-# by maximizing the log marginal likelihood log p(y|X)
-# or minimizing the negative log marginal likelihood
-# ----------------------------------------------------
-# update the local hyperparameter variables
-# initial hyperparameter vector
-# sigma_n, sigma_f, L1, L2, L3
-# theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.5, 2, 0.8, 1.0, 0.2])
-# theta0 = [9.99999999e-05, 9.99999997e-05, 1.59340141e-01, 7.26056398e-01,
-#  9.27506384e-01, 4.98424731e-01, 7.75092936e-01, 9.96708608e-01,
-#  9.99999998e-05, 9.99999998e-05, 6.96879851e-01, 1.00000000e-04,]
-# theta0 = [9.99999999e-05, 1.00000000e-01, 1.70095486e-01, 8.42616423e-01,
-#          9.78301139e-01, 4.05578917e-01, 7.89718868e-01, 9.15860119e-01,
-#          1.00000000e-01, 6.92185488e-02, 8.37836523e-01, 1.00547797e-04,]
-# theta = [1.00000000e-04 1.30342193e-01 2.10713893e-01 9.99999999e-05
-#  8.50836331e-01 3.36062544e-01 8.12693340e-01 5.48897610e-01
-#  1.00000000e-01 1.00000000e-02 1.00000000e-01 1.00000000e-04]
+# train the model:
+# ----------------
 
-# v1
-# theta0 = np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 0.5, 0.8, 1.0, 0.2, 0.2, 1.0, 1e-2])
-# v2 - increase gamma length
-# theta0 = np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 2.0, 0.8, 1.0, 0.2, 0.1, 1.0, 1e-2, 0.0])
-# v3 - increase gamma an dzeta length again
-# theta0 = np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 3.0, 3.0, 1.0, 0.2, 0.1, 1.0, 1e-2, 0.0])
-# v4 - make zeta direction mostly linear
-# theta0 = np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 3.0, 3.0, 0.2, 1.0, 0.1, 1.0, 1e-2, 0.0])
-# v5 - make S4 smaller and add modified L1 (larger L1_rho distance at higher gamma values => so smoother there)
-theta0 = np.array([1e-1, 3e-1, 0.2, 0.1, 1.0, 3.0, 3.0, 0.2, 1.0, 0.1, 1.0, 1e-2, 1.0])
+ntheta = theta_opt.shape[0]
+sigma_n = theta_opt[ntheta-1]
+# compute the training kernel matrix
+K_y = np.array(
+    [
+        [kernel(X_train[i, :], X_train[j, :], theta_opt) for i in range(n_train)]
+        for j in range(n_train)
+    ]
+) + sigma_n ** 2 * np.eye(n_train)
 
-# y is the training set observations
-y = Y_train
+#print(f"K_y = {K_y}")
+#exit()
 
+alpha = np.linalg.solve(K_y, Y_train)
 
-# plot the model and some of the data near the model range in D*=1, AR from 0.5 to 5.0, b/h=100
+# plot the raw data
 # ---------------------------------------------------------------------------------------------
 
 if args.plotraw:
@@ -738,18 +301,6 @@ if args.plotraw:
 
 # exit()
 
-# compute the training kernel matrix
-K_y = np.array(
-    [
-        [kernel(X_train[i, :], X_train[j, :], theta0) for i in range(n_train)]
-        for j in range(n_train)
-    ]
-) + sigma_n ** 2 * np.eye(n_train)
-
-#print(f"K_y = {K_y}")
-#exit()
-
-alpha = np.linalg.solve(K_y, y)
 
 # test out a certain input
 # debugging
@@ -773,10 +324,95 @@ print(f"Xtest = {_Xtest}")
 #print(f"pred = {pred}")
 #exit()
 
-if args.plotmodel:
+# plot the model againt the data
+# ------------------------------
+
+if args.plotmodel2d:
 
     n_plot_2d = 100
     rho0_vec = np.linspace(-2.5, 2.5, n_plot_2d)
+
+    if _plot_xi:
+        
+        print(f"start 2d xi plots...")
+
+        for igamma,gamma_bin in enumerate(gamma_bins):
+            gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
+            avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
+
+            for izeta, zeta_bin in enumerate(zeta_bins):
+                zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
+                avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
+                gamma_zeta_mask = np.logical_and(gamma_mask, zeta_mask)
+
+                for ixi, xi_bin in enumerate(xi_bins):
+                    xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
+                    avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
+                    mask = np.logical_and(gamma_zeta_mask, xi_mask)
+
+                    #if np.sum(mask) == 0: continue
+
+                    plt.figure(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}", figsize=(8,6))
+
+                    colors = plt.cm.jet(np.linspace(0.0, 1.0, len(xi_bins)))
+
+            
+                    #if np.sum(mask) == 0: continue
+
+                    X_in_range = X[mask,:]
+                    Y_in_range = Y[mask,:]
+                    if args.resid:
+                        Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
+                        Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
+
+                    if np.sum(mask) != 0:
+                        plt.plot(
+                            X_in_range[:,1],
+                            Y_in_range[:,0],
+                            "o",
+                            color=colors[ixi],
+                            zorder=1+ixi,
+                        )
+
+                    # plot the model now
+                    # predict the models, with the same colors, no labels
+                    X_plot = np.zeros((n_plot_2d, 4))
+                    for irho, crho0 in enumerate(rho0_vec):
+                        X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
+
+                    Kplot = np.array(
+                        [
+                            [
+                                kernel(X_train[i, :], X_plot[j, :], theta_opt)
+                                for i in range(n_train)
+                            ]
+                            for j in range(n_plot_2d)
+                        ]
+                    )
+                    f_plot = Kplot @ alpha
+                    if args.resid:
+                        f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
+                        f_plot = f_resid.reshape((X_plot.shape[0],1))
+
+                    plt.plot(
+                        rho0_vec,
+                        f_plot,
+                        "--",
+                        color=colors[ixi],
+                        zorder=1,
+                        label=r"$\log(1+\xi)" f"\ in\ [{xi_bin[0]:.1f},{xi_bin[1]:.1f}" + r"]$"
+                    )
+                    
+
+                plt.legend()
+                plt.xlabel(r"$\log{\rho_0}$")
+                if args.load == "Nx":
+                    plt.ylabel(r"$\log(N_{11,cr}^*)$")
+                else:
+                    plt.ylabel(r"$\log(N_{12,cr}^*)$")
+
+                plt.savefig(os.path.join(GP_folder, f"2d-xi-model_zeta{izeta}_gamma{igamma}.png"), dpi=400)
+                plt.close(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}")  
 
     if _plot_gamma:
         
@@ -828,7 +464,7 @@ if args.plotmodel:
                     Kplot = np.array(
                         [
                             [
-                                kernel(X_train[i, :], X_plot[j, :], theta0)
+                                kernel(X_train[i, :], X_plot[j, :], theta_opt)
                                 for i in range(n_train)
                             ]
                             for j in range(n_plot_2d)
@@ -908,7 +544,7 @@ if args.plotmodel:
                     Kplot = np.array(
                         [
                             [
-                                kernel(X_train[i, :], X_plot[j, :], theta0)
+                                kernel(X_train[i, :], X_plot[j, :], theta_opt)
                                 for i in range(n_train)
                             ]
                             for j in range(n_plot_2d)
@@ -939,88 +575,9 @@ if args.plotmodel:
                 plt.savefig(os.path.join(GP_folder, f"2d-zeta-model_xi{ixi}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, gamma = {avg_gamma:.2f}")  
 
-    if _plot_xi:
-        
-        print(f"start 2d zeta plots...")
+    
 
-        for igamma,gamma_bin in enumerate(gamma_bins):
-            gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
-            avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
-
-            for izeta, zeta_bin in enumerate(zeta_bins):
-                zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
-                avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
-                gamma_zeta_mask = np.logical_and(gamma_mask, zeta_mask)
-
-                for ixi, xi_bin in enumerate(xi_bins):
-                    xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
-                    avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
-                    mask = np.logical_and(gamma_zeta_mask, xi_mask)
-
-                    #if np.sum(mask) == 0: continue
-
-                    plt.figure(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}", figsize=(8,6))
-
-                    colors = plt.cm.jet(np.linspace(0.0, 1.0, len(xi_bins)))
-
-            
-                    #if np.sum(mask) == 0: continue
-
-                    X_in_range = X[mask,:]
-                    Y_in_range = Y[mask,:]
-                    if args.resid:
-                        Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
-                        Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
-
-                    if np.sum(mask) != 0:
-                        plt.plot(
-                            X_in_range[:,1],
-                            Y_in_range[:,0],
-                            "o",
-                            color=colors[ixi],
-                            zorder=1+ixi,
-                        )
-
-                    # plot the model now
-                    # predict the models, with the same colors, no labels
-                    X_plot = np.zeros((n_plot_2d, 4))
-                    for irho, crho0 in enumerate(rho0_vec):
-                        X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
-
-                    Kplot = np.array(
-                        [
-                            [
-                                kernel(X_train[i, :], X_plot[j, :], theta0)
-                                for i in range(n_train)
-                            ]
-                            for j in range(n_plot_2d)
-                        ]
-                    )
-                    f_plot = Kplot @ alpha
-                    if args.resid:
-                        f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
-                        f_plot = f_resid.reshape((X_plot.shape[0],1))
-
-                    plt.plot(
-                        rho0_vec,
-                        f_plot,
-                        "--",
-                        color=colors[ixi],
-                        zorder=1,
-                        label=r"$\log(1+\xi)" f"\ in\ [{xi_bin[0]:.1f},{xi_bin[1]:.1f}" + r"]$"
-                    )
-                    
-
-                plt.legend()
-                plt.xlabel(r"$\log{\rho_0}$")
-                if args.load == "Nx":
-                    plt.ylabel(r"$\log(N_{11,cr}^*)$")
-                else:
-                    plt.ylabel(r"$\log(N_{12,cr}^*)$")
-
-                plt.savefig(os.path.join(GP_folder, f"2d-xi-model_zeta{izeta}_gamma{igamma}.png"), dpi=400)
-                plt.close(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}")  
-
+if args.plotmodel3d:
     if _plot_3d_gamma:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
@@ -1080,7 +637,7 @@ if args.plotmodel:
         Kplot = np.array(
             [
                 [
-                    kernel(X_train[i, :], X_plot[j, :], theta0)
+                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
                     for i in range(n_train)
                 ]
                 for j in range(n_plot)
@@ -1194,7 +751,7 @@ if args.plotmodel:
         Kplot = np.array(
             [
                 [
-                    kernel(X_train[i, :], X_plot[j, :], theta0)
+                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
                     for i in range(n_train)
                 ]
                 for j in range(n_plot)
@@ -1309,7 +866,7 @@ if args.plotmodel:
         Kplot = np.array(
             [
                 [
-                    kernel(X_train[i, :], X_plot[j, :], theta0)
+                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
                     for i in range(n_train)
                 ]
                 for j in range(n_plot)
@@ -1373,7 +930,7 @@ n_test = X_test.shape[0]
 K_test_cross = np.array(
     [
         [
-            kernel(X_train[i, :], X_test[j, :], theta0)
+            kernel(X_train[i, :], X_test[j, :], theta_opt)
             for i in range(n_train)
         ]
         for j in range(n_test)
@@ -1387,9 +944,13 @@ crit_loads_pred = np.exp(Y_test_pred)
 abs_err = crit_loads_pred - crit_loads
 rel_err = abs(abs_err / crit_loads)
 avg_rel_err = np.mean(rel_err)
-if args.plotraw or args.plotmodel:
+if args.plotraw or args.plotmodel2d or args.plotmodel3d:
     print(f"\n\n\n")
 print(f"\navg rel err from n_train={n_train} on test set of n_test={n_test} = {avg_rel_err}")
+
+# report the RMSE
+RMSE = np.sqrt(np.mean(np.square(Y_test - Y_test_pred)))
+print(f"RMSE = {RMSE}")
 
 # print out which data points have the highest relative error as this might help me improve the model
 neg_avg_rel_err = -1.0 * rel_err
