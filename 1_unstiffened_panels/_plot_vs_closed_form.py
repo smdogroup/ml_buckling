@@ -52,10 +52,10 @@ con = constitutive.GPBladeStiffenedShellConstitutive(
     stiffenerPlyFracs=np.array([0.6, 0.4], dtype=dtype),
     panelWidth=1.0,
     flangeFraction=0.8,
-    CFshearMode = 1,
 )
 # Set the KS weight really low so that all failure modes make a
 # significant contribution to the failure function derivatives
+con.setCFShearMode(1)
 con.setKSWeight(20.0)
 
 """
@@ -145,6 +145,33 @@ Ncr_vec = np.zeros((n,), dtype=dtype)
 
 plt.text(x=3.6, y=8.7, s=r"$\xi = \frac{D_{12}^p + D_{66}^p}{\sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
 
+# also plot the analytic shear surrogate
+if args.load == "Nxy":
+    con.setCFShearMode(2)
+    
+    for ixi, xi_bin in enumerate(xi_bins[::-1]):
+        # convert from log(xi) to xi here
+        xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
+        avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
+
+        mask = np.logical_and(xi_mask, slender_mask)
+        if np.sum(mask) == 0:
+            print(f"nothing in mask")
+            continue
+
+        # plot the closed-form solution
+        for i, _rho0 in enumerate(rho0_vec):
+            Ncr_vec[i] = con.nondimCriticalGlobalShearLoad(_rho0, avg_xi, 0.0)
+
+        plt.plot(
+            rho0_vec,
+            Ncr_vec,
+            "--",
+            color=colors[ixi],
+        )
+
+    con.setCFShearMode(1)
+
 for ixi, xi_bin in enumerate(xi_bins[::-1]):
     # convert from log(xi) to xi here
     xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
@@ -176,10 +203,14 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
         "o",
         color=colors[ixi],
         label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
-        markersize=6.5
+        markersize=5 #6.5
     )
 
-plt.legend(fontsize=20, loc="upper right")
+
+
+
+
+legend1 = plt.legend(fontsize=20, loc="upper right")
 plt.xlabel(r"$\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p /D_{11}^p}$", fontsize=24)
 plt.xticks(fontsize=18)
 # if args.load == "Nx":
@@ -195,6 +226,17 @@ plt.margins(x=0.02, y=0.02)
 plt.xlim(0.0, 5.0)
 # plt.xlim(0.0, 10.0)
 plt.ylim(0.0, 20.0)
+
+# plot black dots out of axis limits
+l1, = plt.plot(-1e4, 0, "ko", label="FEA model")
+l2, = plt.plot([-1e4, -1e4+1], [0,0], "k--", label="analytic-surrogate")
+l3, = plt.plot([-1e4, -1e4+2], [1,1], "k-", label="closed-form")
+plot_lines = [l1, l2, l3]
+# plt.hold(True)
+legend2 = plt.legend(plot_lines, ["FEA model", "least-squares", "closed-form"])#, loc="best", bbox_to_anchor=(3.0, 18.0))
+plt.gca().add_artist(legend1)
+
+
 # plt.show()
 plt.savefig(os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.svg"), dpi=400)
 plt.savefig(os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.png"), dpi=400)
