@@ -985,6 +985,7 @@ if args.archive:
     if os.path.exists(output_csv):
         os.remove(output_csv)
 
+    # print(f"{X_train=}")
 
     # [log(1+xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
     dataframe_dict = {
