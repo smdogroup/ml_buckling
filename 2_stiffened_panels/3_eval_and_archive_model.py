@@ -1025,3 +1025,14 @@ if args.archive:
     }
     model_df = pd.DataFrame(dataframe_dict)
     model_df.to_csv(output_csv)
+
+    # also deploy the current theta_opt
+    theta_csv = "../archived_models/theta_opt.csv"
+    if os.path.exists(theta_csv):
+        os.remove(theta_csv)
+
+    theta_df_dict = {
+        "theta" : theta_opt,
+    }
+    theta_df = pd.DataFrame(theta_df_dict)
+    theta_df.to_csv(theta_csv)
