@@ -22,6 +22,7 @@ parent_parser.add_argument("--load", type=str, default="Nx")
 parent_parser.add_argument('--plotraw', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--plotmodel2d', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--plotmodel3d', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--show', default=True, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--resid', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--clear', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--archive', default=False, action=argparse.BooleanOptionalAction)
@@ -203,7 +204,10 @@ if args.plotraw:
                 plt.xlabel(r"$\log{\rho_0}$")
                 plt.ylabel(r"$N_{cr}^*$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-gamma_xi{ixi}_zeta{izeta}.png"), dpi=400)
+                if args.show:
+                    plt.show()
+                else:
+                    plt.savefig(os.path.join(GP_folder, f"2d-gamma_xi{ixi}_zeta{izeta}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}")
 
     if _plot_zeta:
@@ -250,7 +254,10 @@ if args.plotraw:
                 plt.xlabel(r"$\log{\rho_0}$")
                 plt.ylabel(r"$N_{cr}^*$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-zeta_xi{ixi}_gamma{igamma}.png"), dpi=400)
+                if args.show:
+                    plt.show()
+                else:
+                    plt.savefig(os.path.join(GP_folder, f"2d-zeta_xi{ixi}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, gamma = {avg_gamma:.2f}")  
 
     if _plot_xi:
@@ -296,7 +303,10 @@ if args.plotraw:
                 plt.xlabel(r"$\log{\rho_0}$")
                 plt.ylabel(r"$N_{cr}^*$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-xi_zeta{izeta}_gamma{igamma}.png"), dpi=400)
+                if args.show:
+                    plt.show()
+                else:
+                    plt.savefig(os.path.join(GP_folder, f"2d-xi_zeta{izeta}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}")  
 
 # exit()
@@ -411,7 +421,10 @@ if args.plotmodel2d:
                 else:
                     plt.ylabel(r"$\log(N_{12,cr}^*)$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-xi-model_zeta{izeta}_gamma{igamma}.png"), dpi=400)
+                if args.show:
+                    plt.show()
+                else:
+                    plt.savefig(os.path.join(GP_folder, f"2d-xi-model_zeta{izeta}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}")  
 
     if _plot_gamma:
@@ -492,7 +505,10 @@ if args.plotmodel2d:
                 else:
                     plt.ylabel(r"$\log(N_{12,cr}^*)$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-gamma-model_xi{ixi}_zeta{izeta}.png"), dpi=400)
+                if args.show:
+                    plt.show()
+                else:
+                    plt.savefig(os.path.join(GP_folder, f"2d-gamma-model_xi{ixi}_zeta{izeta}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}")
 
     if _plot_zeta:
@@ -572,7 +588,10 @@ if args.plotmodel2d:
                 else:
                     plt.ylabel(r"$\log(N_{12,cr}^*)$")
 
-                plt.savefig(os.path.join(GP_folder, f"2d-zeta-model_xi{ixi}_gamma{igamma}.png"), dpi=400)
+                if args.show:
+                    plt.show()
+                else:
+                    plt.savefig(os.path.join(GP_folder, f"2d-zeta-model_xi{ixi}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"xi = {avg_xi:.2f}, gamma = {avg_gamma:.2f}")  
 
     
@@ -688,7 +707,10 @@ if args.plotmodel3d:
         plt.gca().invert_xaxis()
         # plt.title(f"")
         # plt.show()
-        plt.savefig(os.path.join(GP_folder, f"gamma-3d.png"), dpi=400)
+        if args.show:
+            plt.show()
+        else:
+            plt.savefig(os.path.join(GP_folder, f"gamma-3d.png"), dpi=400)
         plt.close(f"3d rho_0, gamma, lam_star")
 
     if _plot_3d_xi:
@@ -801,7 +823,10 @@ if args.plotmodel3d:
         plt.gca().invert_xaxis()
         # plt.title(f"")
         # plt.show()
-        plt.savefig(os.path.join(GP_folder, f"xi-3d.png"), dpi=400)
+        if args.show:
+            plt.show()
+        else:
+            plt.savefig(os.path.join(GP_folder, f"xi-3d.png"), dpi=400)
         plt.close(f"3d rho_0, xi, lam_star")
 
     if _plot_3d_zeta:
@@ -916,7 +941,10 @@ if args.plotmodel3d:
         plt.gca().invert_xaxis()
         # plt.title(f"")
         # plt.show()
-        plt.savefig(os.path.join(GP_folder, f"zeta-3d.png"), dpi=400)
+        if args.show:
+            plt.show()
+        else:
+            plt.savefig(os.path.join(GP_folder, f"zeta-3d.png"), dpi=400)
         plt.close(f"3d rho_0, zeta, lam_star")
 
 # only eval relative error on test set for zeta < 1

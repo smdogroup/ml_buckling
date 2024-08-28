@@ -191,7 +191,10 @@ K_cross = np.reshape(K_cross, (1, K_cross.shape[0]))
 print(f"{K_cross=}")
 pred_log_load = (K_cross @ alpha)[0,0]
 mlb_buckling_load = np.exp(pred_log_load)
-tacs_buckling_load = con.nondimCriticalGlobalAxialLoad(rho_0, xi, gamma, zeta)
+if args.load == "Nx":
+    tacs_buckling_load = con.nondimCriticalGlobalAxialLoad(rho_0, xi, gamma, zeta)
+else:
+    tacs_buckling_load = con.nondimCriticalGlobalShearLoad(rho_0, xi, gamma, zeta)
 
 print(f"{mlb_buckling_load=}")
 print(f"{tacs_buckling_load=}")
@@ -218,14 +221,25 @@ Y_test_pred_mlb = np.exp(Y_test_pred_mlb_log)
 # PREDICTIONS for the TACS model
 # -----------------------------------------------------------
 
-Y_test_pred_tacs = np.array([
-    con.nondimCriticalGlobalAxialLoad(
-        rho_0=np.exp(X_test[itest, 1]), 
-        xi=np.exp(X_test[itest,0])-1.0, 
-        gamma=np.exp(X_test[itest,3])-1, 
-        zeta=(np.exp(X_test[itest,2])-1.0)/1000,
-    ) for itest in range(X_test.shape[0])
-])
+if args.load == "Nx":
+    Y_test_pred_tacs = np.array([
+        con.nondimCriticalGlobalAxialLoad(
+            rho_0=np.exp(X_test[itest, 1]), 
+            xi=np.exp(X_test[itest,0])-1.0, 
+            gamma=np.exp(X_test[itest,3])-1, 
+            zeta=(np.exp(X_test[itest,2])-1.0)/1000,
+        ) for itest in range(X_test.shape[0])
+    ])
+else:
+    Y_test_pred_tacs = np.array([
+        con.nondimCriticalGlobalShearLoad(
+            rho_0=np.exp(X_test[itest, 1]), 
+            xi=np.exp(X_test[itest,0])-1.0, 
+            gamma=np.exp(X_test[itest,3])-1, 
+            zeta=(np.exp(X_test[itest,2])-1.0)/1000,
+        ) for itest in range(X_test.shape[0])
+    ])
+
 
 # COMPARE THE PREDICTIONS (should match well)
 # -------------------------------------------
@@ -266,7 +280,11 @@ for igamma, gamma in enumerate([0.05, 0.64, 6.4, 53.0]):
         # print(f"{K_cross=}")
         pred_log_load = (K_cross @ alpha)[0,0]
         N11cr_mlb[irho0] = np.exp(pred_log_load)
-        N11cr_tacs[irho0] = con.nondimCriticalGlobalAxialLoad(rho0, xi, gamma, zeta)
+        if args.load == "Nx":
+            N11cr_tacs[irho0] = con.nondimCriticalGlobalAxialLoad(rho0, xi, gamma, zeta)
+        else:
+            N11cr_tacs[irho0] = con.nondimCriticalGlobalShearLoad(rho0, xi, gamma, zeta)
+        
 
     plt.plot(rho0_vec, N11cr_mlb, "-", label=f"MLB-gamma={gamma:.2f}", color=colors[2*igamma], linewidth=2)
     plt.plot(rho0_vec, N11cr_tacs, "--", label=f"TACS-gamma={gamma:.2f}", color=colors[2*igamma+1])
@@ -276,7 +294,10 @@ plt.yscale('log')
 # plot it
 plt.margins(x=0.05, y=0.05)
 plt.xlabel(r"$\rho_0$")
-plt.ylabel(r"$N_{11,cr}^*$")
+if args.load == "Nx":
+    plt.ylabel(r"$N_{11,cr}^*$")
+else:
+    plt.ylabel(r"$N_{12,cr}^*$")
 plt.legend()
 # plt.savefig("1-verify.png", dpi=400)
 plt.show()
