@@ -17,6 +17,8 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
 parent_parser.add_argument('--show', default=True, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument("--xi", type=float, default=1.0)
+parent_parser.add_argument("--zeta", type=float, default=1e-5)
 
 args = parent_parser.parse_args()
 
@@ -92,8 +94,8 @@ CF_con = constitutive.GPBladeStiffenedShellConstitutive(
 CF_con.setKSWeight(20.0)
 
 # get the axial loads in nondimensional space w.r.t. rho_0
-xi = 1.0
-zeta = 1e-5
+xi = args.xi
+zeta = args.zeta
 n = 500
 plt.style.use(niceplots.get_style())
 rho0_vec = np.linspace(0.5, 10.0, n)

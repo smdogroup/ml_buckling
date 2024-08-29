@@ -1,0 +1,212 @@
+"""
+Sean Engelstad
+: 
+Demo analysis of a stiffened panel
+NOTE : copy u*iHat+v*jHat+w*kHat for paraview
+"""
+
+import ml_buckling as mlb
+from mpi4py import MPI
+import numpy as np
+import scipy.optimize as sopt
+
+comm = MPI.COMM_WORLD
+
+def get_buckling_load(rho_0, gamma):
+
+    # compute the appropriate a,b,h_w,t_w values to achieve rho_0, gamma
+    AR = rho_0 # since isotropic
+    b = 0.1
+    a = b * AR
+    h = 5e-3
+    nu = 0.3
+
+    plate_material = mlb.CompositeMaterial(
+        E11=138e9,  # Pa
+        E22=138e9, #8.96e9
+        G12=138e9/2.0/(1+nu),
+        nu12=nu,
+        ply_angles=[0, 90, 0, 90],
+        ply_fractions=[0.25]*4,
+        ref_axis=[1, 0, 0],
+    )
+
+    stiff_material = plate_material
+
+    def gamma_resid(x):
+        _geometry = mlb.StiffenedPlateGeometry(
+            a=a, b=b, h=h, num_stiff=3, h_w=x, t_w=x
+        )
+        stiff_analysis = mlb.StiffenedPlateAnalysis(
+            comm=comm,
+            geometry=_geometry,
+            stiffener_material=stiff_material,
+            plate_material=plate_material,
+        )
+        return gamma - stiff_analysis.gamma
+
+    # approximate the h_w,t_w for gamma
+    s_p = b / 4 # num_local = num_stiff + 1
+    x_guess = np.power(gamma*s_p*h**3 / (1-nu**2), 0.25)
+    xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
+    print(f"x = {xopt}")
+
+    h_w = t_w = xopt[0]
+
+    geometry = mlb.StiffenedPlateGeometry(
+        a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
+    )
+    stiff_analysis = mlb.StiffenedPlateAnalysis(
+        comm=comm,
+        geometry=geometry,
+        stiffener_material=stiff_material,
+        plate_material=plate_material,
+    )
+    
+    _nelems = 3000
+    MIN_Y = 20 / geometry.num_local
+    MIN_Z = 10 #5
+    N = geometry.num_local
+    AR_s = geometry.a / geometry.h_w
+    #print(f"AR = {AR}, AR_s = {AR_s}")
+    nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
+    ny = max(np.ceil(nx / AR / N), MIN_Y)
+    nz = max(np.ceil(nx / AR_s), MIN_Z)
+
+    stiff_analysis.pre_analysis(
+        nx_plate=int(nx), #90
+        ny_plate=int(ny), #30
+        nz_stiff=int(nz), #5
+        exx=stiff_analysis.affine_exx,
+        exy=0.0,
+        clamped=False,
+        _make_rbe=True,  
+    )
+
+    comm.Barrier()
+
+    if comm.rank == 0:
+        print(stiff_analysis)
+        # print(f"gamma = {gamma}")
+    # exit()
+
+    # predict the actual eigenvalue
+    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    pred_lambda2 = stiff_analysis.predict_crit_load_old(exx=stiff_analysis.affine_exx)
+
+    if comm.rank == 0:
+        print(f"Mode type predicted as {mode_type}")
+        print(f"\tmy pred min lambda = {pred_lambda}")
+        if geometry.num_stiff == 1:
+            print("CF Middlestedt solution")
+        else:
+            print("Smeared stiffener model")
+        print(f"\tref pred min lambda = {pred_lambda2}")
+
+    # # exit()
+    # avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
+    # if comm.rank == 0:
+    #     print(f"avg stresses = {avg_stresses}")
+    # exit()
+
+    sigma = 5.0
+    # for i in range(5):
+    tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
+        sigma=sigma, num_eig=50, write_soln=False
+    )
+        # # stiff_analysis.write_geom()
+        # stiff_analysis.post_analysis()
+        # if stiff_analysis.min_global_mode_eigenvalue is not None:
+        #     break
+        # else:
+        #     sigma *= 5.0 # keep increasing sigma if it failed
+
+    stiff_analysis.post_analysis()
+    
+
+    global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+
+    # predict the actual eigenvalue
+    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    pred_lambda2 = stiff_analysis.predict_crit_load_old(exx=stiff_analysis.affine_exx)
+
+    if comm.rank == 0:
+        stiff_analysis.print_mode_classification()
+        print(stiff_analysis)
+
+    if global_lambda_star is None:
+        print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
+        exit()
+
+    # returns (CF_eig, FEA_eig) as follows:
+    return pred_lambda, global_lambda_star
+
+if __name__=="__main__":
+    # import argparse
+    import matplotlib.pyplot as plt
+    from matplotlib import cm
+
+    # now make side-by-side contour plots comparing the stiffened 
+    # panel buckling loads btw CF and FEA
+
+    n = 2
+    # rho0_vec = np.geomspace(0.5, 2.0, n)
+    rho0_vec = np.geomspace(1.0, 2.0, n)
+    # gamma_vec = np.geomspace(0.01, 1000.0, n)
+    # can't get quite up to gamma = 1000.0 because then there are only local / stiffener modes
+    gamma_vec = np.geomspace(0.01, 100.0, n)
+    RHO0, GAMMA = np.meshgrid(rho0_vec, gamma_vec)
+    print(f"{RHO0=}")
+    print(f"{RHO0[0,:]}")
+    print(f"{rho0_vec=}")
+    print(f"{gamma_vec=}")
+    # exit()
+
+    CF = np.zeros((n,n)); FEA = np.zeros((n,n))
+    for igamma,gamma in enumerate(gamma_vec):
+        for irho0,rho0 in enumerate(rho0_vec):
+            eig_CF, eig_FEA = get_buckling_load(rho_0=rho0, gamma=gamma)
+            if comm.rank == 0:
+                print(f"{eig_CF=}, {eig_FEA=}")
+            CF[igamma,irho0] = eig_CF
+            FEA[igamma,irho0] = eig_FEA
+
+    LOG_RHO0 = np.log(RHO0)
+    LOG_GAMMA = np.log(1.0 + GAMMA)
+    LOG_CF = np.log(CF)
+    LOG_FEA = np.log(FEA)
+
+    # TODO : write the data out to npy or csv files..
+
+    if comm.rank == 0:
+        print("Now plotting the results in 3d..")
+
+        fig, axs = plt.subplots(2)
+        fig.suptitle('Vertically stacked subplots')
+        axs[0].contourf(LOG_RHO0, LOG_GAMMA, LOG_CF)
+        axs[1].contourf(LOG_RHO0, LOG_GAMMA, LOG_FEA)
+
+        # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+
+        # # Plot the surface.
+        # surf1 = ax.plot_surface(LOG_RHO0, LOG_GAMMA, LOG_CF, cmap=cm.coolwarm,
+        #                     linewidth=0, antialiased=False)
+        # mynorm = surf1.norm
+        # surf2 = ax.plot_surface(LOG_RHO0, LOG_GAMMA, LOG_FEA, cmap=cm.coolwarm,
+        #                     linewidth=0, antialiased=False)
+        # surf2.set_norm(mynorm)
+
+        # fig.colorbar(surf1, shrink=0.5, aspect=5)
+
+        plt.show()
+
+        # also plot the difference in eigenvalues and make a colorplot
+        fig2, ax2 = plt.subplots(layout='constrained')
+        cs = ax2.contourf(LOG_RHO0, LOG_GAMMA, LOG_FEA - LOG_CF)
+        # plt.colorbar()
+        fig2.colorbar(cs, ax=ax2, shrink=0.9)
+        plt.show()
+
+
+    
+    
