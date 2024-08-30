@@ -9,6 +9,23 @@ import ml_buckling as mlb
 from mpi4py import MPI
 import numpy as np
 import scipy.optimize as sopt
+import pandas as pd
+
+import argparse
+
+parent_parser = argparse.ArgumentParser(add_help=False)
+parent_parser.add_argument("--npts", type=int, default=10)
+parent_parser.add_argument("--nelems", type=int, default=5000)
+parent_parser.add_argument("--rho0Min", type=float, default=0.3)
+parent_parser.add_argument("--gammaMin", type=float, default=0.01)
+parent_parser.add_argument("--rho0Max", type=float, default=5.0)
+parent_parser.add_argument("--gammaMax", type=float, default=100.0)
+parent_parser.add_argument('--debug', default=False, action=argparse.BooleanOptionalAction)
+
+args = parent_parser.parse_args()
+
+if args.debug:
+    args.nelems = 3000
 
 comm = MPI.COMM_WORLD
 
@@ -63,7 +80,7 @@ def get_buckling_load(rho_0, gamma):
         plate_material=plate_material,
     )
     
-    _nelems = 3000
+    _nelems = args.nelems
     MIN_Y = 20 / geometry.num_local
     MIN_Z = 10 #5
     N = geometry.num_local
@@ -135,8 +152,9 @@ def get_buckling_load(rho_0, gamma):
         print(stiff_analysis)
 
     if global_lambda_star is None:
+        global_lambda_star = np.nan
         print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-        exit()
+        # exit()
 
     # returns (CF_eig, FEA_eig) as follows:
     return pred_lambda, global_lambda_star
@@ -149,12 +167,17 @@ if __name__=="__main__":
     # now make side-by-side contour plots comparing the stiffened 
     # panel buckling loads btw CF and FEA
 
-    n = 2
-    # rho0_vec = np.geomspace(0.5, 2.0, n)
-    rho0_vec = np.geomspace(1.0, 2.0, n)
-    # gamma_vec = np.geomspace(0.01, 1000.0, n)
+    if args.debug:
+        # args.npts = 2; 
+        args.rho0Min = 0.5; args.rho0Max = 2.0
+        args.gammaMin = 0.01; args.gammaMax = 100.0
+
+    n =  args.npts
+    # rho0_vec = np.geomspace(0.1, 10.0, n)
+    rho0_vec = np.geomspace(args.rho0Min, args.rho0Max, n)
+    gamma_vec = np.geomspace(args.gammaMin, args.gammaMax, n)
     # can't get quite up to gamma = 1000.0 because then there are only local / stiffener modes
-    gamma_vec = np.geomspace(0.01, 100.0, n)
+    # gamma_vec = np.geomspace(0.01, 100.0, n)
     RHO0, GAMMA = np.meshgrid(rho0_vec, gamma_vec)
     print(f"{RHO0=}")
     print(f"{RHO0[0,:]}")
@@ -168,35 +191,59 @@ if __name__=="__main__":
             eig_CF, eig_FEA = get_buckling_load(rho_0=rho0, gamma=gamma)
             if comm.rank == 0:
                 print(f"{eig_CF=}, {eig_FEA=}")
+            if eig_FEA is None: eig_FEA = 1e-14 # just leave value as almost zero..
             CF[igamma,irho0] = eig_CF
             FEA[igamma,irho0] = eig_FEA
+
+            # write out as you go so you can see the progress and if run gets killed you don't lose it all
+            if comm.rank == 0:
+                df_dict = {
+                    "log(rho0)" : np.array([np.log(rho0)]),
+                    "log(1+gamma)" : np.array([np.log(1.0+gamma)]),
+                    "log(N11-CF)" : np.array([np.log(eig_CF)]),
+                    "log(N11-FEA)" : np.array([np.log(eig_FEA)]),
+                }
+                df = pd.DataFrame(df_dict)
+                first_write = igamma == 0 and irho0 == 0
+                df.to_csv("2-hsct-axial.csv", mode="w" if first_write else "a", header=first_write)
 
     LOG_RHO0 = np.log(RHO0)
     LOG_GAMMA = np.log(1.0 + GAMMA)
     LOG_CF = np.log(CF)
     LOG_FEA = np.log(FEA)
 
+    # # write all of the data to csv files by flattening the matrices
+    # if comm.rank == 0:
+    #     df_dict = {
+    #         "log(rho0)" : LOG_RHO0.flatten(order='c'),
+    #         "log(1+gamma)" : LOG_GAMMA.flatten(order='c'),
+    #         "log(N11-CF)" : LOG_CF.flatten(order='c'),
+    #         "log(N11-FEA)" : LOG_FEA.flatten(order='c'),
+    #     }
+    #     df = pd.DataFrame(df_dict)
+    #     df.to_csv("2-hsct-axial.csv")
+
     # TODO : write the data out to npy or csv files..
 
     if comm.rank == 0:
         print("Now plotting the results in 3d..")
 
-        fig, axs = plt.subplots(2)
-        fig.suptitle('Vertically stacked subplots')
-        axs[0].contourf(LOG_RHO0, LOG_GAMMA, LOG_CF)
-        axs[1].contourf(LOG_RHO0, LOG_GAMMA, LOG_FEA)
+        # fig, axs = plt.subplots(2)
+        # fig.suptitle('Vertically stacked subplots')
+        # axs[0].contourf(LOG_RHO0, LOG_GAMMA, LOG_CF)
+        # axs[1].contourf(LOG_RHO0, LOG_GAMMA, LOG_FEA)
 
-        # fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 
-        # # Plot the surface.
-        # surf1 = ax.plot_surface(LOG_RHO0, LOG_GAMMA, LOG_CF, cmap=cm.coolwarm,
-        #                     linewidth=0, antialiased=False)
-        # mynorm = surf1.norm
-        # surf2 = ax.plot_surface(LOG_RHO0, LOG_GAMMA, LOG_FEA, cmap=cm.coolwarm,
-        #                     linewidth=0, antialiased=False)
-        # surf2.set_norm(mynorm)
+        # Plot the surface.
+        surf1 = ax.plot_surface(LOG_RHO0, LOG_GAMMA, LOG_CF, cmap=cm.coolwarm,
+                            linewidth=0, antialiased=False)
+        mynorm = surf1.norm
+        surf2 = ax.plot_surface(LOG_RHO0, LOG_GAMMA, LOG_FEA, cmap=cm.coolwarm,
+                            linewidth=0, antialiased=False)
+        surf2.set_norm(mynorm)
 
-        # fig.colorbar(surf1, shrink=0.5, aspect=5)
+        fig.colorbar(surf1, shrink=0.5, aspect=5)
 
         plt.show()
 
