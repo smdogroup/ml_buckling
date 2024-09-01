@@ -16,12 +16,13 @@ import argparse
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--npts", type=int, default=10)
-parent_parser.add_argument("--nelems", type=int, default=5000)
+parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--rho0Min", type=float, default=0.3)
 parent_parser.add_argument("--gammaMin", type=float, default=0.01)
 parent_parser.add_argument("--rho0Max", type=float, default=5.0)
 parent_parser.add_argument("--gammaMax", type=float, default=100.0)
 parent_parser.add_argument('--debug', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
 
 args = parent_parser.parse_args()
 
@@ -36,6 +37,7 @@ def get_buckling_load(rho_0, gamma):
     AR = rho_0 # since isotropic
     b = 0.1
     a = b * AR
+    stiffAR = 1.0
     h = 5e-3
     nu = 0.3
 
@@ -53,7 +55,7 @@ def get_buckling_load(rho_0, gamma):
 
     def gamma_resid(x):
         _geometry = mlb.StiffenedPlateGeometry(
-            a=a, b=b, h=h, num_stiff=3, h_w=x, t_w=x
+            a=a, b=b, h=h, num_stiff=3, h_w=stiffAR*x, t_w=x
         )
         stiff_analysis = mlb.StiffenedPlateAnalysis(
             comm=comm,
@@ -69,7 +71,8 @@ def get_buckling_load(rho_0, gamma):
     xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
     print(f"x = {xopt}")
 
-    h_w = t_w = xopt[0]
+    t_w = xopt[0]
+    h_w = t_w * stiffAR
 
     geometry = mlb.StiffenedPlateGeometry(
         a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
@@ -95,6 +98,7 @@ def get_buckling_load(rho_0, gamma):
         nx_plate=int(nx), #90
         ny_plate=int(ny), #30
         nz_stiff=int(nz), #5
+        nx_stiff_mult=3,
         exx=stiff_analysis.affine_exx,
         exy=0.0,
         clamped=False,
@@ -105,57 +109,49 @@ def get_buckling_load(rho_0, gamma):
 
     if comm.rank == 0:
         print(stiff_analysis)
-        # print(f"gamma = {gamma}")
-    # exit()
 
-    # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
-    pred_lambda2 = stiff_analysis.predict_crit_load_old(exx=stiff_analysis.affine_exx)
 
-    if comm.rank == 0:
-        print(f"Mode type predicted as {mode_type}")
-        print(f"\tmy pred min lambda = {pred_lambda}")
-        if geometry.num_stiff == 1:
-            print("CF Middlestedt solution")
-        else:
-            print("Smeared stiffener model")
-        print(f"\tref pred min lambda = {pred_lambda2}")
-
-    # # exit()
-    # avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
-    # if comm.rank == 0:
-    #     print(f"avg stresses = {avg_stresses}")
-    # exit()
-
-    sigma = 5.0
-    # for i in range(5):
     tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-        sigma=sigma, num_eig=50, write_soln=False
+        sigma=5.0, num_eig=50, write_soln=False
     )
-        # # stiff_analysis.write_geom()
-        # stiff_analysis.post_analysis()
-        # if stiff_analysis.min_global_mode_eigenvalue is not None:
-        #     break
-        # else:
-        #     sigma *= 5.0 # keep increasing sigma if it failed
+
+    if args.lamCorr:
+        avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
+        lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=True)
+        # exit()
 
     stiff_analysis.post_analysis()
-    
+
 
     global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+    if args.lamCorr:
+        global_lambda_star *= lam_corr_fact
 
     # predict the actual eigenvalue
     pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
-    pred_lambda2 = stiff_analysis.predict_crit_load_old(exx=stiff_analysis.affine_exx)
 
     if comm.rank == 0:
         stiff_analysis.print_mode_classification()
         print(stiff_analysis)
 
     if global_lambda_star is None:
-        global_lambda_star = np.nan
+        rho_0 = args.rho0; gamma = args.gamma
         print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-        # exit()
+        exit()
+
+    if args.lamCorr:
+        global_lambda_star *= lam_corr_fact
+        if comm.rank == 0: 
+            print(f"{avg_stresses=}")
+            print(f"{lam_corr_fact=}")
+
+    # min_eigval = tacs_eigvals[0]
+    # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
+    if comm.rank == 0:
+        print(f"Mode type predicted as {mode_type}")
+        print(f"\tCF min lambda = {pred_lambda}")
+        print(f"\tFEA min lambda = {global_lambda_star}")
+        print("--------------------------------------\n", flush=True)
 
     # returns (CF_eig, FEA_eig) as follows:
     return pred_lambda, global_lambda_star

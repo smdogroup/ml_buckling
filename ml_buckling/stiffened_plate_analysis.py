@@ -301,7 +301,22 @@ class StiffenedPlateAnalysis:
             / (1 + self.delta)
             / A11
         )
+        # N11 = exx_T * A11
+        # print(f"{N11=}")
+        # print(f"{A11=}"); exit()
         return exx_T
+    
+    @property
+    def intended_Nxx(self) -> float:
+        """
+        intended Nxx in linear static analysis
+        """
+        _Aarray = self.Aarray_plate
+        A11 = _Aarray[0]
+        exx_T = self.affine_exx
+        N11 = exx_T * A11
+        # print(f"{N11=}")
+        return N11
 
     @property
     def gamma(self) -> float:
@@ -372,6 +387,7 @@ class StiffenedPlateAnalysis:
         nx_plate=30,
         ny_plate=30,
         nz_stiff=10,
+        nx_stiff_mult=1,
         exx=0.0,
         eyy=0.0,
         exy=0.0,
@@ -461,6 +477,89 @@ class StiffenedPlateAnalysis:
             node_id = 0
             elem_id = 0
 
+            class Node:
+                TOL = 1e-7
+                def __init__(self, x, y, z, id):
+                    self.x = x
+                    self.y = y
+                    self.z = z
+                    self.id = id
+
+                @classmethod
+                def in_tol(cls, x1, x2):
+                    return abs(x1-x2) < cls.TOL
+
+                def same_location(self, x, y, z):
+                    return self.in_tol(x, self.x) and self.in_tol(y, self.y) and self.in_tol(z, self.z)
+                
+                @property
+                def node_dict(self) -> dict:
+                    return {
+                        "x" : self.x,
+                        "y" : self.y,
+                        "z" : self.z,
+                        "id" : self.id,
+                    }
+                
+            class Element:
+                def __init__(self, id:int, part_id:int, nodes:list):
+                    self.id = id
+                    self.part_id = part_id
+                    self.nodes = nodes
+
+            class Mesh:
+                def __init__(self):
+                    self.nodes = []
+                    self.elements = []
+
+                @property
+                def max_node_id(self) -> int:
+                    if len(self.nodes) == 0:
+                        return 0
+                    else:
+                        return max([node.id for node in self.nodes])
+                    
+                @property
+                def max_elem_id(self) -> int:
+                    if len(self.elements) == 0:
+                        return 0
+                    else:
+                        return max([elem.id for elem in self.elements])
+
+                def add_node_at(self, x, y, z):
+                    _existing_node = False
+                    for node in self.nodes:
+                        if node.same_location(x,y,z):
+                            _existing_node = True
+                            break
+                    if _existing_node:
+                        _id = node.id
+                    else:
+                        _id = self.max_node_id + 1
+                    my_node = Node(x,y,z,_id)
+                    if not _existing_node: # add new node if didn't exist yet
+                        self.nodes += [ my_node ]
+                    return my_node
+
+                def add_element(self, x_list, y_list, z_list, part_id:int):
+                    """each x_list, y_list, z_list are the coordinates of the element points (e.g. length-4 list if quad) """
+                    nodes = []
+                    for i in range(len(x_list)):
+                        node = self.add_node_at(x_list[i], y_list[i], z_list[i])
+                        nodes += [node]
+
+                    elem_id = self.max_elem_id + 1
+                    my_elem = Element(id=elem_id, part_id=part_id, nodes=nodes)
+                    self.elements += [my_elem]
+                    return my_elem
+                
+                @property
+                def node_dicts(self) -> list:
+                    return [node.node_dict for node in self.nodes]
+
+            # make a new mesh object
+            self.mesh = Mesh()
+
             N = self.geometry.num_local
             #print(f"N = {N}")
             # make each local section and stiffener
@@ -471,126 +570,68 @@ class StiffenedPlateAnalysis:
                 Lz_stiff = self.geometry.h_w
 
                 # make the local section of the plate
-                for iy in range(ny_plate):
-                    y = iy / (ny_plate - 1) * Ly + ystart
-                    if iy == 1 and ilocal > 0: # increase nodes back to not conflict with the stiffer node count
-                        node_id -= nx_plate
-                        node_id += nx_plate * nz_stiff
-                    for ix in range(nx_plate):
-                        node_id += 1
-                        x = ix / (nx_plate - 1) * Lx
-                        # Write the nodal data
-                        spc = " "
-                        coord_disp = 0
-                        coord_id = 0
-                        seid = 0
+                dx = Lx / (nx_plate-1)
+                dy = Ly / (ny_plate-1)
+                for iy in range(ny_plate-1):
+                    y1 = dy*iy+ystart; y2 = y1 + dy
+                    for ix in range(nx_plate-1):
+                        x1 = dx*ix; x2 = x1 + dx
 
-                        nodes_dict += [{
-                            "id" : node_id,
-                            "x" : x,
-                            "y" : y,
-                            "z" : 0.0
-                        }]
-                        #print(f"local {ilocal} id {node_id} x {x} y {y}")
+                        self.mesh.add_element(
+                            x_list=[x1,x2,x2,x1],
+                            y_list=[y1,y1,y2,y2],
+                            z_list=[0.0]*4,
+                            part_id=1
+                        )
 
-
-                        if ix < nx_plate-1 and iy < ny_plate - 1: # normal condition for making plate elements
-                            elem_id += 1
-                            elem_dicts += [{
-                                "id" : elem_id,
-                                "part_id" : 1,
-                                "n1" : node_id,
-                                "n2" : node_id+1,
-                                "n3" : node_id+nx_plate+1,
-                                "n4" : node_id+nx_plate,
-                            }]
-                        if ilocal > 0 and iy == 0 and ix < nx_plate-1: # first row of plate in new stiffener
-                            elem_id += 1
-                            #print(f"CHECK : nids {node_id},{node_id+1},{node_id+nx_plate*nz_stiff+1},{node_id+nx_plate*nz_stiff}")
-                            elem_dicts += [{
-                                "id" : elem_id,
-                                "part_id" : 1,
-                                "n1" : node_id,
-                                "n2" : node_id+1,
-                                "n3" : node_id+nx_plate*nz_stiff+1,
-                                "n4" : node_id+nx_plate*nz_stiff,
-                            }]
-
-                        if not(node_id in written_nodes):
-                            fp.write(
-                                "%-8s%16d%16d%16.9e%16.9e*       \n"
-                                % ("GRID*", node_id, coord_id, x, y)
-                            )
-                            fp.write(
-                                "*       %16.9e%16d%16s%16d        \n"
-                                % (0.0, coord_disp, spc, seid)
-                            )
-                            written_nodes += [node_id]
-                    #print(f"final node {node_id} of iy {iy} local section {ilocal}")
-
-                # make the stiffener if not the last local section
+                # make the stiffener if not last local section
                 if ilocal == N-1: continue
-
-                #print(f"Ly {Ly} sp {self.geometry.s_p} ystart {ystart}")
+                dz = Lz_stiff / (nz_stiff-1)
+                dx_stiff = dx / nx_stiff_mult
                 ystiffener = ystart + Ly
 
-                # step back nx_plate nodes so the stiffener is attached
-                node_id -= nx_plate
-                for iz in range(nz_stiff):
-                    z = iz / (nz_stiff - 1) * Lz_stiff
-                    for ix in range(nx_plate):
-                        node_id += 1
-                        x = ix / (nx_plate - 1) * Lx
-                        # Write the nodal data
-                        spc = " "
-                        coord_disp = 0
-                        coord_id = 0
-                        seid = 0
+                for iz in range(nz_stiff-1):
+                    z1 = iz*dz; z2 = z1 + dz
+                    for ix in range(nx_plate-1):
+                        x_start = dx*ix
+                        for istiff_mult in range(nx_stiff_mult):
+                            x1 = x_start+istiff_mult*dx_stiff; x2 = x1 + dx_stiff
 
-                        nodes_dict += [{
-                            "id" : node_id,
-                            "x" : x,
-                            "y" : ystiffener,
-                            "z" : z,
-                        }]
-
-                        if ix < nx_plate-1 and iz < nz_stiff - 1:
-                            elem_id += 1
-                            elem_dicts += [{
-                                "id" : elem_id,
-                                "part_id" : 2,
-                                "n1" : node_id,
-                                "n2" : node_id+1,
-                                "n3" : node_id+nx_plate+1,
-                                "n4" : node_id+nx_plate,
-                            }]
-
-                        if not(node_id in written_nodes):
-                            fp.write(
-                            "%-8s%16d%16d%16.9e%16.9e*       \n"
-                                % ("GRID*", node_id, coord_id, x, ystiffener)
+                            self.mesh.add_element(
+                                x_list=[x1,x2,x2,x1],
+                                y_list=[ystiffener]*4,
+                                z_list=[z1,z1,z2,z2],
+                                part_id=2 # for stiffener
                             )
-                            fp.write(
-                                "*       %16.9e%16d%16s%16d        \n"
-                                % (z, coord_disp, spc, seid)
-                            )
-                            written_nodes += [node_id]
 
-                # step back the number of stiffener nodes amount
-                node_id -= nx_plate * nz_stiff
+            # write out all of the nodes
+            for node in self.mesh.nodes:
+                spc = " "
+                coord_disp = 0
+                coord_id = 0
+                seid = 0
+                fp.write(
+                    "%-8s%16d%16d%16.9e%16.9e*       \n"
+                    % ("GRID*", node.id, coord_id, node.x, node.y)
+                )
+                fp.write(
+                    "*       %16.9e%16d%16s%16d        \n"
+                    % (node.z, coord_disp, spc, seid)
+                )                           
+        
 
             # use the nodes_dict to write the CQUAD4 elements
-            for elem_dict in elem_dicts:
+            for elem in self.mesh.elements:
                 fp.write(
                     "%-8s%8d%8d%8d%8d%8d%8d\n"
                     % (
                         "CQUAD4",
-                        elem_dict["id"],
-                        elem_dict["part_id"],
-                        elem_dict["n1"],
-                        elem_dict["n2"],
-                        elem_dict["n3"],
-                        elem_dict["n4"],
+                        elem.id,
+                        elem.part_id,
+                        elem.nodes[0].id,
+                        elem.nodes[1].id,
+                        elem.nodes[2].id,
+                        elem.nodes[3].id,
                     )
                 )
             #fp.close()
@@ -633,7 +674,7 @@ class StiffenedPlateAnalysis:
                             "z": None,
                         }
             else:
-                nodes = nodes_dict # copy the list
+                nodes = self.mesh.node_dicts # copy the list
 
             # make nodes dict for nodes on the boundary
             boundary_nodes = []
@@ -822,7 +863,7 @@ class StiffenedPlateAnalysis:
                 if (
                     exy != 0.0
                     or node_dict["ybot"]
-                    or (node_dict["xy_plane"] and not node_dict["ytop"])
+                    # or (node_dict["xy_plane"] and not node_dict["ytop"])
                 ):
                     fp.write(
                         "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "2", v)
@@ -1028,7 +1069,8 @@ class StiffenedPlateAnalysis:
             SP.writeSolution(outputDir=static_folder)
 
         # test the average stresses routine
-        avgStresses = FEAAssembler.assembler.getAverageStresses()
+        # compNum = 0 is the panel, 1 is stiffener component
+        avgStresses = FEAAssembler.assembler.getAverageStresses(compNum=0)
         return avgStresses
 
     def run_buckling_analysis(
@@ -1259,6 +1301,19 @@ class StiffenedPlateAnalysis:
         return _lambda
 
     MAC_THRESHOLD = 0.1  # 0.6
+
+    def eigenvalue_correction_factor(self, in_plane_loads, axial:bool=True):
+        if axial:
+            # since we compute exx BCs so that we wanted N11_intended and lambda1 = N11,cr/N11_intended
+            #  but we actually get lambda2 = N11,cr/N11_achieved
+            #  we can find lambda1 = lambda2 * N11_achieved / N11_intended using our loading correction factor on the eigenvalue
+            N11_intended = self.intended_Nxx
+            print(f"{N11_intended=}")
+            N11_achieved = -in_plane_loads[0]
+            return np.real(N11_achieved / N11_intended)
+        else: # shear, TODO
+            pass
+
 
     @property
     def nondim_X(self):
@@ -1502,7 +1557,7 @@ class StiffenedPlateAnalysis:
         assert exx == 0.0 or exy == 0.0
 
         if exx != 0.0:
-            N11_plate = self.N11_plate(exx)
+            N11_plate = self.intended_Nxx
             _Darray = self.Darray_plate
             D11 = _Darray[0]; D22 = _Darray[2]
 
