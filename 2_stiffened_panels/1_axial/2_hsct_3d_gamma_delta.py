@@ -15,7 +15,8 @@ import pandas as pd
 import argparse
 
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--npts", type=int, default=10)
+parent_parser.add_argument("--nrho0", type=int, default=10)
+parent_parser.add_argument("--nGamma", type=int, default=10)
 parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--rho0Min", type=float, default=0.3)
 parent_parser.add_argument("--gammaMin", type=float, default=0.01)
@@ -23,6 +24,7 @@ parent_parser.add_argument("--rho0Max", type=float, default=5.0)
 parent_parser.add_argument("--gammaMax", type=float, default=100.0)
 parent_parser.add_argument('--debug', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--clear', default=False, action=argparse.BooleanOptionalAction)
 
 args = parent_parser.parse_args()
 
@@ -69,7 +71,7 @@ def get_buckling_load(rho_0, gamma):
     s_p = b / 4 # num_local = num_stiff + 1
     x_guess = np.power(gamma*s_p*h**3 / (1-nu**2), 0.25)
     xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
-    print(f"x = {xopt}")
+    # print(f"x = {xopt}")
 
     t_w = xopt[0]
     h_w = t_w * stiffAR
@@ -85,8 +87,8 @@ def get_buckling_load(rho_0, gamma):
     )
     
     _nelems = args.nelems
-    MIN_Y = 20 / geometry.num_local
-    MIN_Z = 10 #5
+    MIN_Y = 20 / geometry.num_local # 20
+    MIN_Z = 5 #5
     N = geometry.num_local
     AR_s = geometry.a / geometry.h_w
     #print(f"AR = {AR}, AR_s = {AR_s}")
@@ -135,9 +137,8 @@ def get_buckling_load(rho_0, gamma):
         print(stiff_analysis)
 
     if global_lambda_star is None:
-        rho_0 = args.rho0; gamma = args.gamma
         print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-        exit()
+        # exit()
 
     if args.lamCorr:
         global_lambda_star *= lam_corr_fact
@@ -169,26 +170,26 @@ if __name__=="__main__":
         args.rho0Min = 0.5; args.rho0Max = 2.0
         args.gammaMin = 0.01; args.gammaMax = 100.0
 
-    n =  args.npts
     # rho0_vec = np.geomspace(0.1, 10.0, n)
-    rho0_vec = np.geomspace(args.rho0Min, args.rho0Max, n)
-    gamma_vec = np.geomspace(args.gammaMin, args.gammaMax, n)
+    rho0_vec = np.geomspace(args.rho0Min, args.rho0Max, args.nrho0)
+    gamma_vec = np.geomspace(args.gammaMin, args.gammaMax, args.nGamma)
     # can't get quite up to gamma = 1000.0 because then there are only local / stiffener modes
     # gamma_vec = np.geomspace(0.01, 100.0, n)
     RHO0, GAMMA = np.meshgrid(rho0_vec, gamma_vec)
-    print(f"{RHO0=}")
-    print(f"{RHO0[0,:]}")
-    print(f"{rho0_vec=}")
-    print(f"{gamma_vec=}")
+    if comm.rank == 0:
+        print(f"{RHO0=}")
+        print(f"{RHO0[0,:]}")
+        print(f"{rho0_vec=}")
+        print(f"{gamma_vec=}")
     # exit()
 
-    CF = np.zeros((n,n)); FEA = np.zeros((n,n))
+    CF = np.zeros((args.nGamma,args.nrho0)); FEA = np.zeros((args.nGamma,args.nrho0))
     for igamma,gamma in enumerate(gamma_vec):
         for irho0,rho0 in enumerate(rho0_vec):
             eig_CF, eig_FEA = get_buckling_load(rho_0=rho0, gamma=gamma)
             if comm.rank == 0:
                 print(f"{eig_CF=}, {eig_FEA=}")
-            if eig_FEA is None: eig_FEA = 1e-14 # just leave value as almost zero..
+            if eig_FEA is None: eig_FEA = np.nan # just leave value as almost zero..
             CF[igamma,irho0] = eig_CF
             FEA[igamma,irho0] = eig_FEA
 
@@ -202,6 +203,7 @@ if __name__=="__main__":
                 }
                 df = pd.DataFrame(df_dict)
                 first_write = igamma == 0 and irho0 == 0
+                first_write = first_write and args.clear
                 df.to_csv("2-hsct-axial.csv", mode="w" if first_write else "a", header=first_write)
 
     LOG_RHO0 = np.log(RHO0)
