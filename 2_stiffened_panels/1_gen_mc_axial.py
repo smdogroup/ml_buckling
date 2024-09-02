@@ -237,4 +237,5 @@ if __name__=="__main__":
                 raw_df.to_csv(raw_csv_path, mode="w" if first_write else "a", header=first_write)
 
 
-    
+# then combine the stiff and unstiff data
+os.system("python _combine_stiff_unstiff_data.py --load Nx")

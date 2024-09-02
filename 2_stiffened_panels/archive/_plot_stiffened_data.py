@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import niceplots
 
+# TODO : need to redo this plotting script..
+
 df = pd.read_csv("raw_data/Nx_stiffened.csv")
 
 rho_0 = df["rho_0"].to_numpy()

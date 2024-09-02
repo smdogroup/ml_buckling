@@ -12,7 +12,7 @@ from mpi4py import MPI
 # parallel matrix solving in OpenBLAS from np.linalg.solve
 from os import environ
 environ['OMP_NUM_THREADS'] = '4'
-from _saved_kernel import kernel
+from _saved_kernel import kernel, soft_abs, soft_relu
 
 """
 @Author : Sean Engelstad
@@ -39,13 +39,12 @@ assert args.load in ["Nx", "Nxy"]
 load = args.load
 
 # load the Nxcrit dataset
-load_prefix = "Nx_stiffened" if load == "Nx" else "Nxy"
-csv_filename = f"{load}_stiffened2" if load == "Nx" else f"{load}_stiffened"
+csv_filename = f"{load}_stiffened"
 df = pd.read_csv("data/" + csv_filename + ".csv")
 
 # extract only the model columns
 X = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
-Y = df["log(lam_star)"].to_numpy()
+Y = df["log(eig_FEA)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
 N_data = X.shape[0]
@@ -53,62 +52,31 @@ N_data = X.shape[0]
 n_train = args.ntrain
 n_test = args.ntest
 
-
-def relu(x):
-    return max([0.0, x])
-
-def soft_relu(x, rho=10):
-    return 1.0 / rho * np.log(1 + np.exp(rho * x))
-
-def soft_abs(x, rho=10):
-    return 1.0 / rho * np.log(np.exp(rho*x) + np.exp(-rho*x))
-
 # kernel_option == 10
 
-theta0 = np.array([
-    0.1, # 0 - BL_kernel constant
-    0.05, # 1 - SE kernel factor
-    0.2, # 2 - length scale for rho0 direction
-    0.3, # 3 - length scale for gamma direction
-    0.01, # 4 - SE kernel factor for secondary dimensions (lower)
-    0.5, # 5 - length scale for xi dimension
-    0.3, # 6 - length scale for zeta dimensions
-    1.0, # 7 - boundary of window kernel rho0 direction
-    0.3, # 8 - boundary of gamma SE window kernel
-    1.0, # 9 - gamma kernel constant
-    0.1, # 10 - gamma kernel slope
-    0.1, # 11 - xi kernel linear slope
-    0.01, # 12 - xi kernel quadratic slope
-    0.02, # 13 - zeta kernel linear slope
-    0.01, # 14 - zeta kernel quad slope
-    1e-1, # 15 - sigma_n noise
-])
-
-# opt_soln1 = OrderedDict([('theta', array([0.29999694, 0.96247034, 0.44112862, 0.23071223, 1.16697047,
-#        0.69797125, 2.79486572, 0.8514289 , 0.9999892 , 0.01616109,
-#        0.89938449]))])
-ntheta = theta0.shape[0] # 14 right now
-
-bounds = [
-    [0.02, 0.3], # 0 - BL_kernel constant
-    [0.01, 1.0], # 1 - SE kernel factor
-    [0.05, 1.0], # 2 - length scale for rho0 direction
-    [0.05, 1.0], # 3 - length scale for gamma direction
-    [1e-3, 0.3], # 4 - SE kernel factor for secondary dimensions (lower)
-    [0.1, 1.0],  # 5 - length scale for xi dimension
-    [0.1, 1.0],  # 6 - length scale for zeta dimensions
-    [0.5, 2.0],  # 7 - boundary of window kernel rho0 direction
-    [0.1, 1.0],  # 8 - boundary of gamma SE window kernel
-    [0.01, 5.0], # 9 - gamma kernel constant
-    [0.01, 3.0], # 10 - gamma kernel slope
-    [0.01, 3.0], # 11 - xi kernel slope
-    [1e-3, 0.1], # 12 - xi kernel quadratic slope
-    [1e-3, 0.1], # 13 - zeta kernel slope
-    [1e-3, 0.1], # 14 - zeta kernel quad slope
-    [1e-3, 1e0], # 15 - sigma_n noise
+# each sublist is [lb, value, ub]
+variables = [
+    [0.02, 0.1, 0.3],  # 0 - BL kernel constant
+    [0.1, 1.0, 5.0],   # 1 - BL kernel slope
+    [-0.5, 0.0, 0.5],  # 2 - gamma_rho_dist const
+    [-0.5, 0.0, 0.5],  # 3 - gamma_rho_dist gamma-slope
+    [0.01, 1.0, 5.0],  # 4 - gamma kernel const
+    [0.01, 0.1, 3.0],  # 5 - gamma kernel slope
+    [0.01, 0.05, 1.0], # 6 - SE kernel leading coeff
+    [0.05, 0.2, 1.0],  # 7 - SE kernel rho0 length scale
+    [0.5, 1.0, 2.0],   # 8 - window kernel => rho0 bndry length
+    [0.01, 0.1, 3.0],  # 9 - xi kernel slope
+    [1e-3, 0.01, 0.1], # 10 - xi kernel quadratic slope
+    [1e-3, 0.02, 0.1], # 11 - zeta kernel slope
+    [1e-3, 0.01, 0.1], # 12 - zeta kernel quad slope
+    [1e-4, 1e-1, 1e0], # 13 - sigma_n noise
 ]
-lbounds = np.array([bound[0] for bound in bounds])
-ubounds = np.array([bound[1] for bound in bounds])
+
+ntheta = len(variables)
+lbounds = np.array([var[0] for var in variables])
+values = np.array([var[1] for var in variables])
+ubounds = np.array([var[2] for var in variables])
+theta0 = values
 
 def kernel_deriv(xp, xq, theta, idx, include_sigma=True):
     """compute derivative of kernel function above w.r.t. the dv index"""
@@ -125,8 +93,6 @@ if comm.rank == 0:
 rand_perm = np.random.permutation(N_data)
 X = X[rand_perm, :]
 Y = Y[rand_perm, :]
-
-# zeta_mask = X_test[:,2] < 1.0
 
 X_train = X[:n_train, :]
 Y_train = Y[:n_train, :]

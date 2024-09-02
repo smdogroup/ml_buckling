@@ -16,8 +16,8 @@ comm = MPI.COMM_WORLD
 
 # argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--load", type=str)
-parent_parser.add_argument("--clear", type=bool, default=False)
+parent_parser.add_argument("--load", type=str, default="Nx")
+parent_parser.add_argument('--clear', default=False, action=argparse.BooleanOptionalAction)
 
 args = parent_parser.parse_args()
 
@@ -34,43 +34,18 @@ if not os.path.exists(data_folder) and comm.rank == 0:
 stiffened_csv = os.path.join(raw_data_folder, args.load + "_raw_stiffened.csv")
 stiff_df = pd.read_csv(stiffened_csv)
 
-n_stiff_vec = stiff_df["n_stiff"].to_numpy()
-print(f"{n_stiff_vec=}")
-# print(f"first val = {type(n_stiff_vec[0])}")
-
-X = stiff_df[["xi", "rho_0", "zeta", "gamma", "lambda_star"]].to_numpy()
-pred_type = stiff_df["pred_type"].to_numpy()
-if args.load == "Nx":
-    pred_mask = pred_type == "global"
-    print(f"{pred_mask=}, {pred_mask.shape}")
-    # print(f"X shape {X.shape}")
-    X = X[pred_mask,:]
-    # print(f"X shape {X.shape}")
-    three_stiff_mask = n_stiff_vec[pred_mask] == 3
-
-else:
-    three_stiff_mask = n_stiff_vec == 3
-    
-# print(f"{three_stiff_mask=}, {three_stiff_mask.shape}")
-X = X[three_stiff_mask,:]
+X = stiff_df[["xi", "rho_0", "zeta", "gamma", "eig_FEA"]].to_numpy()
 
 # convert xi to log(1+xi)
-X[:,0] += 1.0
+X[:,0] = np.log(1.0 + X[:,0])
+# convert rho_0 to log(rho_0)
+X[:,1] = np.log(X[:,1])
+# convert zeta to log(1+10^3*zeta)
+X[:,2] = np.log(1.0+1e3 * X[:,2])
+# convert gamma to log(1+gamma)
+X[:,3] = np.log(1.0+X[:,3])
 
-# convert from zeta to 1 + 10^3 * zeta (then will take log on this)
-print(f"X2 orig = {X[:,2]}")
-if args.load == "Nx":
-    X[:,2] = 1.0/X[:,2]
-    
-X[:,2] = 1.0 + 1000.0 * X[:,2]
-
-# convert gamma to 1 + gamma so that log(1+gamma) is taken later
-X[:,3] += 1.0
-# convert all to log scale
-X = np.log(X)
-print(f"X2 new = {X[:,2]}")
-
-Y_stiff = X[:,4:]
+Y_stiff = X[:,4:5]
 X_stiff = X[:,:4]
 
 unstiffened_csv = os.path.join(data_folder, args.load + "_unstiffened.csv")
@@ -96,7 +71,7 @@ new_df_dict = {
     "log(rho_0)" : list(X_combined[:,1]),
     "log(1+10^3*zeta)" : list(X_combined[:,2]),
     "log(1+gamma)" : list(X_combined[:,3]),
-    "log(lam_star)" : list(Y_combined[:,0]),
+    "log(eig_FEA)" : list(Y_combined[:,0]),
 }
 df = pd.DataFrame(new_df_dict)
 df.to_csv(f"data/{args.load}_stiffened.csv")
