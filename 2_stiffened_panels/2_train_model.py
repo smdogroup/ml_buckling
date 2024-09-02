@@ -94,6 +94,13 @@ rand_perm = np.random.permutation(N_data)
 X = X[rand_perm, :]
 Y = Y[rand_perm, :]
 
+# if comm.rank == 0:
+#     Y_max = np.max(np.abs(Y))
+#     print(f"{Y_max=}")
+#     Y_min = np.min(np.abs(Y))
+#     print(f"{Y_min=}")
+# exit()
+
 X_train = X[:n_train, :]
 Y_train = Y[:n_train, :]
 X_test = X[n_train:(n_train+n_test), :]

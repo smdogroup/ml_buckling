@@ -19,6 +19,7 @@ np.random.seed(1234567)
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
+parent_parser.add_argument("--ntrain", type=int, default=3000)
 parent_parser.add_argument('--plotraw', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--plotmodel2d', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--plotmodel3d', default=False, action=argparse.BooleanOptionalAction)
@@ -34,20 +35,17 @@ assert args.load in ["Nx", "Nxy"]
 load = args.load
 
 # load the Nxcrit dataset
-load_prefix = "Nx_stiffened" if load == "Nx" else "Nxy"
-csv_filename = f"{load}_stiffened2" if load == "Nx" else f"{load}_stiffened"
+csv_filename = f"{load}_stiffened"
 df = pd.read_csv("data/" + csv_filename + ".csv")
 
 # extract only the model columns
 X = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
-Y = df["log(lam_star)"].to_numpy()
+Y = df["log(eig_FEA)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
 N_data = X.shape[0]
-
-# n_train = int(0.9 * N_data)
-n_train = 2000
-n_test = min([4000, N_data-n_train])
+n_train = args.ntrain
+n_test = N_data - n_train
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 

@@ -44,6 +44,8 @@ X[:,1] = np.log(X[:,1])
 X[:,2] = np.log(1.0+1e3 * X[:,2])
 # convert gamma to log(1+gamma)
 X[:,3] = np.log(1.0+X[:,3])
+# convert eig_FEA to log(eig_FEA)
+X[:,4] = np.log(X[:,4])
 
 Y_stiff = X[:,4:5]
 X_stiff = X[:,:4]
