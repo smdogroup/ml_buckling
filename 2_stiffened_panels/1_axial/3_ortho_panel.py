@@ -8,21 +8,21 @@ comm = MPI.COMM_WORLD
 import argparse
 # choose the aspect ratio and gamma values to evaluate on the panel
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--rho0", type=float, default=1.0)
+parent_parser.add_argument("--rho", type=float, default=1.0)
 parent_parser.add_argument("--gamma", type=float, default=1.0)
+parent_parser.add_argument("--ply_angle", type=float, default=0.0)
 parent_parser.add_argument("--stiffAR", type=float, default=1.0)
 parent_parser.add_argument("--SR", type=float, default=20.0)
 parent_parser.add_argument("--b", type=float, default=0.1)
 parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--nx_stiff_mult", type=int, default=3)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--buckling', default=True, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--rbe', default=True, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
 
 args = parent_parser.parse_args()
 
-AR = args.rho0 # since isotropic
+AR = args.rho # since isotropic
 stiff_AR = args.stiffAR
 # b = 0.1
 b = args.b
@@ -31,16 +31,10 @@ a = b * AR
 h = b / args.SR
 nu = 0.3
 
-plate_material = mlb.CompositeMaterial(
-    E11=138e9,  # Pa
-    E22=138e9, #8.96e9
-    G12=138e9/2.0/(1+nu),
-    nu12=nu,
-    ply_angles=[0, 90, 0, 90],
-    ply_fractions=[0.25]*4,
-    ref_axis=[1, 0, 0],
+material = mlb.CompositeMaterial.get_materials()[0]
+plate_material = material(
+    ply_angles=[args.ply_angle], ply_fractions=[1.0], ref_axis=[1, 0, 0]
 )
-
 stiff_material = plate_material
 
 # reverse solve the h_w, t_w dimensions of the stiffener
