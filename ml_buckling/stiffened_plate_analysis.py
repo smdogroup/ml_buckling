@@ -1658,7 +1658,12 @@ class StiffenedPlateAnalysis:
             D12 = _Darray[1]
             D22 = _Darray[2]
 
-            return None, None
+            N12_cr_star = 3.274 + 2.695 * self.affine_aspect_ratio**(-2.0) + 2.011*self.xi_plate * (1.0 + self.affine_aspect_ratio**(-2.0)) + 0.501 * self.gamma
+            # N12_cr_global = np.pi**2 * (D11*D22**3)**0.25 / self.geometry.b**2 * N12_cr_star
+            # lam_global = N12_cr_global / N12_plate
+            
+            return N12_cr_star, "global" # temp
+
             #raise RuntimeError("Haven't implemented the shear critical loads yet.")
             # # predict the axial global mode
             # lam_star_global =

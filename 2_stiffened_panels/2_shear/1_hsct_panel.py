@@ -17,7 +17,7 @@ parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--nx_stiff_mult", type=int, default=3)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--rbe', default=True, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
+# parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
 
 args = parent_parser.parse_args()
 
@@ -109,20 +109,20 @@ tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
 if args.static:
     stiff_analysis.run_static_analysis(write_soln=True)
 
-if args.lamCorr:
-    avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
-    lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=True)
-    # exit()
+# if args.lamCorr:
+#     avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
+#     lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=False)
+#     # exit()
 
 stiff_analysis.post_analysis()
 
 
 global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
-if args.lamCorr:
-    global_lambda_star *= lam_corr_fact
+# if args.lamCorr:
+#     global_lambda_star *= lam_corr_fact
 
 # predict the actual eigenvalue
-# pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda,mode_type = stiff_analysis.predict_crit_load(exy=stiff_analysis.affine_exy)
 
 if comm.rank == 0:
     stiff_analysis.print_mode_classification()
@@ -133,17 +133,17 @@ if global_lambda_star is None:
     print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
     exit()
 
-if args.lamCorr:
-    global_lambda_star *= lam_corr_fact
-    if comm.rank == 0: 
-        print(f"{avg_stresses=}")
-        print(f"{lam_corr_fact=}")
+# if args.lamCorr:
+#     global_lambda_star *= lam_corr_fact
+#     if comm.rank == 0: 
+#         print(f"{avg_stresses=}")
+#         print(f"{lam_corr_fact=}")
 
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
-    # print(f"Mode type predicted as {mode_type}")
-    # print(f"\tCF min lambda = {pred_lambda}")
+    print(f"Mode type predicted as {mode_type}")
+    print(f"\tCF min lambda = {pred_lambda}")
     print(f"\tFEA min lambda = {global_lambda_star}")
     x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
     print(f"{x_zeta=}")
