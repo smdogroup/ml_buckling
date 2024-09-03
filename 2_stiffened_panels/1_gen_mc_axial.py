@@ -18,13 +18,13 @@ comm = MPI.COMM_WORLD
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument('--clear', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument("--nrho0", type=int, default=20)
-parent_parser.add_argument("--nGamma", type=int, default=20)
+parent_parser.add_argument("--nrho0", type=int, default=30)
+parent_parser.add_argument("--nGamma", type=int, default=30)
 parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--rho0Min", type=float, default=0.3)
 parent_parser.add_argument("--gammaMin", type=float, default=0.01)
 parent_parser.add_argument("--rho0Max", type=float, default=5.0)
-parent_parser.add_argument("--gammaMax", type=float, default=500.0)
+parent_parser.add_argument("--gammaMax", type=float, default=50.0)
 
 args = parent_parser.parse_args()
 

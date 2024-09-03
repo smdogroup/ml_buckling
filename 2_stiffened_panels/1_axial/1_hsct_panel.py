@@ -132,7 +132,7 @@ if comm.rank == 0:
 if global_lambda_star is None:
     rho_0 = args.rho0; gamma = args.gamma
     print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-    exit()
+    # exit()
 
 if args.lamCorr:
     global_lambda_star *= lam_corr_fact

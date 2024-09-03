@@ -1133,6 +1133,7 @@ class StiffenedPlateAnalysis:
             self._eigenvalues += [eigval]
             error = self.bucklingProb.getModalError(imode)
             errors += [error]
+        self._errors = errors
 
         if self.comm.rank == 0:
             pprint(funcs)
@@ -1441,6 +1442,9 @@ class StiffenedPlateAnalysis:
 
     def is_global_mode(self, imode, just_check_global=False):
         """check that the mode is global i.e. the max w displacement occurs in the"""
+        ERROR_TOL = 1e-5
+        if abs(self._errors[imode]) > ERROR_TOL:
+            return False # reject this mode
         if just_check_global:
             return not self.is_local_mode(imode, just_check_local=True)
         else:
