@@ -193,7 +193,7 @@ def get_buckling_load(rho_0, gamma):
         print("--------------------------------------\n", flush=True)
 
     # returns (CF_eig, FEA_eig) as follows:
-    return None, global_lambda_star, stiff_analysis
+    return pred_lambda, global_lambda_star, stiff_analysis
 
 
 # GENERATE DATA
@@ -230,7 +230,7 @@ if __name__=="__main__":
                     "gamma": [stiff_analysis.gamma],
                     "zeta": [stiff_analysis.zeta_plate],
                     "eig_FEA": [np.real(eig_FEA)],
-                    "eig_CF" : [eig_CF]
+                    "eig_CF" : [eig_CF],
                 }
                 raw_df = pd.DataFrame(raw_data_dict)
                 first_write = ct == 1 and args.clear
