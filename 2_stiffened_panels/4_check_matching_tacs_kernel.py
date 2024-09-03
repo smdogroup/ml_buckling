@@ -32,20 +32,19 @@ load = args.load
 # -------------------------------------------------------------
 
 # load the Nxcrit dataset
-load_prefix = "Nx_stiffened" if load == "Nx" else "Nxy"
-csv_filename = f"{load}_stiffened2" if load == "Nx" else f"{load}_stiffened"
+csv_filename = f"{load}_stiffened"
 df = pd.read_csv("data/" + csv_filename + ".csv")
 
 # extract only the model columns
 X = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
-Y = df["log(lam_star)"].to_numpy()
+Y = df["log(eig_FEA)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
 N_data = X.shape[0]
 
 # n_train = int(0.9 * N_data)
-n_train = 2000
-n_test = min([4000, N_data-n_train])
+n_train = 3000
+n_test = N_data-n_train
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
@@ -62,7 +61,7 @@ gamma = X[:,3]
 # bins for the data (in log space)
 xi_bins = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1.0]]
 rho0_bins = [[-2.5, -1.0], [-1.0, 0.0], [0.0, 1.0], [1.0, 2.5]]
-zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.0]]
+zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.5]]
 gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0] ]
 
 # randomly permute the arrays
@@ -88,9 +87,9 @@ Y_test = Y[test_indices[:n_test], :]
 
 # only eval relative error on test set for zeta < 1
 # because based on the model plots it appears that the patterns break down some for that
-zeta_mask = X_test[:,2] < 1.0
-X_test = X_test[zeta_mask, :]
-Y_test = Y_test[zeta_mask, :]
+# zeta_mask = X_test[:,2] < 1.0
+# X_test = X_test[zeta_mask, :]
+# Y_test = Y_test[zeta_mask, :]
 n_test = X_test.shape[0]
 
 # get the previous training weights from MLB package
@@ -111,6 +110,7 @@ alpha = np.reshape(alpha, (alpha.shape[0], 1))
 # flip the indices of Xtrain matrix
 # otherwise gamma, zeta values are flipped
 Xtrain_mat = Xtrain_mat[:, [0,1,3,2]]
+n_train = alpha.shape[0]
 # no longer need to do this as fixed the order
 
 # print(f"{Xtrain_mat=} shape {Xtrain_mat.shape}")
@@ -146,7 +146,7 @@ ortho_ply = constitutive.OrthotropicPly(1e-3, ortho_prop)
 # build the axial GP object (which is the main ML object we are testing for this example)
 # however it is used inside of the constitutive object so we need to build that too
 axialGP = constitutive.AxialGP.from_csv(csv_file=mlb.axialGP_csv, theta_csv=mlb.theta_csv)
-shearGP = constitutive.AxialGP.from_csv(csv_file=mlb.shearGP_csv, theta_csv=mlb.theta_csv)
+shearGP = constitutive.ShearGP.from_csv(csv_file=mlb.shearGP_csv, theta_csv=mlb.theta_csv)
 panelGP = constitutive.PanelGPs(axialGP=axialGP, shearGP=shearGP)
 
 # don't put in any GP models (so using closed-form solutions rn)
@@ -170,8 +170,8 @@ con = constitutive.GPBladeStiffenedShellConstitutive(
 
 # COMPARE the kernel functions first
 # -------------------------------------------
-c_Xtrain = np.random.rand(4)
-c_Xtest = np.random.rand(4)
+c_Xtrain = np.random.rand(4).astype(TACS.dtype)
+c_Xtest = np.random.rand(4).astype(TACS.dtype)
 
 mlb_kernel_res = kernel(c_Xtrain, c_Xtest, theta_opt)
 tacs_kernel_res = axialGP.kernel(c_Xtrain, c_Xtest)
@@ -189,7 +189,8 @@ zeta = 0.0
 c_Xtest = np.array([np.log(1.0+xi), np.log(rho_0), np.log(1.0+1000.0*zeta), np.log(1.0+gamma)])
 K_cross = np.array([kernel(Xtrain_mat[i, :], c_Xtest, theta_opt) for i in range(n_train)])
 K_cross = np.reshape(K_cross, (1, K_cross.shape[0]))
-print(f"{K_cross=}")
+print(f"{K_cross=} {K_cross.shape}")
+print(f"alpha shape {alpha.shape}")
 pred_log_load = (K_cross @ alpha)[0,0]
 mlb_buckling_load = np.exp(pred_log_load)
 if args.load == "Nx":

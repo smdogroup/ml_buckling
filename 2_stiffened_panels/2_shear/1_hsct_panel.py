@@ -90,8 +90,8 @@ stiff_analysis.pre_analysis(
     ny_plate=int(ny), #30
     nz_stiff=int(nz), #5
     nx_stiff_mult=args.nx_stiff_mult,
-    exx=stiff_analysis.affine_exx,
-    exy=0.0,
+    exx=0.0,
+    exy=stiff_analysis.affine_exy,
     clamped=False,
     _make_rbe=args.rbe,  
 )

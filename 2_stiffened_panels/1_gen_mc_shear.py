@@ -1,8 +1,7 @@
 """
 Sean Engelstad
-April 2024, GT SMDO Lab
-Goal is to generate a dataset for pure uniaxial and pure shear compression for stiffener crippling data.
-Simply supported only and stiffener crippling modes are rejected.
+August 2024, GT SMDO Lab
+Goal is to generate a dataset for pure uniaxial buckling of stiffened panels.
 
 NOTE : copy u*iHat+v*jHat+w*kHat for paraview
 """
@@ -11,18 +10,26 @@ import ml_buckling as mlb
 import pandas as pd
 import numpy as np, os, argparse
 from mpi4py import MPI
+import scipy.optimize as sopt
 
 comm = MPI.COMM_WORLD
 
 # argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--clear", type=bool, default=False)
+parent_parser.add_argument('--clear', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument("--nrho0", type=int, default=20)
+parent_parser.add_argument("--nGamma", type=int, default=20)
+parent_parser.add_argument("--nelems", type=int, default=3000)
+parent_parser.add_argument("--rho0Min", type=float, default=0.3)
+parent_parser.add_argument("--gammaMin", type=float, default=0.01)
+parent_parser.add_argument("--rho0Max", type=float, default=5.0)
+parent_parser.add_argument("--gammaMax", type=float, default=500.0)
 
 args = parent_parser.parse_args()
-args.load = "Nxy"
 
-train_csv = args.load + "_stiffened.csv"
-raw_csv = args.load + "_raw_stiffened.csv"
+train_csv = "Nxy_stiffened.csv"
+raw_csv = "Nxy_raw_stiffened.csv"
 cpath = os.path.dirname(__file__)
 data_folder = os.path.join(cpath, "raw_data")
 if not os.path.exists(data_folder) and comm.rank == 0:
@@ -38,211 +45,197 @@ if args.clear and comm.rank == 0:
         os.remove(raw_csv_path)
 comm.Barrier()
 
-inner_ct = 0
+# DEFINE ANALYSIS ROUTINE
+# -----------------------
+def get_buckling_load(rho_0, gamma):
+    # previously ply_angle was input => but we found that the intended strain state
+    # is not achieved in stiffened panel case when not isotropic..
+    # so only trust isotropic stiffened panel models for now (least deviation in near-unstiffened case)
 
-for material in mlb.CompositeMaterial.get_materials():
-    # stiffened panel responds with N22, N11 stress when ply_angle > 0, which corrupts my ability to predict N12 stress
-    # analytically so just train on ply_angle = 0 and use unstiffened panel data to interpolate xi data
-    ply_angle = 0.0
-    plate_material = material(
-        ply_angles=[ply_angle], ply_fractions=[1.0], ref_axis=[1, 0, 0]
+    # compute the appropriate a,b,h_w,t_w values to achieve rho_0, gamma
+    AR = rho_0 # since isotropic
+    b = 0.1
+    a = b * AR
+    stiffAR = 1.0
+    h = 5e-3
+    nu = 0.3
+
+    # found that the intended strain state is very hard to achieve with the stiffened panel models
+    # only the isotropic case actually achieves the intended strain state in these datasets.
+    # namely highly orthotropic panels in their linear static analyses are meant to only have ex0 (only mid-plane axial strain nonzero)
+    #  however, they end up with ey0 positive and tensile, ex1 and ey1 bending curvatures. Then the buckling loads don't compare well 
+    #  to closed-form since the intended strain state is way different than the closed-form solution and the unstiffened panel models => 
+    #  which results in a poor ML model. 
+    #  Only the isotropic models actually achieve the intended strain state right now for stiffened panels and are usable for ML.
+    #  future work could fix the FEA models potentially to achieve the intended strain states for all stiffened panel materials.
+    # for this reason material variation is only considered in the unstiffened panel dataset
+    # and we assume the same xi_slope from the unstiffened dataset when we extrapolate this data.
+    nu = 0.3
+    plate_material = mlb.CompositeMaterial(
+        E11=138e9,  # Pa
+        E22=138e9, #8.96e9
+        G12=138e9/2.0/(1+nu),
+        nu12=nu,
+        ply_angles=[0, 90, 0, 90],
+        ply_fractions=[0.25]*4,
+        ref_axis=[1, 0, 0],
     )
+
     stiff_material = plate_material
 
-    log_SR_vec = np.linspace(np.log(10.0), np.log(200.0), 5)
-    SR_vec = np.exp(log_SR_vec)
-    for SR in SR_vec[::-1]:
+    def gamma_resid(x):
+        _geometry = mlb.StiffenedPlateGeometry(
+            a=a, b=b, h=h, num_stiff=3, h_w=stiffAR*x, t_w=x
+        )
+        stiff_analysis = mlb.StiffenedPlateAnalysis(
+            comm=comm,
+            geometry=_geometry,
+            stiffener_material=stiff_material,
+            plate_material=plate_material,
+        )
+        return gamma - stiff_analysis.gamma
 
-        # choose plate height is 0.01
-        h = 1.0
-        b = h * SR
+    # approximate the h_w,t_w for gamma
+    s_p = b / 4 # num_local = num_stiff + 1
+    x_guess = np.power(gamma*s_p*h**3 / (1-nu**2), 0.25)
+    xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
+    # print(f"x = {xopt}")
 
-        # stiffener heights and spacing
-        log_SHR = np.linspace(np.log(0.2), np.log(4.0), 8)
-        SHR_vec = np.exp(log_SHR)
-        #SHR_vec = SHR_vec[::-1]
+    t_w = xopt[0]
+    h_w = t_w * stiffAR
 
-        for SHR in SHR_vec:
+    geometry = mlb.StiffenedPlateGeometry(
+        a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
+    )
+    stiff_analysis = mlb.StiffenedPlateAnalysis(
+        comm=comm,
+        geometry=geometry,
+        stiffener_material=stiff_material,
+        plate_material=plate_material,
+    )
+    
+    _nelems = args.nelems
+    MIN_Y = 20 / geometry.num_local # 20
+    MIN_Z = 5 #5
+    N = geometry.num_local
+    AR_s = geometry.a / geometry.h_w
+    #print(f"AR = {AR}, AR_s = {AR_s}")
+    nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
+    nx = min(nx, 50)
+    ny = max(np.ceil(nx / AR / N), MIN_Y)
+    nz = max(np.ceil(nx / AR_s), MIN_Z)
 
-            for num_stiff in [1, 3, 5]:
+    stiff_analysis.pre_analysis(
+        nx_plate=int(nx), #90
+        ny_plate=int(ny), #30
+        nz_stiff=int(nz), #5
+        nx_stiff_mult=3,
+        exx=0.0,
+        exy=stiff_analysis.affine_exy,
+        clamped=False,
+        _make_rbe=True,  
+    )
 
-                log_AR_vec = np.linspace(np.log(0.2), np.log(8.0), 15)
-                AR_vec = np.exp(log_AR_vec)
+    comm.Barrier()
 
-                for AR in AR_vec:
+    if comm.rank == 0:
+        print(stiff_analysis)
 
-                    # temporarily set AR to reasonable value
-                    #AR = 3.0
-                    a = AR * b
+    # guess using closed-form
+    # pred_lambda,_ = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    # sigma = pred_lambda
+    # sigma = 10.0 if pred_lambda > 10.0 else 5.0
+    sigma = 5.0
 
-                    # use stiffener height ratio to determine the stiffener height
-                    h_w = h * SHR
-                    stiff_AR = 3.0 #1.0
-                    t_w = h_w / stiff_AR
+    tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
+        sigma=sigma, num_eig=50, write_soln=False
+    )
 
-                    geometry = mlb.StiffenedPlateGeometry(
-                        a=a,
-                        b=b,
-                        h=h,
-                        num_stiff=num_stiff,
-                        h_w=h_w,
-                        t_w=t_w,
-                    )
+    if args.lamCorr:
+        avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
+        lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=True)
+        # exit()
 
-                    stiffened_plate = mlb.StiffenedPlateAnalysis(
-                        comm=comm,
-                        geometry=geometry,
-                        stiffener_material=stiff_material,
-                        plate_material=plate_material,
-                        name="mc",
-                    )
+    stiff_analysis.post_analysis()
 
-                    valid_affine_AR = (
-                        0.05 <= stiffened_plate.affine_aspect_ratio <= 20.0
-                    )
-                    if not valid_affine_AR:
-                        continue
 
-                    # choose a number of elements in each direction
-                    _nelems = 6000
-                    MIN_Y = 20 / geometry.num_local
-                    MIN_Z = 10 #5
-                    N = geometry.num_local
-                    AR_s = geometry.a / geometry.h_w
-                    #print(f"AR = {AR}, AR_s = {AR_s}")
-                    nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
-                    ny = max(np.ceil(nx / AR / N), MIN_Y)
-                    nz = max(np.ceil(nx / AR_s), MIN_Z)
-                    print(f"Stage 1 : nx {nx}, ny {ny}, nz {nz}")
+    global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+    if args.lamCorr:
+        global_lambda_star *= lam_corr_fact
 
-                    # if nz < MIN_Z: # need at least this many elements through the stiffener for good aspect ratio
-                    #     nz = MIN_Z
-                    #     nx = np.ceil(AR_s * nz)
-                    #     ny = np.ceil(nx / AR / N)
-                    
-                    # print(f"Stage 2 : nx {nx}, ny {ny}, nz {nz}")
+    if abs(errors[0]) > 1e-4:
+        global_lambda_star = None
 
-                    check_nelems = N * nx * ny + (N-1) * nx * nz
-                    #print(f"check nelems = {check_nelems}")
+    # predict the actual eigenvalue
+    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 
-                    print(f"check nelems = {check_nelems}")
+    if comm.rank == 0:
+        stiff_analysis.print_mode_classification()
+        print(stiff_analysis)
 
-                    stiffened_plate.pre_analysis(
-                        exx=stiffened_plate.affine_exx
-                        if args.load == "Nx"
-                        else 0.0,
-                        exy=stiffened_plate.affine_exy
-                        if args.load == "Nxy"
-                        else 0.0,
-                        clamped=False,
-                        nx_plate=int(nx),
-                        ny_plate=int(ny),
-                        nz_stiff=int(nz),
-                        # global_mesh_size=global_mesh_size,
-                        # edge_pt_min=5,
-                        # edge_pt_max=50,
-                        _make_rbe=True,  # True
-                    )
+    if global_lambda_star is None:
+        print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
+        # exit()
 
-                    if comm.rank == 0:
-                        print(stiffened_plate)
-                    # exit()
+    if args.lamCorr:
+        global_lambda_star *= lam_corr_fact
+        if comm.rank == 0: 
+            print(f"{avg_stresses=}")
+            print(f"{lam_corr_fact=}")
+        # exit()
 
-                    lam_min, mode_type = stiffened_plate.predict_crit_load(
-                        exx=stiffened_plate.affine_exx
-                        if args.load == "Nx"
-                        else 0.0,
-                        exy=stiffened_plate.affine_exy
-                        if args.load == "Nxy"
-                        else 0.0,
-                        output_global=True,
-                    )
-                    lam_min2 = stiffened_plate.predict_crit_load_old(
-                        exx=stiffened_plate.affine_exx
-                        if args.load == "Nx"
-                        else 0.0,
-                        exy=stiffened_plate.affine_exy
-                        if args.load == "Nxy"
-                        else 0.0,
-                        output_global=True,
-                    )
+    # min_eigval = tacs_eigvals[0]
+    # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
+    if comm.rank == 0:
+        print(f"Mode type predicted as {mode_type}")
+        print(f"\tCF min lambda = {pred_lambda}")
+        print(f"\tFEA min lambda = {global_lambda_star}")
+        print("--------------------------------------\n", flush=True)
 
-                    tacs_eigvals, errors = stiffened_plate.run_buckling_analysis(
-                        sigma=5.0, num_eig=50, write_soln=True
-                    )
-                    stiffened_plate.post_analysis()
+    # returns (CF_eig, FEA_eig) as follows:
+    return pred_lambda, global_lambda_star, stiff_analysis
 
-                    if comm.rank == 0:
-                        stiffened_plate.print_mode_classification()
 
-                    # if abs(errors[0]) > 1e-7: continue
+# GENERATE DATA
+# -------------
 
-                    global_lambda_star = stiffened_plate.min_global_mode_eigenvalue
-                    if global_lambda_star is None:
-                        continue  # no global modes appeared
+if __name__=="__main__":
+    # import argparse
+    import matplotlib.pyplot as plt
+    from matplotlib import cm
 
-                    if not (0.5 <= global_lambda_star <= 200.0):
-                        print(
-                            f"Warning global mode eigenvalue {global_lambda_star} not in [0.5, 50.0]"
-                        )
-                        continue
+    rho0_vec = np.geomspace(args.rho0Min, args.rho0Max, args.nrho0)
+    gamma_vec = np.geomspace(args.gammaMin, args.gammaMax, args.nGamma)
 
-                    # save data to csv file otherwise because this data point is good
-                    # record the model parameters
-                    data_dict = {
-                        # training parameter section
-                        "rho_0": [stiffened_plate.affine_aspect_ratio],
-                        "xi": [stiffened_plate.xi_plate],
-                        "gamma": [stiffened_plate.gamma],
-                        "zeta": [stiffened_plate.zeta_plate],
-                        "lambda_star": [np.real(global_lambda_star)],
-                        "pred_lam": [lam_min],
-                        "pred_type" : [mode_type],
-                        "pred_lam_old" : [lam_min2],
-                    }
+    ct = 0
+    for igamma,gamma in enumerate(gamma_vec):
+        for irho0,rho0 in enumerate(rho0_vec):
+            eig_CF, eig_FEA, stiff_analysis = get_buckling_load(
+                rho_0=rho0, 
+                gamma=gamma
+            )
+            if comm.rank == 0:
+                print(f"{eig_CF=}, {eig_FEA=}")
+            if eig_FEA is None: 
+                eig_FEA = np.nan # just leave value as almost zero..
+                continue
 
-                    # write to the training csv file
-                    inner_ct += 1  # started from 0, so first time is 1
-                    if comm.rank == 0:
-                        df = pd.DataFrame(data_dict)
-                        if inner_ct == 1 and not (os.path.exists(train_csv_path)):
-                            df.to_csv(
-                                train_csv_path, mode="w", index=False, header=True
-                            )
-                        else:
-                            df.to_csv(
-                                train_csv_path, mode="a", index=False, header=False
-                            )
+            # write out as you go so you can see the progress and if run gets killed you don't lose it all
+            if comm.rank == 0:
+                ct += 1
+                raw_data_dict = {
+                    # training parameter section
+                    "rho_0": [stiff_analysis.affine_aspect_ratio],
+                    "xi": [stiff_analysis.xi_plate],
+                    "gamma": [stiff_analysis.gamma],
+                    "zeta": [stiff_analysis.zeta_plate],
+                    "eig_FEA": [np.real(eig_FEA)],
+                    "eig_CF": [eig_CF],
+                }
+                raw_df = pd.DataFrame(raw_data_dict)
+                first_write = ct == 1 and args.clear
+                raw_df.to_csv(raw_csv_path, mode="w" if first_write else "a", header=first_write)
 
-                    comm.Barrier()
 
-                    # add raw data section
-                    data_dict["material"] = [plate_material.material_name]
-                    data_dict["ply_angle"] = [ply_angle]
-                    data_dict["SR"] = [SR]
-                    data_dict["AR"] = [AR]
-                    data_dict["h"] = [h]
-                    data_dict["SHR"] = [SHR]
-                    data_dict["SAR"] = [stiff_AR]
-                    data_dict["delta"] = [stiffened_plate.delta]
-                    data_dict["n_stiff"] = [num_stiff]
-                    data_dict["elem_list"] = [[int(nx),int(ny),int(nz)]]
-                    data_dict["nelem"] = [int(check_nelems)]
-
-                    # write to the csv file for raw data
-                    if comm.rank == 0:
-                        df = pd.DataFrame(data_dict)
-                        if inner_ct == 1 and not (os.path.exists(raw_csv_path)):
-                            df.to_csv(
-                                raw_csv_path, mode="w", index=False, header=True
-                            )
-                        else:
-                            df.to_csv(
-                                raw_csv_path, mode="a", index=False, header=False
-                            )
-
-                    # MPI COMM Barrier in case running with multiple procs
-                    comm.Barrier()
-
-                    # if inner_ct == 1:
-                    #    exit() # temporary debug exit()
+# then combine the stiff and unstiff data
+os.system("python _combine_stiff_unstiff_data.py --load Nxy")

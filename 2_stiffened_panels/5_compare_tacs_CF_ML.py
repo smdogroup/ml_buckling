@@ -18,7 +18,7 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
 parent_parser.add_argument('--show', default=True, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument("--xi", type=float, default=1.0)
-parent_parser.add_argument("--zeta", type=float, default=1e-5)
+parent_parser.add_argument("--zeta", type=float, default=0.0)
 
 args = parent_parser.parse_args()
 
@@ -71,7 +71,7 @@ ML_con = constitutive.GPBladeStiffenedShellConstitutive(
 )
 # Set the KS weight really low so that all failure modes make a
 # significant contribution to the failure function derivatives
-ML_con.setKSWeight(20.0)
+# ML_con.setKSWeight(20.0)
 
 # also build the CF constitutive
 CF_con = constitutive.GPBladeStiffenedShellConstitutive(
@@ -91,7 +91,7 @@ CF_con = constitutive.GPBladeStiffenedShellConstitutive(
 )
 # Set the KS weight really low so that all failure modes make a
 # significant contribution to the failure function derivatives
-CF_con.setKSWeight(20.0)
+# CF_con.setKSWeight(20.0)
 
 # get the axial loads in nondimensional space w.r.t. rho_0
 xi = args.xi
@@ -105,6 +105,7 @@ CF_vec = np.zeros((n,), dtype=TACS.dtype)
 ML_vec = np.zeros((n,), dtype=TACS.dtype)
 
 for igamma, gamma in enumerate([0.0, 1.0, 100.0, 1000.0]):
+# for igamma, gamma in enumerate([0.05, 0.64, 6.4, 53.0]):
     for i, rho0 in enumerate(rho0_vec):
         if args.load == "Nx":
             CF_vec[i] = CF_con.nondimCriticalGlobalAxialLoad(rho0, xi, gamma)

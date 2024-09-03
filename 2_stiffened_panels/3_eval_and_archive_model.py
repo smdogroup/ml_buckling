@@ -23,7 +23,7 @@ parent_parser.add_argument("--ntrain", type=int, default=3000)
 parent_parser.add_argument('--plotraw', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--plotmodel2d', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--plotmodel3d', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--show', default=True, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--show', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--resid', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--clear', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--archive', default=False, action=argparse.BooleanOptionalAction)
@@ -60,9 +60,9 @@ gamma = X[:,3]
 print(f"\tgamma or x3: min {np.min(gamma)}, max {np.max(gamma)}")
 
 # bins for the data (in log space)
-xi_bins = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1.0]]
+xi_bins = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1.05]]
 rho0_bins = [[-2.5, -1.0], [-1.0, 0.0], [0.0, 1.0], [1.0, 2.5]]
-zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.0]]
+zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.5]]
 gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0] ]
 
 # randomly permute the arrays
@@ -340,6 +340,91 @@ if args.plotmodel2d:
     n_plot_2d = 100
     rho0_vec = np.linspace(-2.5, 2.5, n_plot_2d)
 
+    if _plot_gamma:
+        
+        print(f"start 2d gamma plots...")
+
+        for ixi, xi_bin in enumerate(xi_bins):
+            xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
+            avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
+
+            for izeta, zeta_bin in enumerate(zeta_bins):
+                zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
+                avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
+                xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
+
+                print(f"zeta {izeta} in {zeta_bin[0]}, {zeta_bin[1]}")
+
+                plt.figure(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}", figsize=(8,6))
+
+                colors = plt.cm.jet(np.linspace(0.0, 1.0, len(gamma_bins)))
+
+                for igamma,gamma_bin in enumerate(gamma_bins[::-1]):
+
+                    gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
+                    avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
+                    mask = np.logical_and(xi_zeta_mask, gamma_mask)
+
+                    #if np.sum(mask) == 0: continue
+
+                    X_in_range = X[mask,:]
+                    Y_in_range = Y[mask,:]
+                    if args.resid:
+                        Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
+                        Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
+
+                    if np.sum(mask) != 0:
+                        plt.plot(
+                            X_in_range[:,1],
+                            Y_in_range[:,0],
+                            "o",
+                            color=colors[igamma],
+                            zorder=1+igamma,
+                        )
+
+                    # predict the models, with the same colors, no labels
+                    X_plot = np.zeros((n_plot_2d, 4))
+                    for irho, crho0 in enumerate(rho0_vec):
+                        X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
+
+                    Kplot = np.array(
+                        [
+                            [
+                                kernel(X_train[i, :], X_plot[j, :], theta_opt)
+                                for i in range(n_train)
+                            ]
+                            for j in range(n_plot_2d)
+                        ]
+                    )
+                    f_plot = Kplot @ alpha
+
+                    if args.resid:
+                        f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
+                        f_plot = f_resid.reshape((X_plot.shape[0],1))
+
+                    plt.plot(
+                        rho0_vec,
+                        f_plot,
+                        "--",
+                        color=colors[igamma],
+                        zorder=1,
+                        label=r"$\log(1+\gamma)" + f"\ in\ [{gamma_bin[0]:.1f},{gamma_bin[1]:.1f}" + r"]$",
+                    )
+
+                plt.legend()
+                plt.xlabel(r"$\log{\rho_0}$")
+                if args.load == "Nx":
+                    plt.ylabel(r"$\log(N_{11,cr}^*)$")
+                else:
+                    plt.ylabel(r"$\log(N_{12,cr}^*)$")
+
+                if args.show:
+                    plt.show()
+                else:
+                    plt.savefig(os.path.join(GP_folder, f"2d-gamma-model_xi{ixi}_zeta{izeta}.png"), dpi=400)
+                plt.close(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}")
+
+
     if _plot_xi:
         
         print(f"start 2d xi plots...")
@@ -424,90 +509,6 @@ if args.plotmodel2d:
                 else:
                     plt.savefig(os.path.join(GP_folder, f"2d-xi-model_zeta{izeta}_gamma{igamma}.png"), dpi=400)
                 plt.close(f"zeta = {avg_zeta:.2f}, gamma = {avg_gamma:.2f}")  
-
-    if _plot_gamma:
-        
-        print(f"start 2d gamma plots...")
-
-        for ixi, xi_bin in enumerate(xi_bins):
-            xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
-            avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
-
-            for izeta, zeta_bin in enumerate(zeta_bins):
-                zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
-                avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
-                xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
-
-                print(f"zeta {izeta} in {zeta_bin[0]}, {zeta_bin[1]}")
-
-                plt.figure(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}", figsize=(8,6))
-
-                colors = plt.cm.jet(np.linspace(0.0, 1.0, len(gamma_bins)))
-
-                for igamma,gamma_bin in enumerate(gamma_bins[::-1]):
-
-                    gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
-                    avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
-                    mask = np.logical_and(xi_zeta_mask, gamma_mask)
-
-                    #if np.sum(mask) == 0: continue
-
-                    X_in_range = X[mask,:]
-                    Y_in_range = Y[mask,:]
-                    if args.resid:
-                        Y_resid = np.array([closed_form_resid(X_in_range[i,:],Y_in_range[i,0]) for i in range(X_in_range.shape[0])])
-                        Y_in_range = Y_resid.reshape((X_in_range.shape[0],1))
-
-                    if np.sum(mask) != 0:
-                        plt.plot(
-                            X_in_range[:,1],
-                            Y_in_range[:,0],
-                            "o",
-                            color=colors[igamma],
-                            zorder=1+igamma,
-                        )
-
-                    # predict the models, with the same colors, no labels
-                    X_plot = np.zeros((n_plot_2d, 4))
-                    for irho, crho0 in enumerate(rho0_vec):
-                        X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
-
-                    Kplot = np.array(
-                        [
-                            [
-                                kernel(X_train[i, :], X_plot[j, :], theta_opt)
-                                for i in range(n_train)
-                            ]
-                            for j in range(n_plot_2d)
-                        ]
-                    )
-                    f_plot = Kplot @ alpha
-
-                    if args.resid:
-                        f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
-                        f_plot = f_resid.reshape((X_plot.shape[0],1))
-
-                    plt.plot(
-                        rho0_vec,
-                        f_plot,
-                        "--",
-                        color=colors[igamma],
-                        zorder=1,
-                        label=r"$\log(1+\gamma)" + f"\ in\ [{gamma_bin[0]:.1f},{gamma_bin[1]:.1f}" + r"]$",
-                    )
-
-                plt.legend()
-                plt.xlabel(r"$\log{\rho_0}$")
-                if args.load == "Nx":
-                    plt.ylabel(r"$\log(N_{11,cr}^*)$")
-                else:
-                    plt.ylabel(r"$\log(N_{12,cr}^*)$")
-
-                if args.show:
-                    plt.show()
-                else:
-                    plt.savefig(os.path.join(GP_folder, f"2d-gamma-model_xi{ixi}_zeta{izeta}.png"), dpi=400)
-                plt.close(f"xi = {avg_xi:.2f}, zeta = {avg_zeta:.2f}")
 
     if _plot_zeta:
         
@@ -947,7 +948,7 @@ if args.plotmodel3d:
 
 # only eval relative error on test set for zeta < 1
 # because based on the model plots it appears that the patterns break down some for that
-zeta_mask = X_test[:,2] < 1.0
+zeta_mask = X_test[:,2] < 2.5
 X_test = X_test[zeta_mask, :]
 Y_test = Y_test[zeta_mask, :]
 n_test = X_test.shape[0]
