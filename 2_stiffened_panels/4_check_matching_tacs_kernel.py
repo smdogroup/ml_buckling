@@ -11,7 +11,7 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil, random
-from _saved_kernel import kernel, theta_opt
+from _saved_kernel import kernel, axial_theta_opt, shear_theta_opt
 from tacs import TACS, constitutive
 import ml_buckling as mlb
 
@@ -25,6 +25,9 @@ parent_parser.add_argument("--load", type=str, default="Nx")
 args = parent_parser.parse_args()
 
 assert args.load in ["Nx", "Nxy"]
+
+
+theta_opt = axial_theta_opt if args.load == "Nx" else shear_theta_opt
 
 load = args.load
 

@@ -2,11 +2,14 @@ import numpy as np
 # optimal hyperparameters from the hyperparameter optimization
 # actual optimum for lower nMAP
 # -------------------------------
-theta_opt = np.array([0.29463415292059475, 1.0267438809351834, 0.08746650339467944, 
+axial_theta_opt = np.array([0.29463415292059475, 1.0267438809351834, 0.08746650339467944, 
 0.48466096307653356, 1.0545896944649038, 1.1208695945056195, 
 0.6606359679565357, 0.10385825034258041, 1.7200477973124717, 
 0.2720540795509361, 0.09746296712376498, 0.0972631230759857, 
 0.09692913335000311, 0.9778323682800333])
+
+# shear_theta_opt = ?
+shear_theta_opt = axial_theta_opt
 
 def relu(x):
     return max([0.0, x])

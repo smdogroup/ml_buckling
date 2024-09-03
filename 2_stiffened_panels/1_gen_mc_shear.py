@@ -54,10 +54,11 @@ def get_buckling_load(rho_0, gamma):
 
     # compute the appropriate a,b,h_w,t_w values to achieve rho_0, gamma
     AR = rho_0 # since isotropic
-    b = 0.1
+    b = 1.0
     a = b * AR
     stiffAR = 1.0
-    h = 5e-3
+    SR = 100
+    h = b / SR
     nu = 0.3
 
     # found that the intended strain state is very hard to achieve with the stiffened panel models

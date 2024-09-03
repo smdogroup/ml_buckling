@@ -49,7 +49,8 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
     xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi_data)-1.0, np.exp(xi_data)-1.0 <= xi_bin[1])
     avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
     N12cr_vec = np.array([shear_closed_form(rho0, avg_xi, 0.0) for rho0 in rho0_vec])
-    plt.plot(rho0_vec, N12cr_vec, color=colors[ixi], label=None)
+    # plt.plot(rho0_vec, N12cr_vec, color=colors[ixi], label=None)
+    plt.plot(np.log(rho0_vec), np.log(N12cr_vec), color=colors[ixi])
 
 for ixi, xi_bin in enumerate(xi_bins[::-1]):
     xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi_data)-1.0, np.exp(xi_data)-1.0 <= xi_bin[1])
@@ -58,14 +59,20 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
     zeta_mask = zeta_data < 0.8
     mask = np.logical_and(xi_mask, zeta_mask)
     # take out of log scale
+    # plt.plot(
+    #     np.exp(rho0_data[mask]), np.exp(eig_data[mask]), "o", color=colors[ixi],
+    #     label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
+    #     markersize=5 #6.5
+    # )
     plt.plot(
-        np.exp(rho0_data[mask]), np.exp(eig_data[mask]), "o", color=colors[ixi],
+        rho0_data[mask], eig_data[mask], "o", color=colors[ixi],
         label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
         markersize=5 #6.5
     )
 
-plt.xscale('log')
-plt.yscale('log')
+
+# plt.xscale('log')
+# plt.yscale('log')
 # plt.legend()
 
 # plt.show()

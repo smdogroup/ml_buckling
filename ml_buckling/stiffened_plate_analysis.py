@@ -8,6 +8,7 @@ from .stiffened_plate_geometry import StiffenedPlateGeometry
 from .composite_material import CompositeMaterial
 from .composite_material_utility import CompositeMaterialUtility
 #from typing_extensions import Self
+from scipy.optimize import fsolve
 
 dtype = utilities.BaseUI.dtype
 
@@ -1652,37 +1653,37 @@ class StiffenedPlateAnalysis:
                     return lam_min, "local"
 
         else:  # exy != 0.0
-            N12_plate = exy * self.plate_material.G12 * self.geometry.h
-            _Darray = self.Darray_plate
-            D11 = _Darray[0]
-            D12 = _Darray[1]
-            D22 = _Darray[2]
+            # N12_plate = exy * self.plate_material.G12 * self.geometry.h
+            # _Darray = self.Darray_plate
+            # D11 = _Darray[0]
+            # D12 = _Darray[1]
+            # D22 = _Darray[2]
 
-            N12_cr_star = 3.274 + 2.695 * self.affine_aspect_ratio**(-2.0) + 2.011*self.xi_plate * (1.0 + self.affine_aspect_ratio**(-2.0)) + 0.501 * self.gamma
-            # N12_cr_global = np.pi**2 * (D11*D22**3)**0.25 / self.geometry.b**2 * N12_cr_star
-            # lam_global = N12_cr_global / N12_plate
+            # N12_cr_star = 3.274 + 2.695 * self.affine_aspect_ratio**(-2.0) + 2.011*self.xi_plate * (1.0 + self.affine_aspect_ratio**(-2.0)) + 0.501 * self.gamma
+            # # N12_cr_global = np.pi**2 * (D11*D22**3)**0.25 / self.geometry.b**2 * N12_cr_star
+            # # lam_global = N12_cr_global / N12_plate
             
-            return N12_cr_star, "global" # temp
+            # return N12_cr_star, "global" # temp
 
-            #raise RuntimeError("Haven't implemented the shear critical loads yet.")
-            # # predict the axial global mode
-            # lam_star_global =
-            # N11_cr_global = np.pi**2 * np.sqrt(D11 * D22) / self.geometry.b**2 / (1 + self.delta) * lam_star_global
-            # lam_global = N11_cr_global / N11_plate
+            # high aspect ratio soln
+            rho0 =  self.affine_aspect_ratio
+            gamma = self.gamma
+            xi = self.xi_plate
+            def high_AR_resid(s2):
+                s1 = (1.0+2.0*s2**2*xi+s2**4+gamma)**0.25
+                term1 = s2**2 + s1**2 + xi/3
+                term2 = ((3+xi)/9.0 + 4.0/3.0*s1**2*xi+4.0/3.0*s1**4)**0.5
+                return term1 - term2
 
-            # # predict the axial local mode
-            # lam_star_local = min([m1**2 / self.affine_aspect_ratio**2 + self.affine_aspect_ratio**2 / m1**2 for m1 in range(50)])
-            # N11_cr_local = np.pi**2 * np.sqrt(D11 * D22) / self.geometry.s_p**2 * lam_star_local
-            # lam_local = N11_cr_local / N11_plate
+            s2_bar = fsolve(high_AR_resid, 1.0)[0]
+            s1_bar = (1.0+2.0*s2_bar**2*xi+s2_bar**4+gamma)**0.25
+            print(f"{s1_bar=}, {s2_bar=}")
 
-            # # determine which mode is the minimum mode
-            # lam_min = min([lam_crippling, lam_global, lam_local])
-            # if lam_min == lam_crippling:
-            #     return lam_min, "crippling"
-            # elif lam_min == lam_global:
-            #     return lam_min, "global"
-            # else: # local
-            #     return lam_min, "local"
+            N12cr_highAR = (1.0+gamma+s1_bar**4 + 6 * s1_bar**2 * s2_bar**2 + s2_bar**4 + 2 * xi *( s1_bar**2 + s2_bar**2)) / 2.0 / s1_bar**2 / s2_bar
+            N12cr_lowAR = N12cr_highAR / rho0**2
+            return np.max([N12cr_highAR, N12cr_lowAR]), "global"
+
+            
 
     def size_stiffener(self, gamma, nx, nz, safety_factor=10, shear=False):
         lam_stiff0,lam_global0,_ = self.predict_crit_load(

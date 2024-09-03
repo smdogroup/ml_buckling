@@ -6,7 +6,8 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil, random
-from _saved_kernel import kernel, theta_opt
+from _saved_kernel import kernel, axial_theta_opt, shear_theta_opt
+import ml_buckling as mlb
 
 """
 This time I'll try a Gaussian Process model to fit the axial critical load surrogate model
@@ -133,7 +134,7 @@ Y_test = Y[test_indices[:n_test], :]
 
 # train the model:
 # ----------------
-
+theta_opt = axial_theta_opt if args.load == "Nx" else shear_theta_opt
 ntheta = theta_opt.shape[0]
 sigma_n = theta_opt[ntheta-1]
 # compute the training kernel matrix
@@ -1026,7 +1027,7 @@ if args.archive:
     model_df.to_csv(output_csv)
 
     # also deploy the current theta_opt
-    theta_csv = "../archived_models/theta_opt.csv"
+    theta_csv = mlb.axial_theta_csv if args.load == "Nx" else mlb.shear_theta_csv
     if os.path.exists(theta_csv):
         os.remove(theta_csv)
 
