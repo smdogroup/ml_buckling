@@ -122,7 +122,7 @@ if args.lamCorr:
     global_lambda_star *= lam_corr_fact
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+# pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 
 if comm.rank == 0:
     stiff_analysis.print_mode_classification()
@@ -142,8 +142,8 @@ if args.lamCorr:
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
-    print(f"Mode type predicted as {mode_type}")
-    print(f"\tCF min lambda = {pred_lambda}")
+    # print(f"Mode type predicted as {mode_type}")
+    # print(f"\tCF min lambda = {pred_lambda}")
     print(f"\tFEA min lambda = {global_lambda_star}")
     x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
     print(f"{x_zeta=}")

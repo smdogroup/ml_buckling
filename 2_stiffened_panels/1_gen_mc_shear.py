@@ -167,7 +167,7 @@ def get_buckling_load(rho_0, gamma):
         global_lambda_star = None
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    # pred_lambda,mode_type = stiff_analysis.predict_crit_load(exy=stiff_analysis.affine_exy)
 
     if comm.rank == 0:
         stiff_analysis.print_mode_classification()
@@ -187,13 +187,13 @@ def get_buckling_load(rho_0, gamma):
     # min_eigval = tacs_eigvals[0]
     # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
     if comm.rank == 0:
-        print(f"Mode type predicted as {mode_type}")
-        print(f"\tCF min lambda = {pred_lambda}")
+        # print(f"Mode type predicted as {mode_type}")
+        # print(f"\tCF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
         print("--------------------------------------\n", flush=True)
 
     # returns (CF_eig, FEA_eig) as follows:
-    return pred_lambda, global_lambda_star, stiff_analysis
+    return None, global_lambda_star, stiff_analysis
 
 
 # GENERATE DATA
@@ -230,7 +230,6 @@ if __name__=="__main__":
                     "gamma": [stiff_analysis.gamma],
                     "zeta": [stiff_analysis.zeta_plate],
                     "eig_FEA": [np.real(eig_FEA)],
-                    "eig_CF": [eig_CF],
                 }
                 raw_df = pd.DataFrame(raw_data_dict)
                 first_write = ct == 1 and args.clear

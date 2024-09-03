@@ -360,10 +360,7 @@ class StiffenedPlateAnalysis:
         D22 = _Darray[2]
         _Aarray = self.Aarray_plate
         A66 = _Aarray[3]
-        print(f"A66 = {A66}")
-        # was 0.5 times because N12 = A66 * gamma_12 and we need to convert from gamma_12 = 2 * eps_12 (solve for eps_12 shear strain)
-        # for some reason needs to be 1.0 now to achieve intended strain state
-        exy_T = (
+        exy_T = 0.5 * (
             np.pi ** 2
             * (D11 * D22 ** 3) ** 0.25
             / self.geometry.b ** 2
