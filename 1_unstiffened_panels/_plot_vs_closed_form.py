@@ -78,6 +78,8 @@ if args.load in ["Nx", "axial"]:
 else:
     load = "Nxy"
 BC = args.BC
+plot_log = load == "Nxy"
+# plot_log = False
 
 # load the Nxcrit dataset
 load_prefix = "Nxcrit" if load == "Nx" else "Nxycrit"
@@ -140,37 +142,37 @@ slender_mask = np.logical_and(
 )
 
 n = 100
-rho0_vec = np.linspace(0.2, 5.0, n)
+rho0_vec = np.linspace(0.1, 10.0, n)
 Ncr_vec = np.zeros((n,), dtype=dtype)
 
-plt.text(x=3.6, y=8.7, s=r"$\xi = \frac{D_{12}^p + D_{66}^p}{\sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
+# plt.text(x=3.6, y=8.7, s=r"$\xi = \frac{D_{12}^p + D_{66}^p}{\sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
 
-# also plot the analytic shear surrogate
-if args.load == "Nxy":
-    con.setCFShearMode(2)
+# # also plot the analytic shear surrogate
+# if args.load == "Nxy":
+#     con.setCFShearMode(1)
     
-    for ixi, xi_bin in enumerate(xi_bins[::-1]):
-        # convert from log(xi) to xi here
-        xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
-        avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
+#     for ixi, xi_bin in enumerate(xi_bins[::-1]):
+#         # convert from log(xi) to xi here
+#         xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
+#         avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
-        mask = np.logical_and(xi_mask, slender_mask)
-        if np.sum(mask) == 0:
-            print(f"nothing in mask")
-            continue
+#         mask = np.logical_and(xi_mask, slender_mask)
+#         if np.sum(mask) == 0:
+#             print(f"nothing in mask")
+#             continue
 
-        # plot the closed-form solution
-        for i, _rho0 in enumerate(rho0_vec):
-            Ncr_vec[i] = con.nondimCriticalGlobalShearLoad(_rho0, avg_xi, 0.0)
+#         # plot the closed-form solution
+#         for i, _rho0 in enumerate(rho0_vec):
+#             Ncr_vec[i] = con.nondimCriticalGlobalShearLoad(_rho0, avg_xi, 0.0)
 
-        plt.plot(
-            rho0_vec,
-            Ncr_vec,
-            "--",
-            color=colors[ixi],
-        )
+#         plt.plot(
+#             rho0_vec,
+#             Ncr_vec,
+#             "--",
+#             color=colors[ixi],
+#         )
 
-    con.setCFShearMode(1)
+#     con.setCFShearMode(1)
 
 for ixi, xi_bin in enumerate(xi_bins[::-1]):
     # convert from log(xi) to xi here
@@ -190,52 +192,92 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
         for i, _rho0 in enumerate(rho0_vec):
             Ncr_vec[i] = con.nondimCriticalGlobalShearLoad(_rho0, avg_xi, 0.0)
 
-    plt.plot(
-        rho0_vec,
-        Ncr_vec,
-        color=colors[ixi],
-    )
+    if plot_log:
+        plt.plot(
+            np.log(rho0_vec),
+            np.log(Ncr_vec),
+            color=colors[ixi],
+        )
+    else:
+        plt.plot(
+            rho0_vec,
+            Ncr_vec,
+            color=colors[ixi],
+        )
 
     # plot the raw data
-    plt.plot(
-        np.exp(rho0[mask]),
-        np.exp(lam[mask]),
-        "o",
-        color=colors[ixi],
-        label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
-        markersize=5 #6.5
-    )
+    if plot_log:
+        plt.plot(
+            rho0[mask],
+            lam[mask],
+            "o",
+            color=colors[ixi],
+            label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
+            markersize=6.5 #6.5
+        )
+    else:
+        plt.plot(
+            np.exp(rho0[mask]),
+            np.exp(lam[mask]),
+            "o",
+            color=colors[ixi],
+            label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
+            markersize=5 #6.5
+        )
 
 
 
 
 
 legend1 = plt.legend(fontsize=20, loc="upper right")
-plt.xlabel(r"$\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p /D_{11}^p}$", fontsize=24)
+if not plot_log:
+    plt.xlabel(r"$\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p /D_{11}^p}$", fontsize=24)
+else:
+    plt.xlabel(r"$\log(\rho_0)$", fontsize=24)
 plt.xticks(fontsize=18)
 # if args.load == "Nx":
 #     plt.ylabel(r"$N_{11,cr}^* = N_{11,cr} \cdot \frac{b^2}{\pi^2 \sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
 # else: # "Nxy"
 #     plt.ylabel(r"$N_{12,cr}^* = N_{12,cr} \cdot \frac{b^2}{\pi^2 \sqrt[4]{D_{11}^p (D_{22}^p)^3}}$", fontsize=24)
-if args.load == "Nx":
-    plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
-else: # "Nxy"
-    plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
+if not plot_log:
+    if args.load == "Nx":
+        plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
+    else: # "Nxy"
+        plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
+else:
+    if args.load == "Nx":
+        plt.ylabel(r"$\log(N_{11,cr}^*)$", fontsize=24)
+    else: # "Nxy"
+        plt.ylabel(r"$\log(N_{12,cr}^*)$", fontsize=24)
 plt.yticks(fontsize=18)
 plt.margins(x=0.02, y=0.02)
-plt.xlim(0.0, 5.0)
-# plt.xlim(0.0, 10.0)
-plt.ylim(0.0, 20.0)
+if not plot_log:
+    plt.xlim(0.0, 5.0)
+    # plt.xlim(0.0, 10.0)
+    plt.ylim(0.0, 20.0)
+    # plt.ylim(0.0, 50.0)
+    # plt.yscale('log')
+else:
+    # pass
+    plt.xlim(-2.0, 2.3)
+    plt.ylim(1.0, 5.5)
+    # plt.ylim(np.min(np.exp(lam[slender_mask])), np.max(np.exp(lam[slender_mask])))
 
 # plot black dots out of axis limits
-l1, = plt.plot(-1e4, 0, "ko", label="FEA model")
-l2, = plt.plot([-1e4, -1e4+1], [0,0], "k--", label="analytic-surrogate")
-l3, = plt.plot([-1e4, -1e4+2], [1,1], "k-", label="closed-form")
-plot_lines = [l1, l2, l3]
-# plt.hold(True)
-legend2 = plt.legend(plot_lines, ["FEA model", "least-squares", "closed-form"])#, loc="best", bbox_to_anchor=(3.0, 18.0))
-plt.gca().add_artist(legend1)
+do_this = True
+if do_this:
+    l1, = plt.plot(np.nan, 0, "ko", label="FEA model")
+    # l2, = plt.plot([-1e4, -1e4+1], [0,0], "k--", label="analytic-surrogate")
+    l3, = plt.plot([np.nan, np.nan], [1,1], "k-", label="closed-form")
+    plot_lines = [l1, l3]
+    # plt.hold(True)
+    # legend2 = plt.legend(plot_lines, ["FEA model", "least-squares", "closed-form"])#, loc="best", bbox_to_anchor=(3.0, 18.0))
+    legend2 = plt.legend(plot_lines, ["FEA model", "closed-form"])#, loc="best", bbox_to_anchor=(3.0, 18.0))
+    # plt.gca().add_artist(legend1)
 
+# if plot_log:
+    # plt.xscale('log')
+    # plt.yscale('log')
 
 # plt.show()
 plt.savefig(os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.svg"), dpi=400)
