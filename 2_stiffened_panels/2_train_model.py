@@ -56,20 +56,19 @@ n_test = args.ntest
 
 # each sublist is [lb, value, ub]
 variables = [
-    [0.02, 0.1, 0.3],  # 0 - BL kernel constant
-    [0.1, 1.0, 5.0],   # 1 - BL kernel slope
-    [-0.5, 0.0, 0.5],  # 2 - gamma_rho_dist const
-    [-0.5, 0.0, 0.5],  # 3 - gamma_rho_dist gamma-slope
-    [0.01, 1.0, 5.0],  # 4 - gamma kernel const
-    [0.01, 0.1, 3.0],  # 5 - gamma kernel slope
-    [0.01, 0.05, 1.0], # 6 - SE kernel leading coeff
-    [0.05, 0.2, 1.0],  # 7 - SE kernel rho0 length scale
-    [0.5, 1.0, 2.0],   # 8 - window kernel => rho0 bndry length
-    [0.01, 0.1, 3.0],  # 9 - xi kernel slope
-    [1e-3, 0.01, 0.1], # 10 - xi kernel quadratic slope
-    [1e-3, 0.02, 0.1], # 11 - zeta kernel slope
-    [1e-3, 0.01, 0.1], # 12 - zeta kernel quad slope
-    [1e-4, 1e-1, 1e0], # 13 - sigma_n noise
+    [-0.5, 0.0, 0.5],  # 0 - gamma_rho_dist gamma-slope
+    [0.02, 0.1, 0.3],  # 1 - BL kernel constant
+    [0.1, 1.0, 5.0],   # 2 - BL kernel slope
+    [0.01, 0.1, 3.0],  # 3 - gamma kernel slope
+    [0.01, 0.1, 3.0],  # 4 - xi kernel slope
+    [1e-3, 0.01, 0.1], # 5 - xi kernel quadratic slope
+    [1e-3, 0.02, 0.1], # 6 - zeta kernel slope
+    [1e-3, 0.01, 0.1], # 7 - zeta kernel quad slope
+    [0.01, 0.05, 1.0], # 8 - SE kernel leading coeff
+    [0.05, 0.2, 1.0],  # 9 - SE kernel rho0* length scale
+    [0.1, 1.0, 3.0],   # 10 - SE kernel gamma length scale
+    [0.5, 1.0, 2.0],   # 11 - window kernel => window length
+    [1e-4, 1e-1, 1e0], # 12 - sigma_n noise
 ]
 
 ntheta = len(variables)

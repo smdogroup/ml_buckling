@@ -115,15 +115,20 @@ def get_buckling_load(rho_0, gamma):
     )
     
     _nelems = args.nelems
+    # adjustment factor for high AR
+    if AR > 5.0: # for some reason mesh selection here is not correct
+        _nelems *= 0.4
     MIN_Y = 20 / geometry.num_local # 20
     MIN_Z = 5 #5
     N = geometry.num_local
     AR_s = geometry.a / geometry.h_w
     #print(f"AR = {AR}, AR_s = {AR_s}")
     nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
-    nx = min(nx, 50)
+    # nx = min(nx, 50)
+    nx = max(nx, MIN_Y)
     ny = max(np.ceil(nx / AR / N), MIN_Y)
     nz = max(np.ceil(nx / AR_s), MIN_Z)
+    print(f"{nx=}")
 
     stiff_analysis.pre_analysis(
         nx_plate=int(nx), #90
