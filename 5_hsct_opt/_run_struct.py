@@ -36,13 +36,13 @@ csm_path = os.path.join(base_dir, "geometry", "hsct.csm")
 # ----------------------------------------
 
 f2f_model = FUNtoFEMmodel(model_name)
-tacs_model = caps2tacs.TacsModel.build(
-    csm_file=csm_path,
-    comm=comm,
-    problem_name="capsStruct",
-    active_procs=[0],
-    verbosity=1,
-)
+#tacs_model = caps2tacs.TacsModel.build(
+#    csm_file=csm_path,
+#    comm=comm,
+#    problem_name="capsStruct",
+#    active_procs=[0],
+#    verbosity=1,
+#)
 # tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative test to pass
 #    edge_pt_min=2,
 #    edge_pt_max=20,
@@ -258,8 +258,10 @@ solvers.structural = TacsSteadyInterface.create_from_bdf(
     model=f2f_model,
     comm=comm,
     nprocs=args.procs,
-    bdf_file=tacs_aim.root_dat_file if args.newMesh else "struct/tacs.dat",
-    prefix=tacs_aim.root_analysis_dir if args.newMesh else "struct",
+    #bdf_file=tacs_aim.root_dat_file if args.newMesh else "struct/tacs.dat",
+    #prefix=tacs_aim.root_analysis_dir if args.newMesh else "struct",
+    bdf_file="struct/tacs.dat",
+    prefix="struct",
     callback=callback,
     panel_length_dv_index=0,
     panel_width_dv_index=5,
