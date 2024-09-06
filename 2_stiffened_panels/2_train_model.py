@@ -66,7 +66,7 @@ variables = [
     [1e-3, 0.01, 0.1], # 7 - zeta kernel quad slope
     [0.01, 0.05, 1.0], # 8 - SE kernel leading coeff
     [0.05, 0.2, 1.0],  # 9 - SE kernel rho0* length scale
-    [0.1, 1.0, 3.0],   # 10 - SE kernel gamma length scale
+    [5.0, 6.0, 50.0],   # 10 - SE kernel gamma length scale (want to be pretty long length scale otherwise buckling loads return to zero in middle)
     [0.5, 1.0, 2.0],   # 11 - window kernel => window length
     [1e-4, 1e-1, 1e0], # 12 - sigma_n noise
 ]

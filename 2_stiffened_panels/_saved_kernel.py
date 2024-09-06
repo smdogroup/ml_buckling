@@ -2,11 +2,17 @@ import numpy as np
 # optimal hyperparameters from the hyperparameter optimization
 # actual optimum for lower nMAP
 # -------------------------------
-# TODO : re-optimize axial_theta
-# axial_theta_opt = ?
+axial_theta_opt = np.array([
+    0.29043362272636686, 0.2767385687947649, 1.0783621945553847,
+    0.637338057553291, 1.140876330048335, 0.0892471492240224,
+    0.0908920116313985, 0.08956373647356093, 0.6939463641124705,
+    0.18098983021747583, 0.7079870474480225, 1.7479508137685653,
+    # 0.18098983021747583, 400.0, 1.7479508137685653,
+    0.9341625075293126
+])
 
 # TODO : re-optimize shear theta
-# shear_theta_opt = ?
+shear_theta_opt = axial_theta_opt
 
 
 # was trying to limit theta[8] earlier rho_0 window => didn't help that much made it worse
