@@ -806,7 +806,7 @@ if args.plotmodel3d:
         avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
         # zeta_bin = [0, 1]
-        zeta_bin = zeta_bins[3]
+        zeta_bin = zeta_bins[3] if args.load == "Nx" else zeta_bins[1]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
         avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
