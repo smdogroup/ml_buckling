@@ -6,7 +6,7 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil, random
-from _saved_kernel import kernel, axial_theta_opt, shear_theta_opt
+from _saved_kernel import kernel, axial_theta_opt, shear_theta_opt, theta_a1, theta_a2
 import ml_buckling as mlb
 
 """
@@ -20,7 +20,9 @@ np.random.seed(1234567)
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
-parent_parser.add_argument("--ntrain", type=int, default=3000)
+parent_parser.add_argument('--doubleGP', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--eval', default=True, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument("--ntrain", type=int, default=3000) #1000 useful for debugging the model settings
 parent_parser.add_argument('--plotraw', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--plotmodel2d', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--plotmodel3d', default=False, action=argparse.BooleanOptionalAction)
@@ -134,21 +136,59 @@ Y_test = Y[test_indices[:n_test], :]
 
 # train the model:
 # ----------------
-theta_opt = axial_theta_opt if args.load == "Nx" else shear_theta_opt
-ntheta = theta_opt.shape[0]
-sigma_n = theta_opt[ntheta-1]
-# compute the training kernel matrix
-K_y = np.array(
-    [
-        [kernel(X_train[i, :], X_train[j, :], theta_opt) for i in range(n_train)]
-        for j in range(n_train)
-    ]
-) + sigma_n ** 2 * np.eye(n_train)
+doubleGP = args.doubleGP and args.load == "Nx"
+if not doubleGP:
+    theta_opt = axial_theta_opt if args.load == "Nx" else shear_theta_opt
+    ntheta = theta_opt.shape[0]
+    sigma_n = theta_opt[ntheta-1]
+    # compute the training kernel matrix
+    K_y = np.array(
+        [
+            [kernel(X_train[i, :], X_train[j, :], theta_opt) for i in range(n_train)]
+            for j in range(n_train)
+        ]
+    ) + sigma_n ** 2 * np.eye(n_train)
 
-#print(f"K_y = {K_y}")
-#exit()
+    #print(f"K_y = {K_y}")
+    #exit()
 
-alpha = np.linalg.solve(K_y, Y_train)
+    alpha = np.linalg.solve(K_y, Y_train)
+
+
+else: # args.doubleGP and args.load == "Nx"
+
+    # first GP
+    ntheta = theta_a1.shape[0]
+    sigma_n1 = theta_a1[ntheta-1]
+    # compute the training kernel matrix
+    K_y1 = np.array(
+        [
+            [kernel(X_train[i, :], X_train[j, :], theta_a1) for i in range(n_train)]
+            for j in range(n_train)
+        ]
+    ) + sigma_n1 ** 2 * np.eye(n_train)
+    alpha1 = np.linalg.solve(K_y1, Y_train)
+
+    # get residuals from first GP
+    K_cross_train1 = np.array(
+        [
+            [kernel(X_train[i, :], X_train[j, :], theta_a1) for i in range(n_train)]
+            for j in range(n_train)
+        ]
+    )
+    Y_pred1 = (K_cross_train1 @ alpha1)[0,0]
+    Y_resid1 = Y_train - Y_pred1
+
+    # second GP
+    sigma_n2 = theta_a2[ntheta-1]
+    K_y2 = np.array(
+        [
+            [kernel(X_train[i, :], X_train[j, :], theta_a2) for i in range(n_train)]
+            for j in range(n_train)
+        ]
+    ) + sigma_n2 ** 2 * np.eye(n_train)
+    alpha2 = np.linalg.solve(K_y2, Y_resid1)
+    
 
 # plot the raw data
 # ---------------------------------------------------------------------------------------------
@@ -333,6 +373,90 @@ print(f"Xtest = {_Xtest}")
 #print(f"pred = {pred}")
 #exit()
 
+# eval the model
+# ---------------
+if args.eval:
+    zeta_mask = X_test[:,2] < 2.5
+    X_test = X_test[zeta_mask, :]
+    Y_test = Y_test[zeta_mask, :]
+    n_test = X_test.shape[0]
+
+    # predict and report the relative error on the test dataset
+    if not doubleGP:
+        K_test_cross = np.array(
+            [
+                [
+                    kernel(X_train[i, :], X_test[j, :], theta_opt)
+                    for i in range(n_train)
+                ]
+                for j in range(n_test)
+            ]
+        )
+        Y_test_pred = K_test_cross @ alpha
+
+    else: # doubleGP
+        K_test_cross1 = np.array(
+            [
+                [
+                    kernel(X_train[i, :], X_test[j, :], theta_a1)
+                    for i in range(n_train)
+                ]
+                for j in range(n_test)
+            ]
+        )
+        Y_pred1 = K_test_cross1 @ alpha1
+
+        K_test_cross2 = np.array(
+            [
+                [
+                    kernel(X_train[i, :], X_test[j, :], theta_a2)
+                    for i in range(n_train)
+                ]
+                for j in range(n_test)
+            ]
+        )
+        Y_pred2 = K_test_cross2 @ alpha2
+
+        Y_pred = Y_pred1 + Y_pred2
+
+    # now compare test to pred
+    crit_loads = np.exp(Y_test)
+    crit_loads_pred = np.exp(Y_test_pred)
+
+    abs_err = crit_loads_pred - crit_loads
+    rel_err = abs(abs_err / crit_loads)
+    avg_rel_err = np.mean(rel_err)
+    if args.plotraw or args.plotmodel2d or args.plotmodel3d:
+        print(f"\n\n\n")
+    print(f"\navg rel err from n_train={n_train} on test set of n_test={n_test} = {avg_rel_err}")
+
+    # report the RMSE
+    RMSE = np.sqrt(np.mean(np.square(Y_test - Y_test_pred)))
+    print(f"RMSE = {RMSE}")
+
+    # print out which data points have the highest relative error as this might help me improve the model
+    neg_avg_rel_err = -1.0 * rel_err
+    sort_indices = np.argsort(neg_avg_rel_err[:,0])
+    n_worst = 100
+    hdl = open("axial-model-debug.txt", "w")
+    #(f"sort indices = {sort_indices}")
+    for i,sort_ind in enumerate(sort_indices[:n_worst]): # first 10 
+        hdl.write(f"sort ind = {type(sort_ind)}\n")
+        x_test = X_test[sort_ind,:]
+        crit_load = crit_loads[sort_ind,0]
+        crit_load_pred = crit_loads_pred[sort_ind,0]
+        hdl.write(f"{sort_ind} - lxi={x_test[0]:.3f}, lrho0={x_test[1]:.3f}, l(1+gamma)={x_test[3]:.3f}, l(1+10^3*zeta)={x_test[2]:.3f}\n")
+        xi = np.exp(x_test[0])
+        rho0 = np.exp(x_test[1])
+        gamma = np.exp(x_test[3]) - 1.0
+        zeta = (np.exp(x_test[2]) - 1.0) / 1000.0
+        c_rel_err = (crit_load_pred - crit_load) / crit_load
+        hdl.write(f"\txi = {xi:.3f}, rho0 = {rho0:.3f}, gamma = {gamma:.3f}, zeta = {zeta:.3f}\n")
+        hdl.write(f"\tcrit_load = {crit_load:.3f}, crit_load_pred = {crit_load_pred:.3f}\n")
+        hdl.write(f"\trel err = {c_rel_err:.3e}\n")
+    hdl.close()
+
+
 # plot the model againt the data
 # ------------------------------
 
@@ -388,16 +512,41 @@ if args.plotmodel2d:
                     for irho, crho0 in enumerate(rho0_vec):
                         X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
 
-                    Kplot = np.array(
-                        [
+                    if not doubleGP:
+                        Kplot = np.array(
                             [
-                                kernel(X_train[i, :], X_plot[j, :], theta_opt)
-                                for i in range(n_train)
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
                             ]
-                            for j in range(n_plot_2d)
-                        ]
-                    )
-                    f_plot = Kplot @ alpha
+                        )
+                        f_plot = Kplot @ alpha
+                    else: # doubleGP
+                        K_plot1 = np.array(
+                            [
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_a1)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
+                            ]
+                        )
+                        f_plot1 = K_plot1 @ alpha1
+
+                        K_plot2 = np.array(
+                            [
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_a2)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
+                            ]
+                        )
+                        f_plot2 = K_plot2 @ alpha2
+
+                        f_plot = f_plot1 + f_plot2
 
                     if args.resid:
                         f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
@@ -474,16 +623,42 @@ if args.plotmodel2d:
                     for irho, crho0 in enumerate(rho0_vec):
                         X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
 
-                    Kplot = np.array(
-                        [
+                    if not doubleGP:
+                        Kplot = np.array(
                             [
-                                kernel(X_train[i, :], X_plot[j, :], theta_opt)
-                                for i in range(n_train)
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
                             ]
-                            for j in range(n_plot_2d)
-                        ]
-                    )
-                    f_plot = Kplot @ alpha
+                        )
+                        f_plot = Kplot @ alpha
+                    else: # doubleGP
+                        K_plot1 = np.array(
+                            [
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_a1)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
+                            ]
+                        )
+                        f_plot1 = K_plot1 @ alpha1
+
+                        K_plot2 = np.array(
+                            [
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_a2)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
+                            ]
+                        )
+                        f_plot2 = K_plot2 @ alpha2
+
+                        f_plot = f_plot1 + f_plot2
+
                     if args.resid:
                         f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
                         f_plot = f_resid.reshape((X_plot.shape[0],1))
@@ -557,16 +732,41 @@ if args.plotmodel2d:
                     for irho, crho0 in enumerate(rho0_vec):
                         X_plot[irho,:] = np.array([avg_xi, crho0, avg_zeta, avg_gamma])[:]
 
-                    Kplot = np.array(
-                        [
+                    if not doubleGP:
+                        Kplot = np.array(
                             [
-                                kernel(X_train[i, :], X_plot[j, :], theta_opt)
-                                for i in range(n_train)
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
                             ]
-                            for j in range(n_plot_2d)
-                        ]
-                    )
-                    f_plot = Kplot @ alpha
+                        )
+                        f_plot = Kplot @ alpha
+                    else: # doubleGP
+                        K_plot1 = np.array(
+                            [
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_a1)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
+                            ]
+                        )
+                        f_plot1 = K_plot1 @ alpha1
+
+                        K_plot2 = np.array(
+                            [
+                                [
+                                    kernel(X_train[i, :], X_plot[j, :], theta_a2)
+                                    for i in range(n_train)
+                                ]
+                                for j in range(n_plot_2d)
+                            ]
+                        )
+                        f_plot2 = K_plot2 @ alpha2
+
+                        f_plot = f_plot1 + f_plot2
 
                     if args.resid:
                         f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
@@ -600,11 +800,13 @@ if args.plotmodel3d:
     if _plot_3d_gamma:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-        xi_bin = [0.2, 0.4]
+        # xi_bin = [0.2, 0.4]
+        xi_bin = xi_bins[2]
         xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
         avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
-        zeta_bin = [0, 1]
+        # zeta_bin = [0, 1]
+        zeta_bin = zeta_bins[3]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
         avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
@@ -653,16 +855,42 @@ if args.plotmodel3d:
                 )
                 ct += 1
 
-        Kplot = np.array(
-            [
+        # single vs doubleGP section
+        if not doubleGP:
+            Kplot = np.array(
                 [
-                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
-                    for i in range(n_train)
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_opt)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
                 ]
-                for j in range(n_plot)
-            ]
-        )
-        f_plot = Kplot @ alpha
+            )
+            f_plot = Kplot @ alpha
+        else: # doubleGP
+            K_plot1 = np.array(
+                [
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_a1)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
+                ]
+            )
+            f_plot1 = K_plot1 @ alpha1
+
+            K_plot2 = np.array(
+                [
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_a2)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
+                ]
+            )
+            f_plot2 = K_plot2 @ alpha2
+
+            f_plot = f_plot1 + f_plot2
 
         if args.resid:
             f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
@@ -716,11 +944,13 @@ if args.plotmodel3d:
     if _plot_3d_xi:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-        gamma_bin = [0.0, 0.1]
+        # gamma_bin = [0.0, 0.1]
+        gamma_bin = gamma_bins[0]
         gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
         avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
 
-        zeta_bin = [0.1, 0.5]
+        # zeta_bin = [0.1, 0.5]
+        zeta_bin = zeta_bins[1]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
         avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
         gamma_zeta_mask = np.logical_and(gamma_mask, zeta_mask)
@@ -770,16 +1000,44 @@ if args.plotmodel3d:
                 )
                 ct += 1
 
-        Kplot = np.array(
-            [
+        # single vs doubleGP section
+        if not doubleGP:
+            Kplot = np.array(
                 [
-                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
-                    for i in range(n_train)
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_opt)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
                 ]
-                for j in range(n_plot)
-            ]
-        )
-        f_plot = Kplot @ alpha
+            )
+            f_plot = Kplot @ alpha
+        else: # doubleGP
+            K_plot1 = np.array(
+                [
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_a1)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
+                ]
+            )
+            f_plot1 = K_plot1 @ alpha1
+
+            K_plot2 = np.array(
+                [
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_a2)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
+                ]
+            )
+            f_plot2 = K_plot2 @ alpha2
+
+            f_plot = f_plot1 + f_plot2
+
+
         if args.resid:
             f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
             f_plot = f_resid.reshape((X_plot.shape[0],1))
@@ -888,16 +1146,44 @@ if args.plotmodel3d:
                 )
                 ct += 1
 
-        Kplot = np.array(
-            [
+        # single vs doubleGP section
+        if not doubleGP:
+            Kplot = np.array(
                 [
-                    kernel(X_train[i, :], X_plot[j, :], theta_opt)
-                    for i in range(n_train)
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_opt)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
                 ]
-                for j in range(n_plot)
-            ]
-        )
-        f_plot = Kplot @ alpha
+            )
+            f_plot = Kplot @ alpha
+        else: # doubleGP
+            K_plot1 = np.array(
+                [
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_a1)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
+                ]
+            )
+            f_plot1 = K_plot1 @ alpha1
+
+            K_plot2 = np.array(
+                [
+                    [
+                        kernel(X_train[i, :], X_plot[j, :], theta_a2)
+                        for i in range(n_train)
+                    ]
+                    for j in range(n_plot)
+                ]
+            )
+            f_plot2 = K_plot2 @ alpha2
+
+            f_plot = f_plot1 + f_plot2
+
+
         if args.resid:
             f_resid = np.array([closed_form_resid(X_plot[i,:],f_plot[i]) for i in range(X_plot.shape[0])])
             f_plot = f_resid.reshape((X_plot.shape[0],1))
@@ -946,61 +1232,6 @@ if args.plotmodel3d:
         else:
             plt.savefig(os.path.join(GP_folder, f"zeta-3d.png"), dpi=400)
         plt.close(f"3d rho_0, zeta, lam_star")
-
-# only eval relative error on test set for zeta < 1
-# because based on the model plots it appears that the patterns break down some for that
-zeta_mask = X_test[:,2] < 2.5
-X_test = X_test[zeta_mask, :]
-Y_test = Y_test[zeta_mask, :]
-n_test = X_test.shape[0]
-
-# predict and report the relative error on the test dataset
-K_test_cross = np.array(
-    [
-        [
-            kernel(X_train[i, :], X_test[j, :], theta_opt)
-            for i in range(n_train)
-        ]
-        for j in range(n_test)
-    ]
-)
-Y_test_pred = K_test_cross @ alpha
-
-crit_loads = np.exp(Y_test)
-crit_loads_pred = np.exp(Y_test_pred)
-
-abs_err = crit_loads_pred - crit_loads
-rel_err = abs(abs_err / crit_loads)
-avg_rel_err = np.mean(rel_err)
-if args.plotraw or args.plotmodel2d or args.plotmodel3d:
-    print(f"\n\n\n")
-print(f"\navg rel err from n_train={n_train} on test set of n_test={n_test} = {avg_rel_err}")
-
-# report the RMSE
-RMSE = np.sqrt(np.mean(np.square(Y_test - Y_test_pred)))
-print(f"RMSE = {RMSE}")
-
-# print out which data points have the highest relative error as this might help me improve the model
-neg_avg_rel_err = -1.0 * rel_err
-sort_indices = np.argsort(neg_avg_rel_err[:,0])
-n_worst = 100
-hdl = open("axial-model-debug.txt", "w")
-#(f"sort indices = {sort_indices}")
-for i,sort_ind in enumerate(sort_indices[:n_worst]): # first 10 
-    hdl.write(f"sort ind = {type(sort_ind)}\n")
-    x_test = X_test[sort_ind,:]
-    crit_load = crit_loads[sort_ind,0]
-    crit_load_pred = crit_loads_pred[sort_ind,0]
-    hdl.write(f"{sort_ind} - lxi={x_test[0]:.3f}, lrho0={x_test[1]:.3f}, l(1+gamma)={x_test[3]:.3f}, l(1+10^3*zeta)={x_test[2]:.3f}\n")
-    xi = np.exp(x_test[0])
-    rho0 = np.exp(x_test[1])
-    gamma = np.exp(x_test[3]) - 1.0
-    zeta = (np.exp(x_test[2]) - 1.0) / 1000.0
-    c_rel_err = (crit_load_pred - crit_load) / crit_load
-    hdl.write(f"\txi = {xi:.3f}, rho0 = {rho0:.3f}, gamma = {gamma:.3f}, zeta = {zeta:.3f}\n")
-    hdl.write(f"\tcrit_load = {crit_load:.3f}, crit_load_pred = {crit_load_pred:.3f}\n")
-    hdl.write(f"\trel err = {c_rel_err:.3e}\n")
-hdl.close()
 
 
 if args.archive:

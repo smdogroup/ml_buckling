@@ -11,7 +11,7 @@ axial_theta_opt = np.array([
 ])
 
 # overwrite with coarser gamma length scale (optional)
-# axial_theta_opt[10] = 400
+axial_theta_opt[10] = 400
 # turn off SE Kernel temporarily
 # axial_theta_opt[8] = 0.0 
 
@@ -26,7 +26,7 @@ shear_theta_opt = np.array([
 # double GP settings
 theta_a1 = axial_theta_opt.copy()
 # theta_a1[8] = 0.0 # turn off SE kernel here..
-# theta_a1[10] = 400.0 # coarse gamma length scale
+theta_a1[10] = 400.0 # coarse gamma length scale
 
 theta_a2 = axial_theta_opt.copy()
 # theta_a2[1:3] = 0.0 # set theta[1], theta[2] = 0.0 so bilinear kernel term goes away
@@ -63,12 +63,12 @@ def kernel(xp, xq, theta):
     xi_linear = xp[0] * xq[0]
     xi_kernel = 1.0 + theta[4] * xi_linear + theta[5] * xi_linear**2
     zeta_linear = xp[2] * xq[2]
-    zeta_kernel = theta[6] * zeta_linear + theta[7] * zeta_linear**2
+    zeta_kernel = 1.0 + theta[6] * zeta_linear + theta[7] * zeta_linear**2
     SE_kernel = theta[8] * np.exp(-0.5 * dgr**2 / theta[9]**2 - 0.5 * d3**2 / theta[10]**2)
     window_kernel = soft_relu(theta[11] - soft_abs(gamma_rho_dist, 10), 10) * \
                     soft_relu(theta[11] - soft_abs(gamma_rho_dist_prime, 10), 10)
     # sigma_n = theta[12]
     # 13 total hyperparameters of the model
     
-    overall_kernel = BL_kernel * gamma_kernel * xi_kernel + zeta_kernel + SE_kernel * window_kernel
+    overall_kernel = BL_kernel * gamma_kernel * xi_kernel * zeta_kernel + SE_kernel * window_kernel
     return overall_kernel
