@@ -44,7 +44,8 @@ plate_material = mlb.CompositeMaterial(
 stiff_material = plate_material
 
 # t_w = xopt[0]
-t_w = 1e-3
+stiff_AR = 5.0
+t_w = 2e-2 #1e-1
 h_w = stiff_AR * t_w
 
 # reverse solve the h_w, t_w dimensions of the stiffener
