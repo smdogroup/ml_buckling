@@ -121,10 +121,21 @@ for itrial in range(num_trials):
         exx=stiff_analysis.affine_exx if args.load == "Nx" else 0.0,
         exy=stiff_analysis.affine_exy if args.load == "Ny" else 0.0,
     )
+    zeta = stiff_analysis.zeta_plate
 
 
     # print out the previous and new values
     print(f"{prev_rho0=} {prev_xi=} {prev_gamma=} {prev_eig_FEA=} {prev_eig_CF=}")
     print(f"{rho0=} {xi=} {gamma=} {eig_FEA=} {eig_CF=}")
     # exit()
+    
+    # add to new matrix
+    new_dict["rho_0"] += [rho0]
+    new_dict["xi"] += [xi]
+    new_dict["gamma"] += [gamma]
+    new_dict["zeta"] += [zeta]
+    new_dict["eig_FEA"] += [eig_FEA]
+    new_dict["eig_CF"] += [eig_CF]
 
+my_df = pd.DataFrame(new_dict)
+my_df.to_csv(f"raw_data/{args.load}_corr.csv")
