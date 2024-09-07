@@ -11,8 +11,8 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--rho0", type=float, default=1.0)
 parent_parser.add_argument("--gamma", type=float, default=1.0)
 parent_parser.add_argument("--stiffAR", type=float, default=1.0)
-parent_parser.add_argument("--SR", type=float, default=20.0)
-parent_parser.add_argument("--b", type=float, default=0.1)
+parent_parser.add_argument("--SR", type=float, default=100.0)
+parent_parser.add_argument("--b", type=float, default=1.0)
 parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--nx_stiff_mult", type=int, default=3)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
@@ -43,28 +43,38 @@ plate_material = mlb.CompositeMaterial(
 
 stiff_material = plate_material
 
+# t_w = xopt[0]
+t_w = 1e-3
+h_w = stiff_AR * t_w
+
 # reverse solve the h_w, t_w dimensions of the stiffener
 # to produce gamma
-def gamma_resid(x):
-    _geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=3, h_w=stiff_AR*x, t_w=x
-    )
-    stiff_analysis = mlb.StiffenedPlateAnalysis(
-        comm=comm,
-        geometry=_geometry,
-        stiffener_material=stiff_material,
-        plate_material=plate_material,
-    )
-    return args.gamma - stiff_analysis.gamma
+# def gamma_resid(x):
+#     _geometry = mlb.StiffenedPlateGeometry(
+#         a=a, b=b, h=h, num_stiff=3, h_w=stiff_AR*x, t_w=x
+#     )
+#     stiff_analysis = mlb.StiffenedPlateAnalysis(
+#         comm=comm,
+#         geometry=_geometry,
+#         stiffener_material=stiff_material,
+#         plate_material=plate_material,
+#     )
+#     return args.gamma - stiff_analysis.gamma
 
-# approximate the h_w,t_w for gamma
-s_p = b / 4 # num_local = num_stiff + 1
-x_guess = np.power(args.gamma*s_p*h**3 / (1-nu**2), 0.25)
-xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
-# print(f"x = {xopt}")
+# # approximate the h_w,t_w for gamma
+# s_p = b / 4 # num_local = num_stiff + 1
+# x_guess = np.power(args.gamma*s_p*h**3 / (1-nu**2), 0.25)
+# xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
+# # print(f"x = {xopt}")
 
-t_w = xopt[0]
-h_w = stiff_AR * t_w
+# if xopt < 0:
+#     xopt = [x_guess]
+# print(f"{xopt}")
+# exit()
+
+# # t_w = xopt[0]
+# t_w = 1e-3
+# h_w = stiff_AR * t_w
 
 geometry = mlb.StiffenedPlateGeometry(
     a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
