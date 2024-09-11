@@ -54,7 +54,7 @@ def gamma_resid(x):
         stiffener_material=stiff_material,
         plate_material=plate_material,
     )
-    return args.gamma - stiff_analysis.gamma
+    return args.gamma - stiff_analysis.old_gamma
 
 # approximate the h_w,t_w for gamma
 s_p = b / 4 # num_local = num_stiff + 1
