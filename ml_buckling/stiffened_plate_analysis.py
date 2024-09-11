@@ -148,7 +148,7 @@ class StiffenedPlateAnalysis:
         return 1 / self.xi_stiff * D12 / np.sqrt(D11 * D22)
 
     @property
-    def Darray_plate_no_centroid(self) -> float:
+    def old_Darray_plate(self) -> float:
         """array [D11,D12,D22,D66] for the stiffener"""
         zL = -self.geometry.h / 2.0
         _Darray = np.zeros((4,))
@@ -269,7 +269,7 @@ class StiffenedPlateAnalysis:
         return _Aarray
 
     @property
-    def xi_plate_no_centroid(self):
+    def old_xi_plate(self):
         _Darray = self.Darray_plate
         D11 = _Darray[0]
         D12 = _Darray[1]
@@ -287,8 +287,8 @@ class StiffenedPlateAnalysis:
         return (D12 + 2 * D66) / np.sqrt(D11 * D22)
 
     @property
-    def affine_aspect_ratio_no_centroid(self):
-        _Darray = self.Darray_plate_no_centroid
+    def old_affine_aspect_ratio(self):
+        _Darray = self.old_Darray_plate
         D11 = _Darray[0]
         D22 = _Darray[2]
         return self.geometry.a / self.geometry.b * (D22 / D11) ** 0.25
@@ -330,8 +330,8 @@ class StiffenedPlateAnalysis:
         return 1.0/old_zeta
 
     @property
-    def affine_exx_no_centroid(self):
-        _Darray = self.Darray_plate_no_centroid
+    def old_affine_exx(self):
+        _Darray = self.old_Darray_plate
         D11 = _Darray[0]
         D22 = _Darray[2]
         _Aarray = self.Aarray_plate
@@ -409,7 +409,7 @@ class StiffenedPlateAnalysis:
         return z_cen
 
     @property
-    def gamma_no_centroid(self) -> float:
+    def old_gamma(self) -> float:
         """stiffener to plate bending stiffness ratio"""
         if self.geometry.num_stiff == 0:
             return 0.0
@@ -427,7 +427,7 @@ class StiffenedPlateAnalysis:
         E_P = self.plate_material.E_eff
         A_P = self.geometry.area_P
         num_stiff = self.geometry.num_stiff
-        _Darray = self.Darray_plate_no_centroid
+        _Darray = self.old_Darray_plate
         D11 = _Darray[0]
 
         # modulus weighted centroid zcen
@@ -471,12 +471,12 @@ class StiffenedPlateAnalysis:
         return EI_s / self.geometry.s_p / D11 # TODO : temporarily multiply by n_stiff+1?
 
     @property
-    def affine_exy_no_centroid(self):
+    def old_affine_exy(self):
         """
         get the exy so that lambda = kx_0y_0 the affine buckling coefficient for pure shear load
         out of the buckling analysis!
         """
-        _Darray = self.Darray_plate_no_centroid
+        _Darray = self.old_Darray_plate
         D11 = _Darray[0]
         D22 = _Darray[2]
         _Aarray = self.Aarray_plate
