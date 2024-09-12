@@ -269,6 +269,13 @@ class StiffenedPlateAnalysis:
         return _Aarray
 
     @property
+    def A11_eff(self) -> float:
+        Aarray = self.Aarray_plate
+        A11 = Aarray[0]; A12 = Aarray[1]; A22 = Aarray[2]
+        # A11prime entry in compliance matrix where A16, A26 are zero and B matrix = 0 so A,D decoupled
+        return A11 - A12**2 / A22
+
+    @property
     def old_xi_plate(self):
         _Darray = self.Darray_plate
         D11 = _Darray[0]
@@ -359,18 +366,13 @@ class StiffenedPlateAnalysis:
         _Darray = self.Darray_plate
         D11 = _Darray[0]
         D22 = _Darray[2]
-        _Aarray = self.Aarray_plate
-        A11 = _Aarray[0]
         exx_T = (
             np.pi ** 2
             * np.sqrt(D11 * D22)
             / self.geometry.b ** 2
             / (1 + self.delta)
-            / A11
+            / self.A11_eff
         )
-        # N11 = exx_T * A11
-        # print(f"{N11=}")
-        # print(f"{A11=}"); exit()
         return exx_T
     
     @property
@@ -378,11 +380,9 @@ class StiffenedPlateAnalysis:
         """
         intended Nxx in linear static analysis
         """
-        _Aarray = self.Aarray_plate
-        A11 = _Aarray[0]
-        exx_T = self.affine_exx
-        N11 = exx_T * A11
-        # print(f"{N11=}")
+        N11 = self.affine_exx * self.A11_eff
+        print(f"{N11=}")
+        print(f"{self.A11_eff=}")
         return N11
 
     @property
@@ -500,13 +500,30 @@ class StiffenedPlateAnalysis:
         D22 = _Darray[2]
         _Aarray = self.Aarray_plate
         A66 = _Aarray[3]
-        exy_T = 0.5 * (
+        # 0.5 * 
+        exy_T = (
             np.pi ** 2
             * (D11 * D22 ** 3) ** 0.25
             / self.geometry.b ** 2
             / A66
         )
+
+        # need N12 = this in order to get lambda = N12,cr*
+        # dim_fact = np.pi ** 2 * (D11 * D22 ** 3) ** 0.25 / self.geometry.b ** 2
+        # print(f"{dim_fact=}")
+        # exit()
         return exy_T
+
+    @property
+    def intended_Nxy(self) -> float:
+        """
+        intended Nxx in linear static analysis
+        """
+        # may need to change to 
+        N12 = self.affine_exy * self.Aarray_plate[3]
+        print(f"{N12=}")
+        print(f"{self.Aarray_plate[3]=}")
+        return N12
 
     def _test_broadcast(self):
         return
@@ -959,8 +976,8 @@ class StiffenedPlateAnalysis:
                 y = node_dict["y"]
                 z = node_dict["z"]
                 nid = node_dict["id"]
-                u = exy * y
-                v = exy * x
+                u = 0.5 * exy * y
+                v = 0.5 * exy * x
 
                 #print(f"boundary node = {nid}, x {x}, y {y}, z {x}")
 
@@ -993,8 +1010,9 @@ class StiffenedPlateAnalysis:
                 # TODO : maybe I need to do this for the stiffener too for exx case, but unclear
                 # if node_dict["xy_plane"] or exy != 0:
                 if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
+
                     fp.write(
-                        "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "1", u)
+                        "%-8s%16d%16d%16s%16.9f\n" % ("SPC*", 1, nid, "1", u)
                     )  # u = eps_xy * y
                 # add to boundary nodes left and right of plate on the bottom of plate for v=0 axial case or all edges
                 # also all sides of exy case
@@ -1003,8 +1021,9 @@ class StiffenedPlateAnalysis:
                     or node_dict["ybot"]
                     # or (node_dict["xy_plane"] and not node_dict["ytop"])
                 ):
+                    
                     fp.write(
-                        "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "2", v)
+                        "%-8s%16d%16d%16s%16.9f\n" % ("SPC*", 1, nid, "2", v)
                     )  # v = eps_xy * x
 
             if self._use_caps:

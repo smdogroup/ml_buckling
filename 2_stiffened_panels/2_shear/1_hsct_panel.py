@@ -10,9 +10,10 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--rho0", type=float, default=1.0)
 parent_parser.add_argument("--gamma", type=float, default=1.0)
-parent_parser.add_argument("--stiffAR", type=float, default=1.0)
-parent_parser.add_argument("--SR", type=float, default=20.0)
-parent_parser.add_argument("--b", type=float, default=0.1)
+parent_parser.add_argument("--stiffAR", type=float, default=10.0)
+parent_parser.add_argument("--nstiff", type=int, default=3)
+parent_parser.add_argument("--SR", type=float, default=100.0)
+parent_parser.add_argument("--b", type=float, default=1.0)
 parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--nx_stiff_mult", type=int, default=3)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
@@ -44,29 +45,33 @@ stiff_material = plate_material
 
 # reverse solve the h_w, t_w dimensions of the stiffener
 # to produce gamma
-def gamma_resid(x):
-    _geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=3, h_w=stiff_AR*x, t_w=x
-    )
-    stiff_analysis = mlb.StiffenedPlateAnalysis(
-        comm=comm,
-        geometry=_geometry,
-        stiffener_material=stiff_material,
-        plate_material=plate_material,
-    )
-    return args.gamma - stiff_analysis.old_gamma
+if args.nstiff != 0:
+    def gamma_resid(x):
+        _geometry = mlb.StiffenedPlateGeometry(
+            a=a, b=b, h=h, num_stiff=args.nstiff, h_w=stiff_AR*x, t_w=x
+        )
+        stiff_analysis = mlb.StiffenedPlateAnalysis(
+            comm=comm,
+            geometry=_geometry,
+            stiffener_material=stiff_material,
+            plate_material=plate_material,
+        )
+        return args.gamma - stiff_analysis.old_gamma
 
-# approximate the h_w,t_w for gamma
-s_p = b / 4 # num_local = num_stiff + 1
-x_guess = np.power(args.gamma*s_p*h**3 / (1-nu**2), 0.25)
-xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
-# print(f"x = {xopt}")
+    # approximate the h_w,t_w for gamma
+    s_p = b / 4 # num_local = num_stiff + 1
+    x_guess = np.power(args.gamma*s_p*h**3 / (1-nu**2), 0.25)
+    xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
+    # print(f"x = {xopt}")
 
-t_w = xopt[0]
-h_w = stiff_AR * t_w
+    t_w = xopt[0]
+    h_w = stiff_AR * t_w
+
+else:
+    t_w = 1.0; h_w = 1.0
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
+    a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=t_w
 )
 stiff_analysis = mlb.StiffenedPlateAnalysis(
     comm=comm,
@@ -142,8 +147,10 @@ if global_lambda_star is None:
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
+    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
+    print(f"{x_zeta=}")
+    stiff_analysis.intended_Nxy
+
     print(f"Mode type predicted as {mode_type}")
     print(f"\tCF min lambda = {pred_lambda}")
     print(f"\tFEA min lambda = {global_lambda_star}")
-    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
-    print(f"{x_zeta=}")

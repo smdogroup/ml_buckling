@@ -10,11 +10,11 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--rho0", type=float, default=1.0)
 parent_parser.add_argument("--gamma", type=float, default=1.0)
-parent_parser.add_argument("--stiffAR", type=float, default=1.0)
+parent_parser.add_argument("--stiffAR", type=float, default=10.0)
 parent_parser.add_argument("--nstiff", type=int, default=3)
 parent_parser.add_argument("--sigma", type=float, default=5.0)
-parent_parser.add_argument("--SR", type=float, default=20.0)
-parent_parser.add_argument("--b", type=float, default=0.1)
+parent_parser.add_argument("--SR", type=float, default=100.0)
+parent_parser.add_argument("--b", type=float, default=1.0)
 parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--nx_stiff_mult", type=int, default=3)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
@@ -162,8 +162,10 @@ if args.lamCorr:
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
+    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
+    print(f"{x_zeta=}")
+    print(f"{stiff_analysis.intended_Nxx}")
+
     print(f"Mode type predicted as {mode_type}")
     print(f"\tCF min lambda = {pred_lambda}")
     print(f"\tFEA min lambda = {global_lambda_star}")
-    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
-    print(f"{x_zeta=}")
