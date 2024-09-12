@@ -102,7 +102,7 @@ class StiffenedPlateGeometry:
         mystr += f"\tb = {self.b}\n"
         mystr += f"\th = {self.h}\n"
         mystr += f"\tnum_stiff = {self.num_stiff}\n"
-        mystr += f"\tspar pitch = {self.s_p}\n"
+        mystr += f"\tstiffener pitch = {self.s_p}\n"
         mystr += f"\tw_b = {self.w_b}\n"
         mystr += f"\tt_b = {self.t_b}\n"
         mystr += f"\th_w = {self.h_w}\n"

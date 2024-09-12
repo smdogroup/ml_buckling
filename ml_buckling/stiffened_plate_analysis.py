@@ -276,6 +276,13 @@ class StiffenedPlateAnalysis:
         return A11 - A12**2 / A22
 
     @property
+    def A12_eff(self) -> float:
+        Aarray = self.Aarray_plate
+        A11 = Aarray[0]; A12 = Aarray[1]; A22 = Aarray[2]
+        # A11prime entry in compliance matrix where A16, A26 are zero and B matrix = 0 so A,D decoupled
+        return A12 - A11 * A22 / A12
+
+    @property
     def old_xi_plate(self):
         _Darray = self.Darray_plate
         D11 = _Darray[0]
@@ -381,8 +388,8 @@ class StiffenedPlateAnalysis:
         intended Nxx in linear static analysis
         """
         N11 = self.affine_exx * self.A11_eff
-        print(f"{N11=}")
-        print(f"{self.A11_eff=}")
+        # print(f"{N11=}")
+        # print(f"{self.A11_eff=}")
         return N11
 
     @property
@@ -539,6 +546,7 @@ class StiffenedPlateAnalysis:
 
     def pre_analysis(
         self,
+        # explicit mesh creation settings
         nx_plate=30,
         ny_plate=30,
         nz_stiff=10,
@@ -548,6 +556,8 @@ class StiffenedPlateAnalysis:
         exy=0.0,
         clamped=False,
         _make_rbe=True,
+        _explicit_poisson_exp=False,
+        # caps2tacs method settings
         use_caps=False,
         global_mesh_size=0.1, # caps settings
         edge_pt_min=5,
@@ -968,6 +978,12 @@ class StiffenedPlateAnalysis:
                 for line in pre_lines:
                     fp.write(line)
 
+            if _explicit_poisson_exp:
+                eyy_poisson = -1.0 * self.intended_Nxx / self.A12_eff
+                # print(f"{self.A12_eff=}")
+                # print(f"{eyy_poisson=}")
+                # exit()
+
             # add displacement control boundary conditions
             for node_dict in boundary_nodes:
                 # still only apply BCs to xy plane, use RBEs to ensure this now
@@ -978,6 +994,9 @@ class StiffenedPlateAnalysis:
                 nid = node_dict["id"]
                 u = 0.5 * exy * y
                 v = 0.5 * exy * x
+
+                if _explicit_poisson_exp:
+                    vpoisson = eyy_poisson * y
 
                 #print(f"boundary node = {nid}, x {x}, y {y}, z {x}")
 
@@ -1025,6 +1044,15 @@ class StiffenedPlateAnalysis:
                     fp.write(
                         "%-8s%16d%16d%16s%16.9f\n" % ("SPC*", 1, nid, "2", v)
                     )  # v = eps_xy * x
+
+                if (
+                    _explicit_poisson_exp and exx != 0 and not(node_dict["xy_plane"]) 
+                    and (node_dict["xleft"] or node_dict["xright"])
+                ):
+                    
+                    fp.write(
+                        "%-8s%16d%16d%16s%16.9f\n" % ("SPC*", 1, nid, "2", vpoisson)
+                    )  # vpoisson on stiffener ends
 
             if self._use_caps:
                 for line in post_lines:
@@ -1717,4 +1745,9 @@ class StiffenedPlateAnalysis:
         mystr += f"\texy = {self._exy:.5e}\n"
         mystr += f"\teyy = {self._eyy:.5e}\n"
         mystr += f"\tnum nodes = {self.num_nodes}\n"
+        mystr += "In plane loads\n"
+        Nxx = self.A11_eff * self._exx
+        Nxy = self.Aarray_plate[-1] * self._exy
+        mystr += f"\t{Nxx=}\n"
+        mystr += f"\t{Nxy=}\n"
         return mystr

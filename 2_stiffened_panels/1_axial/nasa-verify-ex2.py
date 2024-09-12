@@ -14,6 +14,9 @@ Shear:ResultsObtained
 With PASCO, EAL, and STAGS
 Computer Programs
 
+NOTE : ignore the mode classification which says stiffener crippling..
+it should say inconclusive or mixed here..
+
 Example 2
 page 11 - overall panel dimensions
 page 15 - mesh
@@ -30,8 +33,6 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--buckling', default=True, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--rbe', default=True, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
 
 args = parent_parser.parse_args()
 
@@ -71,13 +72,14 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 stiff_analysis.pre_analysis(
     nx_plate=30,
     ny_plate=14,
-    nz_stiff=2, #5
+    nz_stiff=3, #5
     nx_stiff_mult=1,
     exx=stiff_analysis.affine_exx,
     # exx = 1e-3,
     exy=0.0,
     clamped=False,
-    _make_rbe=True,  
+    _make_rbe=False,
+    _explicit_poisson_exp=True,
 )
 
 comm.Barrier()
@@ -86,49 +88,31 @@ if comm.rank == 0:
     print(stiff_analysis)
 # exit()
 
-tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-    sigma=10.0, num_eig=50, write_soln=True
-)
-
 if args.static:
     stiff_analysis.run_static_analysis(write_soln=True)
 
-if args.lamCorr:
-    avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
-    lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=True)
-    # exit()
+if args.buckling:
+    tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
+        sigma=5.0, num_eig=50, write_soln=True
+    )
 
-stiff_analysis.post_analysis()
+    stiff_analysis.post_analysis()
 
+    global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
-global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
-if args.lamCorr:
-    global_lambda_star *= lam_corr_fact
+    # predict the actual eigenvalue
+    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 
-# predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    if comm.rank == 0:
+        stiff_analysis.print_mode_classification()
+        print(stiff_analysis)
 
-if comm.rank == 0:
-    stiff_analysis.print_mode_classification()
-    print(stiff_analysis)
-
-# if global_lambda_star is None:
-#     rho_0 = args.rho0; gamma = args.gamma
-#     print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-#     # exit()
-
-if args.lamCorr:
-    global_lambda_star *= lam_corr_fact
-    if comm.rank == 0: 
-        print(f"{avg_stresses=}")
-        print(f"{lam_corr_fact=}")
-
-# min_eigval = tacs_eigvals[0]
-# rel_err = (pred_lambda - global_lambda_star) / pred_lambda
-if comm.rank == 0:
-    print(f"Mode type predicted as {mode_type}")
-    print(f"\tCF min lambda = {pred_lambda}")
-    print(f"\tFEA min lambda = {global_lambda_star}")
-    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
-    print(f"{x_zeta=}")
-    print(f"Nx = {stiff_analysis.intended_Nxx}")
+    # min_eigval = tacs_eigvals[0]
+    # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
+    if comm.rank == 0:
+        print(f"Mode type predicted as {mode_type}")
+        print(f"\tCF min lambda = {pred_lambda}")
+        print(f"\tFEA min lambda = {global_lambda_star}")
+        x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
+        print(f"{x_zeta=}")
+        print(f"Nx = {stiff_analysis.intended_Nxx}")

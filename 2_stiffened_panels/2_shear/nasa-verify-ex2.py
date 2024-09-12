@@ -17,10 +17,10 @@ Computer Programs
 NOTE : ignore the mode classification which says stiffener crippling..
 it should say inconclusive or mixed here..
 
-Example 4
+Example 2
 page 11 - overall panel dimensions
 page 15 - mesh
-page 33 - Metal blade-stiffened panel with thin skin
+page 27 - Metal blade-stiffened panel with thin skin
 
 The minimum eigenvalues for this very thin stiffAR is based on local mode though
     and I care about verifying global modes.
@@ -55,7 +55,7 @@ stiff_material = plate_material
 geometry = mlb.StiffenedPlateGeometry(
     a=0.762,
     b=0.762,
-    h=0.00127,
+    h=0.00213,
     num_stiff=6, # 7 panel sections
     h_w=0.03434,
     t_w=0.00147,
@@ -74,12 +74,11 @@ stiff_analysis.pre_analysis(
     ny_plate=14,
     nz_stiff=3, #5
     nx_stiff_mult=1,
-    exx=stiff_analysis.affine_exx,
-    # exx = 1e-3,
-    exy=0.0,
+    exx=0.0,
+    exy=stiff_analysis.affine_exy,
     clamped=False,
     _make_rbe=False,
-    _explicit_poisson_exp=True,  
+    _explicit_poisson_exp=True,
 )
 
 comm.Barrier()
@@ -96,9 +95,7 @@ if args.buckling:
         sigma=5.0, num_eig=50, write_soln=True
     )
 
-
     stiff_analysis.post_analysis()
-
 
     global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
@@ -109,22 +106,9 @@ if args.buckling:
         stiff_analysis.print_mode_classification()
         print(stiff_analysis)
 
-    # if global_lambda_star is None:
-    #     rho_0 = args.rho0; gamma = args.gamma
-    #     print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-    #     # exit()
-
-    if args.lamCorr:
-        global_lambda_star *= lam_corr_fact
-        if comm.rank == 0: 
-            print(f"{avg_stresses=}")
-            print(f"{lam_corr_fact=}")
-
     # min_eigval = tacs_eigvals[0]
     # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
     if comm.rank == 0:
         print(f"Mode type predicted as {mode_type}")
         print(f"\tCF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
-        x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
-        print(f"{x_zeta=}")

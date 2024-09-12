@@ -33,6 +33,7 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--buckling', default=True, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument("--sigma", type=float, default=3.0)
 
 args = parent_parser.parse_args()
 
@@ -74,9 +75,8 @@ stiff_analysis.pre_analysis(
     ny_plate=14,
     nz_stiff=3, #5
     nx_stiff_mult=1,
-    exx=stiff_analysis.affine_exx,
-    # exx = 1e-3,
-    exy=0.0,
+    exx=0.0,
+    exy=stiff_analysis.affine_exy,
     clamped=False,
     _make_rbe=False,
     _explicit_poisson_exp=True,  
@@ -93,12 +93,10 @@ if args.static:
 
 if args.buckling:
     tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-        sigma=5.0, num_eig=50, write_soln=True
+        sigma=args.sigma, num_eig=50, write_soln=True
     )
 
-
     stiff_analysis.post_analysis()
-
 
     global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
@@ -109,22 +107,9 @@ if args.buckling:
         stiff_analysis.print_mode_classification()
         print(stiff_analysis)
 
-    # if global_lambda_star is None:
-    #     rho_0 = args.rho0; gamma = args.gamma
-    #     print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-    #     # exit()
-
-    if args.lamCorr:
-        global_lambda_star *= lam_corr_fact
-        if comm.rank == 0: 
-            print(f"{avg_stresses=}")
-            print(f"{lam_corr_fact=}")
-
     # min_eigval = tacs_eigvals[0]
     # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
     if comm.rank == 0:
         print(f"Mode type predicted as {mode_type}")
         print(f"\tCF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
-        x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
-        print(f"{x_zeta=}")
