@@ -111,7 +111,9 @@ stiff_analysis.pre_analysis(
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
-    _make_rbe=args.rbe,  
+    # _make_rbe=args.rbe, 
+    _make_rbe=False,
+    _explicit_poisson_exp=True, 
 )
 
 # print(f"{}")

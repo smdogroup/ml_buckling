@@ -38,7 +38,7 @@ class StiffenedPlateGeometry:
     @property
     def s_p(self) -> float:
         """stiffener pitch"""
-        if self._num_stiff:
+        if self._num_stiff is not None:
             return self.b / self.N
         else:
             return self._s_p
@@ -46,11 +46,14 @@ class StiffenedPlateGeometry:
     @property
     def boundary_s_p(self) -> float:
         """stiffener pitch at the boundaries (leftover material spacing), see Quinn example"""
-        return (self.b / 2.0) % self.s_p
+        if self._num_stiff is not None:
+            return self.s_p
+        else:
+            return (self.b / 2.0) % self.s_p
         
     @property
     def num_stiff(self) -> int:
-        if self._num_stiff:
+        if self._num_stiff is not None:
             return self._num_stiff
         else:
             # symmetricly placed stiffeners with extra space at ends

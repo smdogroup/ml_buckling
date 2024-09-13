@@ -644,7 +644,7 @@ class StiffenedPlateAnalysis:
             elem_id = 0
 
             class Node:
-                TOL = 1e-7
+                TOL = 1e-10
                 def __init__(self, x, y, z, id):
                     self.x = x
                     self.y = y
@@ -746,6 +746,7 @@ class StiffenedPlateAnalysis:
                 #     exit()
 
                 Ly = self.geometry.s_p if not(ilocal in [0,N-1]) else self.geometry.boundary_s_p
+                # print(f"y from {ystart} to {ystart+Ly}")
                 Lx = self.geometry.a
                 Lz_stiff = self.geometry.h_w
 
@@ -983,7 +984,7 @@ class StiffenedPlateAnalysis:
                         # print(f"{rbe_nodes=}")
                         # exit()
                         if len(rbe_nodes) > 0:
-                            print(f"writing {rbe_nodes=}")
+                            # print(f"writing {rbe_nodes=}")
                             # exit()
                             fp1.write(
                                 "%-8s%8d%8d%8d" % ("RBE2", int(eid), int(rbe_control_node), 23)
@@ -1056,7 +1057,6 @@ class StiffenedPlateAnalysis:
                 # TODO : maybe I need to do this for the stiffener too for exx case, but unclear
                 # if node_dict["xy_plane"] or exy != 0:
                 if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
-
                     fp.write(
                         "%-8s%16d%16d%16s%16.9f\n" % ("SPC*", 1, nid, "1", u)
                     )  # u = eps_xy * y
@@ -1076,7 +1076,10 @@ class StiffenedPlateAnalysis:
                     _explicit_poisson_exp and exx != 0 and not(node_dict["xy_plane"]) 
                     and (node_dict["xleft"] or node_dict["xright"])
                 ):
-                    
+                    # xy_plane = node_dict["xy_plane"]
+                    # print(f"{xy_plane=}")
+                    # print(f"{x=} {y=} {z=}")
+                    # print(f"{vpoisson=}"); exit()
                     fp.write(
                         "%-8s%16d%16d%16s%16.9f\n" % ("SPC*", 1, nid, "2", vpoisson)
                     )  # vpoisson on stiffener ends
@@ -1767,6 +1770,7 @@ class StiffenedPlateAnalysis:
         mystr += f"\tdelta = {self.delta}\n"
         mystr += f"\tzeta plate = {self.zeta_plate}\n"
         mystr += f"\tzeta stiff = {self.zeta_stiff}\n"
+        mystr += f"\tstiffAR = {self.geometry.stiff_AR}\n"
         mystr += "Mesh + Case Settings\n"
         mystr += f"\texx = {self._exx:.5e}\n"
         mystr += f"\texy = {self._exy:.5e}\n"
