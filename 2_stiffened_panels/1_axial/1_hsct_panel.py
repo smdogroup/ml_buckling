@@ -10,9 +10,11 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--rho0", type=float, default=1.0)
 parent_parser.add_argument("--gamma", type=float, default=1.0)
-parent_parser.add_argument("--stiffAR", type=float, default=1.0)
-parent_parser.add_argument("--SR", type=float, default=20.0)
-parent_parser.add_argument("--b", type=float, default=0.1)
+parent_parser.add_argument("--stiffAR", type=float, default=10.0)
+parent_parser.add_argument("--nstiff", type=int, default=3)
+parent_parser.add_argument("--sigma", type=float, default=5.0)
+parent_parser.add_argument("--SR", type=float, default=100.0)
+parent_parser.add_argument("--b", type=float, default=1.0)
 parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--nx_stiff_mult", type=int, default=3)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
@@ -30,11 +32,14 @@ a = b * AR
 # h = 5e-3
 h = b / args.SR
 nu = 0.3
+E = 138e9
+G = E / 2.0 / (1 + nu)
+
 
 plate_material = mlb.CompositeMaterial(
-    E11=138e9,  # Pa
-    E22=138e9, #8.96e9
-    G12=138e9/2.0/(1+nu),
+    E11=E,  # Pa
+    E22=E,
+    G12=G,
     nu12=nu,
     ply_angles=[0, 90, 0, 90],
     ply_fractions=[0.25]*4,
@@ -47,7 +52,7 @@ stiff_material = plate_material
 # to produce gamma
 def gamma_resid(x):
     _geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=3, h_w=stiff_AR*x, t_w=x
+        a=a, b=b, h=h, num_stiff=args.nstiff, h_w=stiff_AR*x, t_w=x
     )
     stiff_analysis = mlb.StiffenedPlateAnalysis(
         comm=comm,
@@ -55,7 +60,7 @@ def gamma_resid(x):
         stiffener_material=stiff_material,
         plate_material=plate_material,
     )
-    return args.gamma - stiff_analysis.gamma
+    return args.gamma - stiff_analysis.old_gamma
 
 # approximate the h_w,t_w for gamma
 s_p = b / 4 # num_local = num_stiff + 1
@@ -67,7 +72,7 @@ t_w = xopt[0]
 h_w = stiff_AR * t_w
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
+    a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=t_w
 )
 stiff_analysis = mlb.StiffenedPlateAnalysis(
     comm=comm,
@@ -77,14 +82,26 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 )
 
 _nelems = args.nelems
-MIN_Y = 20 / geometry.num_local
+# MIN_Y = 20 / geometry.num_local
+MIN_Y = 5
 MIN_Z = 5 #5
 N = geometry.num_local
 AR_s = geometry.a / geometry.h_w
 #print(f"AR = {AR}, AR_s = {AR_s}")
 nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
-ny = max(np.ceil(nx / AR / N), MIN_Y)
-nz = max(np.ceil(nx / AR_s), MIN_Z)
+den = (1.0/AR + (N-1) * 1.0 / AR_s)
+# print(f"{AR=}")
+# print(f"{N=}")
+# print(f"{den=}")
+# print(f"{nx=}")
+ny = max([np.ceil(nx / AR / N), MIN_Y])
+# nz = max([np.ceil(nx / AR_s), MIN_Z])
+nz = 5
+
+# my_list = [np.ceil(nx / AR / N), MIN_Y]
+# print(f"{my_list=}")
+
+print(f"{nx=} {ny=} {nz=}")
 
 stiff_analysis.pre_analysis(
     nx_plate=int(nx), #90
@@ -94,8 +111,12 @@ stiff_analysis.pre_analysis(
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
-    _make_rbe=args.rbe,  
+    # _make_rbe=args.rbe, 
+    _make_rbe=False,
+    _explicit_poisson_exp=True, 
 )
+
+# print(f"{}")
 
 comm.Barrier()
 
@@ -104,7 +125,7 @@ if comm.rank == 0:
 # exit()
 
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-    sigma=5.0, num_eig=50, write_soln=True
+    sigma=args.sigma, num_eig=50, write_soln=True
 )
 
 if args.static:
@@ -143,8 +164,10 @@ if args.lamCorr:
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
+    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
+    print(f"{x_zeta=}")
+    print(f"{stiff_analysis.intended_Nxx}")
+
     print(f"Mode type predicted as {mode_type}")
     print(f"\tCF min lambda = {pred_lambda}")
     print(f"\tFEA min lambda = {global_lambda_star}")
-    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
-    print(f"{x_zeta=}")

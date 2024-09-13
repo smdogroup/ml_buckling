@@ -10,15 +10,15 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--rho0", type=float, default=1.0)
 parent_parser.add_argument("--gamma", type=float, default=1.0)
-parent_parser.add_argument("--stiffAR", type=float, default=10.0)
-parent_parser.add_argument("--nstiff", type=int, default=3)
+parent_parser.add_argument("--stiffAR", type=float, default=1.0)
 parent_parser.add_argument("--SR", type=float, default=100.0)
 parent_parser.add_argument("--b", type=float, default=1.0)
 parent_parser.add_argument("--nelems", type=int, default=3000)
 parent_parser.add_argument("--nx_stiff_mult", type=int, default=3)
 parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--buckling', default=True, action=argparse.BooleanOptionalAction)
 parent_parser.add_argument('--rbe', default=True, action=argparse.BooleanOptionalAction)
-# parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
 
 args = parent_parser.parse_args()
 
@@ -43,35 +43,42 @@ plate_material = mlb.CompositeMaterial(
 
 stiff_material = plate_material
 
+# t_w = xopt[0]
+stiff_AR = 5.0
+t_w = 2e-2 #1e-1
+h_w = stiff_AR * t_w
+
 # reverse solve the h_w, t_w dimensions of the stiffener
 # to produce gamma
-if args.nstiff != 0:
-    def gamma_resid(x):
-        _geometry = mlb.StiffenedPlateGeometry(
-            a=a, b=b, h=h, num_stiff=args.nstiff, h_w=stiff_AR*x, t_w=x
-        )
-        stiff_analysis = mlb.StiffenedPlateAnalysis(
-            comm=comm,
-            geometry=_geometry,
-            stiffener_material=stiff_material,
-            plate_material=plate_material,
-        )
-        return args.gamma - stiff_analysis.old_gamma
+# def gamma_resid(x):
+#     _geometry = mlb.StiffenedPlateGeometry(
+#         a=a, b=b, h=h, num_stiff=3, h_w=stiff_AR*x, t_w=x
+#     )
+#     stiff_analysis = mlb.StiffenedPlateAnalysis(
+#         comm=comm,
+#         geometry=_geometry,
+#         stiffener_material=stiff_material,
+#         plate_material=plate_material,
+#     )
+#     return args.gamma - stiff_analysis.gamma
 
-    # approximate the h_w,t_w for gamma
-    s_p = b / 4 # num_local = num_stiff + 1
-    x_guess = np.power(args.gamma*s_p*h**3 / (1-nu**2), 0.25)
-    xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
-    # print(f"x = {xopt}")
+# # approximate the h_w,t_w for gamma
+# s_p = b / 4 # num_local = num_stiff + 1
+# x_guess = np.power(args.gamma*s_p*h**3 / (1-nu**2), 0.25)
+# xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
+# # print(f"x = {xopt}")
 
-    t_w = xopt[0]
-    h_w = stiff_AR * t_w
+# if xopt < 0:
+#     xopt = [x_guess]
+# print(f"{xopt}")
+# exit()
 
-else:
-    t_w = 1.0; h_w = 1.0
+# # t_w = xopt[0]
+# t_w = 1e-3
+# h_w = stiff_AR * t_w
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=t_w
+    a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
 )
 stiff_analysis = mlb.StiffenedPlateAnalysis(
     comm=comm,
@@ -95,8 +102,8 @@ stiff_analysis.pre_analysis(
     ny_plate=int(ny), #30
     nz_stiff=int(nz), #5
     nx_stiff_mult=args.nx_stiff_mult,
-    exx=0.0,
-    exy=stiff_analysis.affine_exy,
+    exx=stiff_analysis.affine_exx,
+    exy=0.0,
     clamped=False,
     _make_rbe=args.rbe,  
 )
@@ -114,20 +121,20 @@ tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
 if args.static:
     stiff_analysis.run_static_analysis(write_soln=True)
 
-# if args.lamCorr:
-#     avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
-#     lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=False)
-#     # exit()
+if args.lamCorr:
+    avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
+    lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=True)
+    # exit()
 
 stiff_analysis.post_analysis()
 
 
 global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
-# if args.lamCorr:
-#     global_lambda_star *= lam_corr_fact
+if args.lamCorr:
+    global_lambda_star *= lam_corr_fact
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exy=stiff_analysis.affine_exy)
+pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 
 if comm.rank == 0:
     stiff_analysis.print_mode_classification()
@@ -136,21 +143,19 @@ if comm.rank == 0:
 if global_lambda_star is None:
     rho_0 = args.rho0; gamma = args.gamma
     print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-    exit()
+    # exit()
 
-# if args.lamCorr:
-#     global_lambda_star *= lam_corr_fact
-#     if comm.rank == 0: 
-#         print(f"{avg_stresses=}")
-#         print(f"{lam_corr_fact=}")
+if args.lamCorr:
+    global_lambda_star *= lam_corr_fact
+    if comm.rank == 0: 
+        print(f"{avg_stresses=}")
+        print(f"{lam_corr_fact=}")
 
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
-    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
-    print(f"{x_zeta=}")
-    stiff_analysis.intended_Nxy
-
     print(f"Mode type predicted as {mode_type}")
     print(f"\tCF min lambda = {pred_lambda}")
     print(f"\tFEA min lambda = {global_lambda_star}")
+    x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
+    print(f"{x_zeta=}")

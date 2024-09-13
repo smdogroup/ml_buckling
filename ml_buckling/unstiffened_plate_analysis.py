@@ -366,6 +366,7 @@ class UnstiffenedPlateAnalysis:
         get the exx so that lambda = kx_0 the affine buckling coefficient for pure axial load
         out of the buckling analysis!
         """
+        # should actually use A11' of the compliance matrix here not self.E11 (this is corrected in stiffened panel analysis code 2_stiffened_panels)
         exx_T = (
             np.pi ** 2 * np.sqrt(self.D11 * self.D22) / self.b ** 2 / self.h / self.E11
         )

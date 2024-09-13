@@ -93,7 +93,7 @@ def get_buckling_load(rho_0, gamma):
             stiffener_material=stiff_material,
             plate_material=plate_material,
         )
-        return gamma - stiff_analysis.gamma
+        return gamma - stiff_analysis.gamma_no_centroid
 
     # approximate the h_w,t_w for gamma
     s_p = b / 4 # num_local = num_stiff + 1
@@ -135,7 +135,7 @@ def get_buckling_load(rho_0, gamma):
         ny_plate=int(ny), #30
         nz_stiff=int(nz), #5
         nx_stiff_mult=3,
-        exx=stiff_analysis.affine_exx,
+        exx=stiff_analysis.affine_exx_no_centroid,
         exy=0.0,
         clamped=False,
         _make_rbe=True,  
@@ -172,7 +172,7 @@ def get_buckling_load(rho_0, gamma):
         global_lambda_star = None
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    pred_lambda,mode_type = stiff_analysis.predict_crit_load_no_centroid(exx=stiff_analysis.affine_exx_no_centroid)
 
     if comm.rank == 0:
         stiff_analysis.print_mode_classification()
@@ -243,4 +243,4 @@ if __name__=="__main__":
 
 
 # then combine the stiff and unstiff data
-os.system("python _combine_stiff_unstiff_data.py --load Nx")
+# os.system("python _combine_stiff_unstiff_data.py --load Nx")
