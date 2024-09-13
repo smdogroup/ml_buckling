@@ -557,6 +557,7 @@ class StiffenedPlateAnalysis:
         clamped=False,
         _make_rbe=True,
         _explicit_poisson_exp=False,
+        side_support:bool=True,
         # caps2tacs method settings
         use_caps=False,
         global_mesh_size=0.1, # caps settings
@@ -726,11 +727,25 @@ class StiffenedPlateAnalysis:
             self.mesh = Mesh()
 
             N = self.geometry.num_local
-            #print(f"N = {N}")
             # make each local section and stiffener
+            print(f"{N=}")
+            stiff_locations = []
             for ilocal in range(N):
-                ystart = ilocal * self.geometry.s_p
-                Ly = self.geometry.s_p
+                # extra leftover 
+                if ilocal == 0:
+                    ystart = 0
+                elif ilocal == 1:
+                    ystart += self.geometry.boundary_s_p
+                else:
+                    ystart += self.geometry.s_p
+
+                stiff_locations += [ystart]
+
+                # print(f"{ystart=}, {ilocal=}")
+                # if ilocal == N-1:
+                #     exit()
+
+                Ly = self.geometry.s_p if not(ilocal in [0,N-1]) else self.geometry.boundary_s_p
                 Lx = self.geometry.a
                 Lz_stiff = self.geometry.h_w
 
@@ -944,7 +959,8 @@ class StiffenedPlateAnalysis:
                 fp1 = open(self.bdf_file, "a")
                 N = self.geometry.num_stiff + 1
                 for iy in range(1, self.geometry.num_stiff + 1):
-                    yval = iy * self.geometry.b / N
+                    # yval = iy * self.geometry.b / N
+                    yval = stiff_locations[iy]
                     for xval in [0, self.geometry.a]:
                         rbe_nodes = []
                         rbe_control_node = None
@@ -963,14 +979,18 @@ class StiffenedPlateAnalysis:
 
                         # write the RBE element
                         eid += 1
-                        # also could do 123456 or 123 (but I don't really want no rotation here I don't think)
-                        #print(f"eid {eid},{type(eid)}; rbe control node {rbe_control_node},{type(rbe_control_node)}")
-                        fp1.write(
-                            "%-8s%8d%8d%8d" % ("RBE2", int(eid), rbe_control_node, 23)
-                        )  # 123456
-                        for rbe_node in rbe_nodes:
-                            fp1.write("%8d" % (rbe_node))
-                        fp1.write("\n")
+                        # print(f"{rbe_control_node=}")
+                        # print(f"{rbe_nodes=}")
+                        # exit()
+                        if len(rbe_nodes) > 0:
+                            print(f"writing {rbe_nodes=}")
+                            # exit()
+                            fp1.write(
+                                "%-8s%8d%8d%8d" % ("RBE2", int(eid), int(rbe_control_node), 23)
+                            )
+                            for rbe_node in rbe_nodes:
+                                fp1.write("%8d" % (rbe_node))
+                            fp1.write("\n")
                 fp1.close()
 
             if self._use_caps:
@@ -1023,9 +1043,16 @@ class StiffenedPlateAnalysis:
                             "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "346", 0.0)
                         )  # w = theta_z = 0
                     else:
-                        fp.write(
-                            "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "36", 0.0)
-                        )  # w = theta_z = 0
+                        simply_supported = False
+                        if side_support:
+                            simply_supported = True
+                        else: # only support uniaxial / xx ends
+                            simply_supported = node_dict["xleft"] or node_dict["xright"]
+
+                        if simply_supported: #then all edges simply supported
+                            fp.write(
+                                "%-8s%8d%8d%8s%8.6f\n" % ("SPC", 1, nid, "36", 0.0)
+                            )  # w = theta_z = 0
                 # TODO : maybe I need to do this for the stiffener too for exx case, but unclear
                 # if node_dict["xy_plane"] or exy != 0:
                 if exy != 0 or node_dict["xleft"] or node_dict["xright"]:
