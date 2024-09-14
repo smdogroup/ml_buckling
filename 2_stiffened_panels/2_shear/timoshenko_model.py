@@ -15,10 +15,10 @@ parent_parser.add_argument("--SR", type=float, default=100.0)
 parent_parser.add_argument("--b", type=float, default=1.0)
 
 # change this one to change gamma right now, gamma can only go so high usually with single-sided stiffeners (like gamma < 10, 15)
-parent_parser.add_argument("--hw", type=float, default=0.05)
+parent_parser.add_argument("--hw", type=float, default=0.08)
 
 parent_parser.add_argument("--nelems", type=int, default=2000)
-parent_parser.add_argument("--sigma", type=float, default=10.0)
+parent_parser.add_argument("--sigma", type=float, default=5.0)
 args = parent_parser.parse_args()
 
 
@@ -81,8 +81,9 @@ stiff_analysis.pre_analysis(
     ny_plate=int(ny), #30
     nz_stiff=int(nz), #5
     nx_stiff_mult=2,
-    exx=stiff_analysis.affine_exx,
-    exy=0.0,
+    # exx=stiff_analysis.affine_exx,
+    exx=0.0,
+    exy=stiff_analysis.affine_exy,
     clamped=False,
     # _make_rbe=args.rbe, 
     _make_rbe=True,
@@ -111,7 +112,7 @@ stiff_analysis.post_analysis()
 global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda,mode_type = stiff_analysis.predict_crit_load(exy=stiff_analysis.affine_exy)
 
 if comm.rank == 0:
     stiff_analysis.print_mode_classification()
@@ -122,18 +123,19 @@ if comm.rank == 0:
 if comm.rank == 0:
     print(f"{stiff_analysis.intended_Nxx}")
 
-    # timoshenko isotropic closed-form
-    beta = geometry.a / geometry.b
-    gamma = stiff_analysis.gamma / 2.0
-    delta = stiff_analysis.delta / 2.0
-    timosh_crit = 1e10
-    for m in range(1,100):
-        # in book we assume m = 1
-        temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * gamma ) * m**2 / beta**2 / (1.0 + 2.0 * delta)
-        if temp < timosh_crit:
-            timosh_crit = temp
+    # only for isotropic
+    # # timoshenko isotropic closed-form
+    # beta = geometry.a / geometry.b
+    # gamma = stiff_analysis.gamma / 2.0
+    # delta = stiff_analysis.delta / 2.0
+    # timosh_crit = 1e10
+    # for m in range(1,100):
+    #     # in book we assume m = 1
+    #     temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * gamma ) * m**2 / beta**2 / (1.0 + 2.0 * delta)
+    #     if temp < timosh_crit:
+    #         timosh_crit = temp
 
     print(f"Mode type predicted as {mode_type}")
-    print(f"\ttimoshenko CF lambda = {timosh_crit}")
+    # print(f"\ttimoshenko CF lambda = {timosh_crit}")
     print(f"\tmy CF min lambda = {pred_lambda}")
     print(f"\tFEA min lambda = {global_lambda_star}")

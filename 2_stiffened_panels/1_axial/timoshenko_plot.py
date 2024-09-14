@@ -140,7 +140,10 @@ if __name__=="__main__":
     import matplotlib.pyplot as plt
 
     rho0_min = 0.5
-    rho0_max = 8.0
+    rho0_max = 10.0
+    n_FEA = 50
+
+    # TODO : make it so we can set gamma here also and adaptively select hw
 
     rho0_CF = np.linspace(rho0_min, rho0_max, 100)
     N11_CF = np.array([
@@ -163,7 +166,6 @@ if __name__=="__main__":
         print("done with closed-form timoshenko")
         # exit()
 
-    n_FEA = 10
     rho0_FEA = np.linspace(rho0_min, rho0_max, n_FEA)
     N11_FEA = np.array([
         axial_load(rho0)[0] for rho0 in rho0_FEA
