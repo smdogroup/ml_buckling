@@ -49,6 +49,23 @@ plate_material = mlb.CompositeMaterial(
 stiff_material = plate_material
 
 geometry = mlb.StiffenedPlateGeometry(
+        a=a, b=b, h=h, num_stiff=1, h_w=h_w, t_w=t_w
+    )
+stiff_analysis = mlb.StiffenedPlateAnalysis(
+    comm=comm,
+    geometry=geometry,
+    stiffener_material=stiff_material,
+    plate_material=plate_material,
+)
+
+# adjust AR as best we can
+act_rho0 = stiff_analysis.affine_aspect_ratio
+AR_mult = act_rho0 / AR
+AR /= AR_mult
+a = b * AR
+
+# make a new plate geometry
+geometry = mlb.StiffenedPlateGeometry(
     a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=t_w
 )
 stiff_analysis = mlb.StiffenedPlateAnalysis(

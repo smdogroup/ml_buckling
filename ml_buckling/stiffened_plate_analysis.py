@@ -182,6 +182,7 @@ class StiffenedPlateAnalysis:
         """array [D11,D12,D22,D66] for the stiffener"""
         # first compute D22,D12,D66 with centroid at center of skin
         zL = -self.geometry.h / 2.0
+        # zL = -self.geometry.h / 2.0 - self.centroid # symmetric about 0
         _Darray = np.zeros((4,))
         ply_thicknesses = self.plate_material.get_ply_thicknesses(self.geometry.h)
         for iply, ply_angle in enumerate(self.plate_material.ply_angles):
@@ -195,7 +196,7 @@ class StiffenedPlateAnalysis:
             ).rotate_ply(ply_angle)
 
             nu_denom = 1 - util.nu12 * util.nu21
-            Q11 = util.E11 / nu_denom
+            # Q11 = util.E11 / nu_denom
             Q22 = util.E22 / nu_denom
             Q12 = util.nu12 * Q22
             Q66 = util.G12
@@ -207,6 +208,7 @@ class StiffenedPlateAnalysis:
             zL = zU * 1.0
 
         # then compute D11 with overall centroid
+        # zL = -self.geometry.h / 2.0
         zL = -self.geometry.h / 2.0 - self.centroid # symmetric about 0
         for iply, ply_angle in enumerate(self.plate_material.ply_angles):
             ply_thick = ply_thicknesses[iply]
@@ -221,6 +223,10 @@ class StiffenedPlateAnalysis:
             nu_denom = 1 - util.nu12 * util.nu21
             Q11 = util.E11 / nu_denom
             _Darray[0] += 1.0 / 3 * Q11 * (zU ** 3 - zL ** 3)
+
+            # # do D22 with overall centroid also? prob not
+            # Q22 = util.E22 / nu_denom
+            # _Darray[1] += 1.0 / 3 * Q12 * (zU ** 3 - zL ** 3)
 
             zL = zU * 1.0
         return _Darray

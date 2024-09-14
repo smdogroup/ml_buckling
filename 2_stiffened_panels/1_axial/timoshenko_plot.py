@@ -47,6 +47,23 @@ def axial_load(AR, solve_buckling=True):
         plate_material=plate_material,
     )
 
+    # adjust AR as best we can
+    act_rho0 = stiff_analysis.affine_aspect_ratio
+    AR_mult = act_rho0 / AR
+    AR /= AR_mult
+    a = b * AR
+
+    # make a new plate geometry
+    geometry = mlb.StiffenedPlateGeometry(
+        a=a, b=b, h=h, num_stiff=1, h_w=h_w, t_w=t_w
+    )
+    stiff_analysis = mlb.StiffenedPlateAnalysis(
+        comm=comm,
+        geometry=geometry,
+        stiffener_material=stiff_material,
+        plate_material=plate_material,
+    )
+
     _nelems = 2000
     # MIN_Y = 20 / geometry.num_local
     MIN_Y = 5
@@ -145,7 +162,7 @@ if __name__=="__main__":
 
     # TODO : make it so we can set gamma here also and adaptively select hw
 
-    rho0_CF = np.linspace(rho0_min, rho0_max, 100)
+    rho0_CF = np.geomspace(rho0_min, rho0_max, 100)
     N11_CF = np.array([
         axial_load(rho0, solve_buckling=False)[1] for rho0 in rho0_CF
     ])
@@ -154,7 +171,7 @@ if __name__=="__main__":
         plt.plot(rho0_CF, N11_CF, "-", label="closed-form")
         # plt.show()
 
-    rho0_CFT = np.linspace(rho0_min, rho0_max, 100)
+    rho0_CFT = np.geomspace(rho0_min, rho0_max, 100)
     N11_CFT = np.array([
         axial_load(rho0, solve_buckling=False)[2] for rho0 in rho0_CFT
     ])
@@ -166,7 +183,7 @@ if __name__=="__main__":
         print("done with closed-form timoshenko")
         # exit()
 
-    rho0_FEA = np.linspace(rho0_min, rho0_max, n_FEA)
+    rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
     N11_FEA = np.array([
         axial_load(rho0)[0] for rho0 in rho0_FEA
     ])
@@ -177,5 +194,7 @@ if __name__=="__main__":
         plt.title(r"$\gamma = 11.25$")
         plt.xlabel(r"$\rho_0$")
         plt.ylabel(r"$N_{11,cr}^*$")
+        plt.xscale('log')
+        plt.yscale('log')
         plt.show()
     
