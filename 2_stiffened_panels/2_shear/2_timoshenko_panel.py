@@ -15,7 +15,7 @@ parent_parser.add_argument("--SR", type=float, default=100.0)
 parent_parser.add_argument("--b", type=float, default=1.0)
 
 # change this one to change gamma right now, gamma can only go so high usually with single-sided stiffeners (like gamma < 10, 15)
-parent_parser.add_argument("--hw", type=float, default=0.08)
+parent_parser.add_argument("--gamma", type=float, default=10.0)
 
 parent_parser.add_argument("--nelems", type=int, default=2000)
 parent_parser.add_argument("--sigma", type=float, default=5.0)
@@ -28,8 +28,8 @@ b = args.b
 a = b * AR
 h = b / args.SR # 10 mm
 
-h_w = args.hw
-t_w = h_w / args.stiffAR
+# h_w = args.hw
+# t_w = h_w / args.stiffAR
 
 nu = 0.3
 E = 138e9
@@ -48,25 +48,37 @@ plate_material = mlb.CompositeMaterial(
 
 stiff_material = plate_material
 
-geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=1, h_w=h_w, t_w=t_w
-    )
-stiff_analysis = mlb.StiffenedPlateAnalysis(
-    comm=comm,
-    geometry=geometry,
-    stiffener_material=stiff_material,
-    plate_material=plate_material,
-)
+def gamma_rho0_resid(x):
+    h_w = x[0]
+    AR = x[1]
+    t_w = h_w / args.stiffAR
 
-# adjust AR as best we can
-act_rho0 = stiff_analysis.affine_aspect_ratio
-AR_mult = act_rho0 / AR
-AR /= AR_mult
+    a = AR * b
+
+    geometry = mlb.StiffenedPlateGeometry(
+        a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=t_w
+    )
+    stiff_analysis = mlb.StiffenedPlateAnalysis(
+        comm=comm,
+        geometry=geometry,
+        stiffener_material=stiff_material,
+        plate_material=plate_material,
+    )
+
+    return [
+        args.rho0-stiff_analysis.affine_aspect_ratio,
+        args.gamma - stiff_analysis.gamma
+    ]
+
+xopt = sopt.fsolve(func=gamma_rho0_resid, x0=(0.08*args.gamma/11.25, args.rho0))
+
+h_w = xopt[0]
+AR = xopt[1]
 a = b * AR
 
 # make a new plate geometry
 geometry = mlb.StiffenedPlateGeometry(
-    a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=t_w
+    a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=h_w/args.stiffAR
 )
 stiff_analysis = mlb.StiffenedPlateAnalysis(
     comm=comm,
@@ -98,7 +110,6 @@ stiff_analysis.pre_analysis(
     ny_plate=int(ny), #30
     nz_stiff=int(nz), #5
     nx_stiff_mult=2,
-    # exx=stiff_analysis.affine_exx,
     exx=0.0,
     exy=stiff_analysis.affine_exy,
     clamped=False,
@@ -111,13 +122,9 @@ stiff_analysis.pre_analysis(
 
 comm.Barrier()
 
-if comm.rank == 0:
-    print(stiff_analysis)
-# exit()
-
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
     sigma=args.sigma, 
-    num_eig=50, #50, 100
+    num_eig=100, #50, 100
     write_soln=True
 )
 
@@ -126,7 +133,12 @@ tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
 stiff_analysis.post_analysis()
 
 
-global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+# global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+global_lambda_star = stiff_analysis.get_mac_global_mode(
+    axial=False, 
+    min_similarity=0.7,
+    local_mode_tol=0.7,
+)
 
 # predict the actual eigenvalue
 pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=False)
@@ -138,9 +150,6 @@ if comm.rank == 0:
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
-    print(f"{stiff_analysis.intended_Nxx}")
-
-    # only for isotropic
     # # timoshenko isotropic closed-form
     # beta = geometry.a / geometry.b
     # gamma = stiff_analysis.gamma / 2.0

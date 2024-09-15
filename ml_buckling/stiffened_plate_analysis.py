@@ -1455,7 +1455,9 @@ class StiffenedPlateAnalysis:
         # compute max w displacement in the stiffeners
         mask = None
         for i in range(1, self.geometry.num_stiff + 1):
-            _mask = self._in_tol(self._eta, i / N)
+            # require at the panel surface only but under stiffener
+            _mask = np.logical_and(self._in_tol(self._eta, i / N),
+                                   self._in_tol(self._zeta, 0.0, tol=1e-5))
             if mask is None:
                 mask = _mask
             else:
