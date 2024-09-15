@@ -2,6 +2,8 @@ import ml_buckling as mlb
 from mpi4py import MPI
 import numpy as np
 import scipy.optimize as sopt
+import niceplots
+import pandas as pd
 
 comm = MPI.COMM_WORLD
 
@@ -10,19 +12,18 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 args = parent_parser.parse_args()
 
-def axial_load(AR, solve_buckling=True):
+def axial_load(rho0, gamma, solve_buckling=True):
 
-    # AR = 6.0
     stiff_AR = 20.0
     plate_SR = 100.0 #100.0
     b = 1.0
-    a = b * AR
     h = b / plate_SR # 10 mm
     nu = 0.3
     E = 138e9
     G = E / 2.0 / (1 + nu)
     h_w = 0.08 #0.08
     t_w = h_w / stiff_AR # 0.005
+    nstiff = 1 if gamma > 0 else 0
 
 
     plate_material = mlb.CompositeMaterial(
@@ -37,25 +38,36 @@ def axial_load(AR, solve_buckling=True):
 
     stiff_material = plate_material
 
-    geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=1, h_w=h_w, t_w=t_w
-    )
-    stiff_analysis = mlb.StiffenedPlateAnalysis(
-        comm=comm,
-        geometry=geometry,
-        stiffener_material=stiff_material,
-        plate_material=plate_material,
-    )
+    def gamma_rho0_resid(x):
+        h_w = x[0]
+        AR = x[1]
 
-    # adjust AR as best we can
-    act_rho0 = stiff_analysis.affine_aspect_ratio
-    AR_mult = act_rho0 / AR
-    AR /= AR_mult
+        a = AR * b
+
+        geometry = mlb.StiffenedPlateGeometry(
+            a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=t_w
+        )
+        stiff_analysis = mlb.StiffenedPlateAnalysis(
+            comm=comm,
+            geometry=geometry,
+            stiffener_material=stiff_material,
+            plate_material=plate_material,
+        )
+
+        return [
+            rho0-stiff_analysis.affine_aspect_ratio,
+            gamma - stiff_analysis.gamma
+        ]
+
+    xopt = sopt.fsolve(func=gamma_rho0_resid, x0=(0.08*gamma/11.25, rho0))
+
+    h_w = xopt[0]
+    AR = xopt[1]
     a = b * AR
 
     # make a new plate geometry
     geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=1, h_w=h_w, t_w=t_w
+        a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=t_w
     )
     stiff_analysis = mlb.StiffenedPlateAnalysis(
         comm=comm,
@@ -151,50 +163,80 @@ def axial_load(AR, solve_buckling=True):
         print(f"\tmy CF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
 
+    # exit()
+
     return [global_lambda_star, pred_lambda, timosh_crit]
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
 
-    rho0_min = 0.5
+    rho0_min = 0.2
     rho0_max = 10.0
-    n_FEA = 50
+    n_FEA = 100 #50 (should be 50 in order to not plot as densely..)
 
     # TODO : make it so we can set gamma here also and adaptively select hw
 
-    rho0_CF = np.geomspace(rho0_min, rho0_max, 100)
-    N11_CF = np.array([
-        axial_load(rho0, solve_buckling=False)[1] for rho0 in rho0_CF
-    ])
+    gamma_vec = [0.0, 2.0, 5.0, 10.0]
 
+    plt.style.use(niceplots.get_style())
+
+    plt.figure("this")
+    colors = mlb.six_colors2[:4][::-1]
+
+    for igamma, gamma in enumerate(gamma_vec[::-1]):
+
+        n_CF = n_FEA
+        rho0_CF = np.geomspace(rho0_min, rho0_max, n_CF)
+        N11_CF = np.array([
+            axial_load(rho0, gamma=gamma, solve_buckling=False)[1] for rho0 in rho0_CF
+        ])
+
+        if comm.rank == 0:
+            # label="closed-form"
+            plt.plot(rho0_CF, N11_CF, "-", label=None, color=colors[igamma])
+            # plt.show()
+
+        # rho0_CFT = np.geomspace(rho0_min, rho0_max, 100)
+        # N11_CFT = np.array([
+        #     axial_load(rho0, gamma=1.0, solve_buckling=False)[2] for rho0 in rho0_CFT
+        # ])
+
+        # if comm.rank == 0:
+        #     plt.plot(rho0_CFT, N11_CFT, "-", label="timosh")
+
+        if comm.rank == 0:
+            print("done with closed-form timoshenko")
+            # exit()
+
+        rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
+        N11_FEA = np.array([
+            axial_load(rho0, gamma=gamma)[0] for rho0 in rho0_FEA
+        ])
+
+        if comm.rank == 0:
+            # FEA
+            plt.plot(rho0_FEA, N11_FEA, "o", label=r"$\gamma = " + f"{gamma:.1f}" + r"$", color=colors[igamma])
+
+        # write the data to csv file
+        if comm.rank == 0:
+            my_df_dict = {
+                "rho0" : rho0_CF,
+                "gamma" : np.array([gamma]*n_FEA),
+                "eig_CF" : N11_CF,
+                "eig_FEA" : N11_FEA,
+            }
+            my_df = pd.DataFrame(my_df_dict)
+            my_df.to_csv("axialCF-FEA.csv", header=igamma == 0, mode="w" if igamma == 0 else "a")
+    
+    # finish making the plot
     if comm.rank == 0:
-        plt.plot(rho0_CF, N11_CF, "-", label="closed-form")
-        # plt.show()
-
-    rho0_CFT = np.geomspace(rho0_min, rho0_max, 100)
-    N11_CFT = np.array([
-        axial_load(rho0, solve_buckling=False)[2] for rho0 in rho0_CFT
-    ])
-
-    if comm.rank == 0:
-        plt.plot(rho0_CFT, N11_CFT, "-", label="timosh")
-
-    if comm.rank == 0:
-        print("done with closed-form timoshenko")
-        # exit()
-
-    rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
-    N11_FEA = np.array([
-        axial_load(rho0)[0] for rho0 in rho0_FEA
-    ])
-
-    if comm.rank == 0:
-        plt.plot(rho0_FEA, N11_FEA, "o", label="FEA")
         plt.legend()
-        plt.title(r"$\gamma = 11.25$")
+        # plt.title(r"$\gamma = 11.25$")
         plt.xlabel(r"$\rho_0$")
         plt.ylabel(r"$N_{11,cr}^*$")
         plt.xscale('log')
         plt.yscale('log')
-        plt.show()
+        plt.margins(x=0.05, y=0.05)
+        # plt.show()
+        plt.savefig("axial-CF-vs-FEA-demo.png", dpi=400)
     
