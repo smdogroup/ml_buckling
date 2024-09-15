@@ -144,7 +144,7 @@ if args.lamCorr:
     global_lambda_star *= lam_corr_fact
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=True)
 
 if comm.rank == 0:
     stiff_analysis.print_mode_classification()

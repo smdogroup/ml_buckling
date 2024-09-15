@@ -44,8 +44,9 @@ if __name__=="__main__":
         rho0_FEA = rho0[gamma_mask]
         N11_FEA = eig_FEA[gamma_mask]
         # plot every other point for now when there were 100 per line (50 per line is a good density where can see points and line separately)
-        plt.plot(rho0_FEA[::2], N11_FEA[::2], "o", label=r"$\gamma = " + f"{gamma_val:.1f}" + r"$", color=colors[igamma], alpha=0.8, markersize=5)
-    
+        plt.plot(rho0_FEA, N11_FEA, "o", label=r"$\gamma = " + f"{gamma_val:.1f}" + r"$", color=colors[igamma], alpha=0.8, markersize=5)
+        # rho0_FEA[::2], N11_FEA[::2] (when there were 100 points and wanted only 50 of them)
+
     # finish making the plot
     plt.legend()
     # plt.title(r"$\gamma = 11.25$")

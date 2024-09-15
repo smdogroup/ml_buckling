@@ -46,6 +46,8 @@ class StiffenedPlateAnalysis:
         self._exy = None
         self._eyy = None
 
+        self._MAC_msg = "MAC not performed.."
+
     @classmethod
     def copy(cls, analysis, name=None):
         return cls(
@@ -1384,58 +1386,7 @@ class StiffenedPlateAnalysis:
         # return the eigenvalues here
         return np.array([funcs[key] for key in funcs]), np.array(errors)
 
-    def write_geom(
-        self,
-        base_path=None,
-    ):
-        """
-        run a linear buckling analysis on the flat plate with either isotropic or composite materials
-        return the sorted eigenvalues of the plate => would like to include M
-        """
-
-        # test bcast
-        self._test_broadcast()
-
-        # os.chdir(self._tacs_aim.root_analysis_dir)
-
-        # Instantiate FEAAssembler
-        FEAAssembler = pyTACS(self.dat_file, comm=self.comm)
-
-        # Set up constitutive objects and elements
-        FEAAssembler.initialize(self._elemCallback())
-
-        # set complex step Gmatrix into all elements through assembler
-        # FEAAssembler.assembler.setComplexStepGmatrix(True)
-
-        # Setup buckling problem
-        self.bucklingProb = FEAAssembler.createBucklingProblem(
-            name="buckle", sigma=10.0, numEigs=20
-        )
-        self.bucklingProb.setOption("printLevel", 2)
-
-        # exit()
-
-        if base_path is None:
-            base_path = os.getcwd()
-        buckling_folder = os.path.join(base_path, self.buckling_folder_name)
-        if not os.path.exists(buckling_folder) and self.comm.rank == 0:
-            os.mkdir(buckling_folder)
-        self.bucklingProb.writeSolution(outputDir=buckling_folder)
-
     MAC_THRESHOLD = 0.1  # 0.6
-
-    def eigenvalue_correction_factor(self, in_plane_loads, axial:bool=True):
-        if axial:
-            # since we compute exx BCs so that we wanted N11_intended and lambda1 = N11,cr/N11_intended
-            #  but we actually get lambda2 = N11,cr/N11_achieved
-            #  we can find lambda1 = lambda2 * N11_achieved / N11_intended using our loading correction factor on the eigenvalue
-            N11_intended = self.intended_Nxx
-            print(f"{N11_intended=}")
-            N11_achieved = -in_plane_loads[0]
-            return np.real(N11_achieved / N11_intended)
-        else: # shear, TODO
-            pass
-
 
     @property
     def nondim_X(self):
@@ -1462,49 +1413,6 @@ class StiffenedPlateAnalysis:
             return uvw_subvector
         else:
             return eigvector[2::6]
-
-    def interpolate_eigenvectors(self, X_test, compute_covar=False):
-        """
-        interpolate the eigenvector from this object the nominal plate to a new mesh in non-dim coordinates
-        """
-        X_train = self.nondim_X
-        num_train = int(self.num_nodes)
-        num_test = X_test.shape[0]
-        # default hyperparameters
-        sigma_n = 1e-4
-        sigma_f = 1.0
-        L = 0.4
-        _kernel = lambda xp, xq: exp_kernel1(xp, xq, sigma_f=sigma_f, L=L)
-        K_train = sigma_n ** 2 * np.eye(num_train) + np.array(
-            [
-                [_kernel(X_train[i, :], X_train[j, :]) for i in range(num_train)]
-                for j in range(num_train)
-            ]
-        )
-        K_test = np.array(
-            [
-                [_kernel(X_train[i, :], X_test[j, :]) for i in range(num_train)]
-                for j in range(num_test)
-            ]
-        )
-
-        if not compute_covar:
-            _interpolated_eigenvectors = []
-            for imode in range(self.num_modes):
-                phi = self.get_eigenvector(imode)
-                if self._saved_alphas:  # skip linear solve in this case
-                    alpha = self._alphas[imode]
-                else:
-                    alpha = np.linalg.solve(K_train, phi)
-                    self._alphas[imode] = alpha
-                phi_star = K_test @ alpha
-                _interpolated_eigenvectors += [phi_star]
-            self._saved_alphas = True
-            return _interpolated_eigenvectors
-        else:
-            raise AssertionError(
-                "Haven't written part of extrapolate eigenvector to get the conditional covariance yet."
-            )
 
     @property
     def num_modes(self) -> int:
@@ -1536,7 +1444,7 @@ class StiffenedPlateAnalysis:
     def _in_tol(self, val1, val2, tol=1e-5):
         return np.abs(val1 - val2) < tol
 
-    def is_local_mode(self, imode, just_check_local=False):
+    def is_local_mode(self, imode, just_check_local=False, local_mode_tol=0.5):
         """check if its a local mode by comparing the inf-norm (or max) w displacements along the stiffeners to the overall plate"""
         N = self.geometry.num_stiff + 1
         w = self._eigenvectors[imode][2::6]  # get only the w displacement entries
@@ -1558,20 +1466,20 @@ class StiffenedPlateAnalysis:
         # compute max w displacement in overlal plate
         w_max = max([np.max(np.abs(w)), 1e-13])
         if just_check_local:
-            return w_stiff_max / w_max < 0.20
+            return w_stiff_max / w_max < local_mode_tol
         else:  # also checks for non stiffener crippling modes
-            return (w_stiff_max / w_max < 0.20) and self.is_non_crippling_mode(imode)
+            return (w_stiff_max / w_max < local_mode_tol) and self.is_non_crippling_mode(imode)
 
-    def is_global_mode(self, imode, just_check_global=False):
+    def is_global_mode(self, imode, just_check_global=False, local_mode_tol=0.20):
         """check that the mode is global i.e. the max w displacement occurs in the"""
         ERROR_TOL = 1e-5
         if abs(self._errors[imode]) > ERROR_TOL:
             return False # reject this mode
         if just_check_global:
-            return not self.is_local_mode(imode, just_check_local=True)
+            return not self.is_local_mode(imode, just_check_local=True, local_mode_tol=local_mode_tol)
         else:
             return not self.is_local_mode(
-                imode, just_check_local=True
+                imode, just_check_local=True, local_mode_tol=local_mode_tol
             ) and self.is_non_crippling_mode(imode)
 
     @property
@@ -1600,74 +1508,96 @@ class StiffenedPlateAnalysis:
             else:
                 print(f"\tMode {imode} is stiffener crippling")
         return
+    
+    def cosine_mode_similarity(self, vec1, vec2):
+        """cosine mode similarity metric for modal assurance criterion"""
+        
+        assert vec1.shape[0] == vec2.shape[0]
+        # make both unit vectors
+        unit_vec1 = vec1 / np.linalg.norm(vec1)
+        unit_vec2 = vec2 / np.linalg.norm(vec2)
+        
+        # absolute value done since mode shapes are truly unsigned (form not sign matters)
+        return np.abs(np.dot(unit_vec1, unit_vec2))
 
-    @classmethod
-    def mac_permutation(
-        cls, nominal_plate, new_plate, num_modes: int
-    ) -> dict:
+    def get_mac_global_mode(self, axial:bool=True, min_similarity:float=0.3, local_mode_tol:float=0.5):
         """
-        compute the permutation of modes in the new plate that correspond to the modes in the nominal plate
-        using Gaussian Process interpolation for modal assurance criterion
+        (better modal assurance criterion method to help with mode distortion at higher gamma)
+        use more strict modal assurance criterion to determine whether each 'global mode' matches the CF modes
+        well enough (otherwise our global mode heuristic) will sometimes pick up global-local mixing modes
         """
-        eigenvalues = [None for _ in range(num_modes)]
-        permutation = {}
-        nominal_interp_modes = nominal_plate.interpolate_eigenvectors(
-            X_test=new_plate.nondim_X
-        )
-        new_modes = new_plate.eigenvectors
 
-        # _debug = False
-        # if _debug:
-        #     for imode, interp_mode in enumerate(nominal_interp_modes):
-        #         interp_mat = new_plate._vec_to_plate_matrix(interp_mode)
-        #         import matplotlib.pyplot as plt
+        self._MAC_msg = None
+        found_mode = False
+        self._min_global_imode = None
+        self._min_global_eigval = None
 
-        #         plt.imshow(interp_mat.astype(np.double))
-        #         plt.show()
+        if self.comm.rank == 0: # only do this on root proc
 
-        for imode, nominal_mode in enumerate(nominal_interp_modes):
-            if imode >= num_modes:  # if larger than number of nominal modes to compare
-                break
+            # already eliminates purely local and stiffener crippling modes
+            # but some mix global-local modes not caught yet at this point.
+            for imode in range(self.num_modes):
 
-            # skip crippling modes
-            if not nominal_plate.is_non_crippling_mode(imode):
-                continue
-
-            nominal_mode_unit = nominal_mode / np.linalg.norm(nominal_mode)
-
-            similarity_list = []
-            for inew, new_mode in enumerate(new_modes):
-
-                # skip crippling modes
-                if not new_plate.is_non_crippling_mode(inew):
+                # ensure it is a global mode otherwise continue
+                if not self.is_global_mode(imode, local_mode_tol=local_mode_tol):
                     continue
-                new_mode_unit = new_mode / np.linalg.norm(new_mode)
-                # compute cosine similarity with the unit vectors
-                similarity_list += [
-                    abs(np.dot(nominal_mode_unit, new_mode_unit).astype(np.double))
-                ]
 
-            # compute the maximum similarity index
-            # if _debug:
-            #     print(f"similarity list imode {imode} = {similarity_list}")
-            jmode_star = np.argmax(np.array(similarity_list))
-            permutation[imode] = jmode_star
-            if similarity_list[jmode_star] > cls.MAC_THRESHOLD:  # similarity threshold
-                eigenvalues[imode] = new_plate.eigenvalues[jmode_star]
+                # this gets only w defl as (N,) shape vector where there are N mesh nodes
+                obs_eigvec = self.get_eigenvector(imode, uvw=False)
+                obs_eigval = self._eigenvalues[imode]
+                N = obs_eigvec.shape[0]
 
-        # check the permutation map is one-to-one
+                # check whether matches well enough with previously established modes
+                if axial:
+                    # get xyz coords in non-dimensional form
+                    nondim_X = self.nondim_X
+                    assert nondim_X.shape[0] == N
 
-        # print to the terminal about the modal criterion
-        print(f"0-based mac criterion permutation map")
-        print(
-            f"\tbetween nominal plate {nominal_plate._name} and new plate {new_plate._name}"
-        )
-        print(f"\tthe permutation map is the following::\n")
-        for imode in permutation:
-            print(f"\t nominal {imode} : new {permutation[imode]}")
-        eigenvalues = np.real(eigenvalues)
+                    max_similarity = 0.0
+                    max_sim_m = -1
 
-        return eigenvalues, permutation
+                    # loop over known global axial modes
+                    for m in range(1,25+1):
+                        n = 1
+                        known_eigfunc = lambda xi, eta : np.sin(m*np.pi*xi) * np.sin(n*np.pi*eta)
+                        known_eigvec = np.array([known_eigfunc(nondim_X[i,0],nondim_X[i,1]) for i in range(N)])
+
+                        # cosine similarity
+                        similarity = self.cosine_mode_similarity(obs_eigvec, known_eigvec)
+                        if similarity > max_similarity:
+                            max_similarity = similarity
+                            max_sim_m = m
+                        
+                    if max_similarity > min_similarity:
+                        found_mode = True
+                        break
+
+                else: # shear
+                    raise AssertionError("Haven't written shear MAC yet for new MAC version..")
+            
+        # now save the MAC results to report later
+        if axial and found_mode:
+            if self.comm.rank == 0:
+                # now store the max similarity
+                self._min_global_imode = imode
+                self._min_global_eigval = obs_eigval.real
+                self._MAC_msg = f"MAC identified global mode {imode} with shape (m,n)=({max_sim_m},1) and {max_similarity=:.4f}"
+                print(self._MAC_msg)
+
+            # broadcast results
+            # this is bugging out on my machine when I broadcast too much => pyTACS fails
+            # self._min_global_imode = self.comm.bcast(self._min_global_imode, root=0)
+            # self._min_global_eigval = self.comm.bcast(self._min_global_eigval, root=0)
+            # self._MAC_msg = self.comm.bcast(self._MAC_msg, root=0)
+
+        if axial and not found_mode:
+            self._MAC_msg = "Global mode similar to CF modes not found.."
+
+        if not(axial) and found_mode: # shear case
+            raise AssertionError("Haven't written shear yet but is on TODO.")
+
+        return self._min_global_eigval
+
 
     def N11_plate(self, exx) -> float:
         """axial load carried by plate, need to account for composite lamiante  case with E_eff"""
@@ -1721,12 +1651,12 @@ class StiffenedPlateAnalysis:
             N12cr_lowAR = N12cr_highAR / rho0**2
             return np.max([N12cr_highAR, N12cr_lowAR]), "global"
 
-    def predict_crit_load(self, exx=0.0, exy=0.0, output_global=False, return_all=False):
+    def predict_crit_load(self, axial:bool=True, output_global=False, return_all=False):
 
         # haven't treated the combined case yet
-        assert exx == 0.0 or exy == 0.0
+        # assert exx == 0.0 or exy == 0.0
 
-        if exx != 0.0:
+        if axial:
             # N11_plate = self.intended_Nxx
             # _Darray = self.Darray_plate
             # D11 = _Darray[0]; D22 = _Darray[2]
@@ -1760,9 +1690,7 @@ class StiffenedPlateAnalysis:
 
             N12cr_highAR = (1.0+gamma+s1_bar**4 + 6 * s1_bar**2 * s2_bar**2 + s2_bar**4 + 2 * xi *( s1_bar**2 + s2_bar**2)) / 2.0 / s1_bar**2 / s2_bar
             N12cr_lowAR = N12cr_highAR / rho0**2
-            return np.max([N12cr_highAR, N12cr_lowAR]), "global"
-
-            
+            return np.max([N12cr_highAR, N12cr_lowAR]), "global"            
 
     def size_stiffener(self, gamma, nx, nz, safety_factor=10, shear=False):
         lam_stiff0,lam_global0,_ = self.predict_crit_load(
@@ -1804,4 +1732,5 @@ class StiffenedPlateAnalysis:
         Nxy = self.Aarray_plate[-1] * self._exy
         mystr += f"\t{Nxx=}\n"
         mystr += f"\t{Nxy=}\n"
+        mystr += self._MAC_msg + "\n"
         return mystr

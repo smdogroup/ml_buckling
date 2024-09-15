@@ -12,7 +12,7 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 args = parent_parser.parse_args()
 
-def axial_load(rho0, gamma, solve_buckling=True):
+def axial_load(rho0, gamma, solve_buckling=True, first=False):
 
     stiff_AR = 20.0
     plate_SR = 100.0 #100.0
@@ -21,8 +21,8 @@ def axial_load(rho0, gamma, solve_buckling=True):
     nu = 0.3
     E = 138e9
     G = E / 2.0 / (1 + nu)
-    h_w = 0.08 #0.08
-    t_w = h_w / stiff_AR # 0.005
+    # h_w = 0.08 #0.08
+    # t_w = h_w / stiff_AR # 0.005
     nstiff = 1 if gamma > 0 else 0
 
 
@@ -41,6 +41,7 @@ def axial_load(rho0, gamma, solve_buckling=True):
     def gamma_rho0_resid(x):
         h_w = x[0]
         AR = x[1]
+        t_w = h_w / stiff_AR
 
         a = AR * b
 
@@ -67,7 +68,7 @@ def axial_load(rho0, gamma, solve_buckling=True):
 
     # make a new plate geometry
     geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=t_w
+        a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=h_w/stiff_AR
     )
     stiff_analysis = mlb.StiffenedPlateAnalysis(
         comm=comm,
@@ -108,8 +109,6 @@ def axial_load(rho0, gamma, solve_buckling=True):
             _explicit_poisson_exp=True, 
         )
 
-    # print(f"{}")
-
     comm.Barrier()
 
     # if comm.rank == 0 and solve_buckling:
@@ -129,7 +128,15 @@ def axial_load(rho0, gamma, solve_buckling=True):
         stiff_analysis.post_analysis()
 
 
-        global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+        global_lambda_star = stiff_analysis.get_mac_global_mode(
+            axial=True, 
+            min_similarity=0.7, #0.5
+            local_mode_tol=0.7,
+        )
+        # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+
+        if global_lambda_star is None:
+            global_lambda_star = np.nan
 
         if comm.rank == 0:
             stiff_analysis.print_mode_classification()
@@ -139,17 +146,17 @@ def axial_load(rho0, gamma, solve_buckling=True):
         global_lambda_star = None
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=True)
 
     
     # timoshenko isotropic closed-form
     beta = geometry.a / geometry.b
-    gamma = stiff_analysis.gamma / 2.0
-    delta = stiff_analysis.delta / 2.0
+    TS_gamma = stiff_analysis.gamma / 2.0
+    TS_delta = stiff_analysis.delta / 2.0
     timosh_crit = 1e10
     for m in range(1,100):
         # in book we assume m = 1
-        temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * gamma ) * m**2 / beta**2 / (1.0 + 2.0 * delta)
+        temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * TS_gamma ) * m**2 / beta**2 / (1.0 + 2.0 * TS_delta)
         if temp < timosh_crit:
             timosh_crit = temp
 
@@ -163,6 +170,18 @@ def axial_load(rho0, gamma, solve_buckling=True):
         print(f"\tmy CF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
 
+        # write the data to csv  after each buckling solve
+        my_df_dict = {
+            "rho0" : [rho0],
+            "gamma" : [gamma],
+            "eig_CF" : [pred_lambda],
+            "eig_FEA" : [global_lambda_star],
+        }
+        my_df = pd.DataFrame(my_df_dict)
+        my_df.to_csv("axialCF-FEA.csv", header=first, mode="w" if first else "a")
+
+    comm.Barrier()
+
     # exit()
 
     return [global_lambda_star, pred_lambda, timosh_crit]
@@ -172,11 +191,12 @@ if __name__=="__main__":
 
     rho0_min = 0.2
     rho0_max = 10.0
-    n_FEA = 100 #50 (should be 50 in order to not plot as densely..)
+    n_FEA = 50 #50 (should be 50 in order to not plot as densely..)
 
     # TODO : make it so we can set gamma here also and adaptively select hw
 
     gamma_vec = [0.0, 2.0, 5.0, 10.0]
+    # gamma_vec = [0.0]
 
     plt.style.use(niceplots.get_style())
 
@@ -210,23 +230,14 @@ if __name__=="__main__":
 
         rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
         N11_FEA = np.array([
-            axial_load(rho0, gamma=gamma)[0] for rho0 in rho0_FEA
+            axial_load(rho0, gamma=gamma, first=igamma==0 and irho0==0)[0] for irho0,rho0 in enumerate(rho0_FEA)
         ])
 
         if comm.rank == 0:
             # FEA
             plt.plot(rho0_FEA, N11_FEA, "o", label=r"$\gamma = " + f"{gamma:.1f}" + r"$", color=colors[igamma])
 
-        # write the data to csv file
-        if comm.rank == 0:
-            my_df_dict = {
-                "rho0" : rho0_CF,
-                "gamma" : np.array([gamma]*n_FEA),
-                "eig_CF" : N11_CF,
-                "eig_FEA" : N11_FEA,
-            }
-            my_df = pd.DataFrame(my_df_dict)
-            my_df.to_csv("axialCF-FEA.csv", header=igamma == 0, mode="w" if igamma == 0 else "a")
+        comm.Barrier()
     
     # finish making the plot
     if comm.rank == 0:

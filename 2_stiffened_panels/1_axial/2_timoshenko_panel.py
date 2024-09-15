@@ -110,13 +110,9 @@ stiff_analysis.pre_analysis(
 
 comm.Barrier()
 
-if comm.rank == 0:
-    print(stiff_analysis)
-# exit()
-
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
     sigma=args.sigma, 
-    num_eig=50, #50, 100
+    num_eig=100, #50, 100
     write_soln=True
 )
 
@@ -125,10 +121,15 @@ tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
 stiff_analysis.post_analysis()
 
 
-global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+# global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+global_lambda_star = stiff_analysis.get_mac_global_mode(
+    axial=True, 
+    min_similarity=0.5,
+    local_mode_tol=0.5,
+)
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=True)
 
 if comm.rank == 0:
     stiff_analysis.print_mode_classification()
@@ -137,8 +138,6 @@ if comm.rank == 0:
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
-    print(f"{stiff_analysis.intended_Nxx}")
-
     # timoshenko isotropic closed-form
     beta = geometry.a / geometry.b
     gamma = stiff_analysis.gamma / 2.0
