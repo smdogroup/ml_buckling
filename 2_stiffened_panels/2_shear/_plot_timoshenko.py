@@ -11,7 +11,7 @@ plotting script for previously saved data from the script
 
 if __name__=="__main__":
 
-    df = pd.read_csv("axialCF-FEA.csv")
+    df = pd.read_csv("shearCF-FEA.csv")
     X = df[["rho0", "gamma"]].to_numpy()
     Y = df[["eig_CF", "eig_FEA"]].to_numpy()
     
@@ -38,25 +38,25 @@ if __name__=="__main__":
 
         # plot the closed-form
         rho0_CF = rho0[gamma_mask]
-        N11_CF = eig_CF[gamma_mask]
-        plt.plot(np.log(rho0_CF), np.log(N11_CF), "-", label=None, color=colors[igamma], linewidth=2.5)
+        N12_CF = eig_CF[gamma_mask]
+        plt.plot(np.log(rho0_CF), np.log(N12_CF), "-", label=None, color=colors[igamma], linewidth=2.5)
 
         # # plot the FEA
         rho0_FEA = rho0[gamma_mask]
-        N11_FEA = eig_FEA[gamma_mask]
+        N12_FEA = eig_FEA[gamma_mask]
         # plot every other point for now when there were 100 per line (50 per line is a good density where can see points and line separately)
-        plt.plot(np.log(rho0_FEA), np.log(N11_FEA), "o", label=r"$\gamma = " + f"{gamma_val:.1f}" + r"$", color=colors[igamma], alpha=0.8, markersize=5)
+        plt.plot(np.log(rho0_FEA), np.log(N12_FEA), "o", label=r"$\gamma = " + f"{gamma_val:.1f}" + r"$", color=colors[igamma], alpha=0.8, markersize=5)
         # rho0_FEA[::2], N11_FEA[::2] (when there were 100 points and wanted only 50 of them)
 
     # finish making the plot
     plt.legend()
     # plt.title(r"$\gamma = 11.25$")
     plt.xlabel(r"$\log(\rho_0)$")
-    plt.ylabel(r"$\log(N_{11,cr}^*)$")
+    plt.ylabel(r"$\log(N_{12,cr}^*)$")
     # plt.xscale('log')
     # plt.yscale('log')
     plt.margins(x=0.05, y=0.05)
     # plt.show()
-    plt.savefig("axial-CF-vs-FEA.png", dpi=400)
-    plt.savefig("axial-CF-vs-FEA.svg", dpi=400)
+    plt.savefig("shear-CF-vs-FEA.png", dpi=400)
+    plt.savefig("shear-CF-vs-FEA.svg", dpi=400)
     

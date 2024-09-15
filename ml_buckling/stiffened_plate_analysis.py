@@ -1386,8 +1386,6 @@ class StiffenedPlateAnalysis:
         # return the eigenvalues here
         return np.array([funcs[key] for key in funcs]), np.array(errors)
 
-    MAC_THRESHOLD = 0.1  # 0.6
-
     @property
     def nondim_X(self):
         """non-dimensional X matrix for Gaussian Process model"""
@@ -1536,6 +1534,8 @@ class StiffenedPlateAnalysis:
 
         if self.comm.rank == 0: # only do this on root proc
 
+            obs_eigval = None
+
             # already eliminates purely local and stiffener crippling modes
             # but some mix global-local modes not caught yet at this point.
             for imode in range(self.num_modes):
@@ -1549,14 +1549,15 @@ class StiffenedPlateAnalysis:
                 obs_eigval = self._eigenvalues[imode]
                 N = obs_eigvec.shape[0]
 
+                # get xyz coords in non-dimensional form
+                nondim_X = self.nondim_X
+                assert nondim_X.shape[0] == N
+
+                max_similarity = 0.0
+                max_sim_m = -1
+
                 # check whether matches well enough with previously established modes
                 if axial:
-                    # get xyz coords in non-dimensional form
-                    nondim_X = self.nondim_X
-                    assert nondim_X.shape[0] == N
-
-                    max_similarity = 0.0
-                    max_sim_m = -1
 
                     # loop over known global axial modes
                     for m in range(1,25+1):
@@ -1575,7 +1576,17 @@ class StiffenedPlateAnalysis:
                         break
 
                 else: # shear
-                    raise AssertionError("Haven't written shear MAC yet for new MAC version..")
+                    
+                    # # loop over various global shear modes
+                    # for m in range(1,25+1):
+                        
+                    #     # low rho0 case
+
+
+                    #     # high rho0 case
+                    #     for angle_deg in range(5, 85, 20):
+                    break
+                    # just assume that rejecting local, crippling modes is enough for now with shear
             
         # now save the MAC results to report later
         if axial and found_mode:
@@ -1595,8 +1606,18 @@ class StiffenedPlateAnalysis:
         if axial and not found_mode:
             self._MAC_msg = "Global mode similar to CF modes not found.."
 
-        if not(axial) and found_mode: # shear case
-            raise AssertionError("Haven't written shear yet but is on TODO.")
+        shear = not(axial)
+        if shear and self.comm.rank == 0:
+            if obs_eigval is not None:
+                self._min_global_imode = imode
+                self._min_global_eigval = np.abs(obs_eigval.real)
+                self._MAC_msg = f"No shear mode MAC rn just heuristic - first assumed global mode {imode} taken"
+            else:
+                self._min_global_eigval = None
+                self._MAC_msg = "No shear global modes found with global-local check"
+
+            if self.comm.rank == 0:
+                print(self._MAC_msg)    
 
         return self._min_global_eigval
 

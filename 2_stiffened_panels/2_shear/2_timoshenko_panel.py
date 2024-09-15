@@ -48,6 +48,9 @@ plate_material = mlb.CompositeMaterial(
 
 stiff_material = plate_material
 
+if args.nstiff == 0:
+    args.gamma = 0.0
+
 def gamma_rho0_resid(x):
     h_w = x[0]
     AR = x[1]
@@ -136,9 +139,10 @@ stiff_analysis.post_analysis()
 # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 global_lambda_star = stiff_analysis.get_mac_global_mode(
     axial=False, 
-    min_similarity=0.7,
-    local_mode_tol=0.7,
+    # min_similarity=0.7, # no MAC similarity for shear now
+    local_mode_tol=0.8,
 )
+
 
 # predict the actual eigenvalue
 pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=False)

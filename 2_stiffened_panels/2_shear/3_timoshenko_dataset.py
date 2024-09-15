@@ -7,10 +7,8 @@ import pandas as pd
 
 """
 As of right now => just have to manually remove 
-distorted axial modes (only were 3 models last time) at the boundary of when it first starts 
-picking up from None to not None FEA buckling loads. These models
-were severely distorted modes on the boundary of what the MAC + global heuristic picked up.
-Even if you change the boundary there are always borderline modes like this to remove by hand it seems.
+distorted shear modes at the boundary of when it first starts 
+picking up from None to not None FEA buckling loads
 """
 
 comm = MPI.COMM_WORLD
@@ -20,7 +18,7 @@ import argparse
 parent_parser = argparse.ArgumentParser(add_help=False)
 args = parent_parser.parse_args()
 
-def axial_load(rho0, gamma, solve_buckling=True, first=False):
+def shear_load(rho0, gamma, solve_buckling=True, first=False):
 
     stiff_AR = 20.0
     plate_SR = 100.0 #100.0
@@ -109,8 +107,9 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
             ny_plate=int(ny), #30
             nz_stiff=int(nz), #5
             nx_stiff_mult=2,
-            exx=stiff_analysis.affine_exx,
-            exy=0.0,
+            # exx=stiff_analysis.affine_exx,
+            exx=0.0,
+            exy=stiff_analysis.affine_exy,
             clamped=False,
             # _make_rbe=args.rbe, 
             _make_rbe=False,
@@ -127,7 +126,7 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
 
         tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
             sigma=5.0, 
-            num_eig=50, #50, 100
+            num_eig=100, #50, 100
             write_soln=True
         )
 
@@ -137,8 +136,8 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
 
 
         global_lambda_star = stiff_analysis.get_mac_global_mode(
-            axial=True, 
-            min_similarity=0.7, #0.5
+            axial=False, 
+            # min_similarity=0.7, #0.5
             local_mode_tol=0.7,
         )
         # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
@@ -154,19 +153,19 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
         global_lambda_star = None
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=True)
+    pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=False)
 
     
-    # timoshenko isotropic closed-form
-    beta = geometry.a / geometry.b
-    TS_gamma = stiff_analysis.gamma / 2.0
-    TS_delta = stiff_analysis.delta / 2.0
-    timosh_crit = 1e10
-    for m in range(1,100):
-        # in book we assume m = 1
-        temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * TS_gamma ) * m**2 / beta**2 / (1.0 + 2.0 * TS_delta)
-        if temp < timosh_crit:
-            timosh_crit = temp
+    # # timoshenko isotropic closed-form
+    # beta = geometry.a / geometry.b
+    # TS_gamma = stiff_analysis.gamma / 2.0
+    # TS_delta = stiff_analysis.delta / 2.0
+    # timosh_crit = 1e10
+    # for m in range(1,100):
+    #     # in book we assume m = 1
+    #     temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * TS_gamma ) * m**2 / beta**2 / (1.0 + 2.0 * TS_delta)
+    #     if temp < timosh_crit:
+    #         timosh_crit = temp
 
     # min_eigval = tacs_eigvals[0]
     # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
@@ -174,7 +173,7 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
         print(f"{stiff_analysis.intended_Nxx}")
 
         print(f"Mode type predicted as {mode_type}")
-        print(f"\ttimoshenko CF lambda = {timosh_crit}")
+        # print(f"\ttimoshenko CF lambda = {timosh_crit}")
         print(f"\tmy CF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
 
@@ -186,19 +185,19 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
             "eig_FEA" : [global_lambda_star],
         }
         my_df = pd.DataFrame(my_df_dict)
-        my_df.to_csv("axialCF-FEA.csv", header=first, mode="w" if first else "a")
+        my_df.to_csv("shearCF-FEA.csv", header=first, mode="w" if first else "a")
 
     comm.Barrier()
 
     # exit()
 
-    return [global_lambda_star, pred_lambda, timosh_crit]
+    return [global_lambda_star, pred_lambda, None]
 
 if __name__=="__main__":
     import matplotlib.pyplot as plt
 
     rho0_min = 0.2
-    rho0_max = 10.0
+    rho0_max = 20.0
     n_FEA = 50 #50 (should be 50 in order to not plot as densely..)
 
     # TODO : make it so we can set gamma here also and adaptively select hw
@@ -216,7 +215,7 @@ if __name__=="__main__":
         n_CF = n_FEA
         rho0_CF = np.geomspace(rho0_min, rho0_max, n_CF)
         N11_CF = np.array([
-            axial_load(rho0, gamma=gamma, solve_buckling=False)[1] for rho0 in rho0_CF
+            shear_load(rho0, gamma=gamma, solve_buckling=False)[1] for rho0 in rho0_CF
         ])
 
         if comm.rank == 0:
@@ -238,7 +237,7 @@ if __name__=="__main__":
 
         rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
         N11_FEA = np.array([
-            axial_load(rho0, gamma=gamma, first=igamma==0 and irho0==0)[0] for irho0,rho0 in enumerate(rho0_FEA)
+            shear_load(rho0, gamma=gamma, first=igamma==0 and irho0==0)[0] for irho0,rho0 in enumerate(rho0_FEA)
         ])
 
         if comm.rank == 0:
@@ -252,10 +251,10 @@ if __name__=="__main__":
         plt.legend()
         # plt.title(r"$\gamma = 11.25$")
         plt.xlabel(r"$\rho_0$")
-        plt.ylabel(r"$N_{11,cr}^*$")
+        plt.ylabel(r"$N_{12,cr}^*$")
         plt.xscale('log')
         plt.yscale('log')
         plt.margins(x=0.05, y=0.05)
         # plt.show()
-        plt.savefig("axial-CF-vs-FEA-demo.png", dpi=400)
+        plt.savefig("shear-CF-vs-FEA-demo.png", dpi=400)
     

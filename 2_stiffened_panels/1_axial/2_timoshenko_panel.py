@@ -8,13 +8,13 @@ comm = MPI.COMM_WORLD
 import argparse
 # choose the aspect ratio and gamma values to evaluate on the panel
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--rho0", type=float, default=6.0)
 parent_parser.add_argument("--stiffAR", type=float, default=20.0)
 parent_parser.add_argument("--nstiff", type=int, default=1)
 parent_parser.add_argument("--SR", type=float, default=100.0)
 parent_parser.add_argument("--b", type=float, default=1.0)
 
 # change this one to change gamma right now, gamma can only go so high usually with single-sided stiffeners (like gamma < 10, 15)
+parent_parser.add_argument("--rho0", type=float, default=1.5)
 parent_parser.add_argument("--gamma", type=float, default=10.0)
 
 parent_parser.add_argument("--nelems", type=int, default=2000)
@@ -98,7 +98,7 @@ nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
 den = (1.0/AR + (N-1) * 1.0 / AR_s)
 ny = max([np.ceil(nx / AR / N), MIN_Y])
 # nz = max([np.ceil(nx / AR_s), MIN_Z])
-nz = 3
+nz = 5
 
 # my_list = [np.ceil(nx / AR / N), MIN_Y]
 # print(f"{my_list=}")
