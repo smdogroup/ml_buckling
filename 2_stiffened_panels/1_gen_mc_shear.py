@@ -47,66 +47,63 @@ comm.Barrier()
 
 # DEFINE ANALYSIS ROUTINE
 # -----------------------
-def get_buckling_load(rho_0, gamma):
-    # previously ply_angle was input => but we found that the intended strain state
-    # is not achieved in stiffened panel case when not isotropic..
-    # so only trust isotropic stiffened panel models for now (least deviation in near-unstiffened case)
+def get_buckling_load(rho0, gamma, solve_buckling=True):
 
-    # compute the appropriate a,b,h_w,t_w values to achieve rho_0, gamma
-    AR = rho_0 # since isotropic
+    stiff_AR = 20.0
+    plate_SR = 100.0 #100.0
     b = 1.0
-    a = b * AR
-    stiffAR = 1.0
-    SR = 100
-    h = b / SR
+    h = b / plate_SR # 10 mm
     nu = 0.3
+    E = 138e9
+    G = E / 2.0 / (1 + nu)
+    # h_w = 0.08 #0.08
+    # t_w = h_w / stiff_AR # 0.005
+    nstiff = 1 if gamma > 0 else 0
 
-    # found that the intended strain state is very hard to achieve with the stiffened panel models
-    # only the isotropic case actually achieves the intended strain state in these datasets.
-    # namely highly orthotropic panels in their linear static analyses are meant to only have ex0 (only mid-plane axial strain nonzero)
-    #  however, they end up with ey0 positive and tensile, ex1 and ey1 bending curvatures. Then the buckling loads don't compare well 
-    #  to closed-form since the intended strain state is way different than the closed-form solution and the unstiffened panel models => 
-    #  which results in a poor ML model. 
-    #  Only the isotropic models actually achieve the intended strain state right now for stiffened panels and are usable for ML.
-    #  future work could fix the FEA models potentially to achieve the intended strain states for all stiffened panel materials.
-    # for this reason material variation is only considered in the unstiffened panel dataset
-    # and we assume the same xi_slope from the unstiffened dataset when we extrapolate this data.
-    nu = 0.3
+
     plate_material = mlb.CompositeMaterial(
-        E11=138e9,  # Pa
-        E22=138e9, #8.96e9
-        G12=138e9/2.0/(1+nu),
+        E11=E,  # Pa
+        E22=E,
+        G12=G,
         nu12=nu,
-        ply_angles=[0, 90, 0, 90],
-        ply_fractions=[0.25]*4,
+        ply_angles=[0],
+        ply_fractions=[1.0],
         ref_axis=[1, 0, 0],
     )
 
     stiff_material = plate_material
 
-    def gamma_resid(x):
-        _geometry = mlb.StiffenedPlateGeometry(
-            a=a, b=b, h=h, num_stiff=3, h_w=stiffAR*x, t_w=x
+    def gamma_rho0_resid(x):
+        h_w = x[0]
+        AR = x[1]
+        t_w = h_w / stiff_AR
+
+        a = AR * b
+
+        geometry = mlb.StiffenedPlateGeometry(
+            a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=t_w
         )
         stiff_analysis = mlb.StiffenedPlateAnalysis(
             comm=comm,
-            geometry=_geometry,
+            geometry=geometry,
             stiffener_material=stiff_material,
             plate_material=plate_material,
         )
-        return gamma - stiff_analysis.gamma_no_centroid
 
-    # approximate the h_w,t_w for gamma
-    s_p = b / 4 # num_local = num_stiff + 1
-    x_guess = np.power(gamma*s_p*h**3 / (1-nu**2), 0.25)
-    xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
-    # print(f"x = {xopt}")
+        return [
+            rho0-stiff_analysis.affine_aspect_ratio,
+            gamma - stiff_analysis.gamma
+        ]
 
-    t_w = xopt[0]
-    h_w = t_w * stiffAR
+    xopt = sopt.fsolve(func=gamma_rho0_resid, x0=(0.08*gamma/11.25, rho0))
 
+    h_w = xopt[0]
+    AR = xopt[1]
+    a = b * AR
+
+    # make a new plate geometry
     geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
+        a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=h_w/stiff_AR
     )
     stiff_analysis = mlb.StiffenedPlateAnalysis(
         comm=comm,
@@ -114,84 +111,102 @@ def get_buckling_load(rho_0, gamma):
         stiffener_material=stiff_material,
         plate_material=plate_material,
     )
-    
-    _nelems = args.nelems
-    MIN_Y = 20 / geometry.num_local # 20
+
+    _nelems = 2000
+    # MIN_Y = 20 / geometry.num_local
+    MIN_Y = 5
     MIN_Z = 5 #5
     N = geometry.num_local
     AR_s = geometry.a / geometry.h_w
     #print(f"AR = {AR}, AR_s = {AR_s}")
     nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
-    nx = min(nx, 50)
-    ny = max(np.ceil(nx / AR / N), MIN_Y)
-    nz = max(np.ceil(nx / AR_s), MIN_Z)
+    den = (1.0/AR + (N-1) * 1.0 / AR_s)
+    ny = max([np.ceil(nx / AR / N), MIN_Y])
+    # nz = max([np.ceil(nx / AR_s), MIN_Z])
+    nz = 3
 
-    stiff_analysis.pre_analysis(
-        nx_plate=int(nx), #90
-        ny_plate=int(ny), #30
-        nz_stiff=int(nz), #5
-        nx_stiff_mult=3,
-        exx=0.0,
-        exy=stiff_analysis.affine_exy_no_centroid,
-        clamped=False,
-        _make_rbe=True,  
-    )
+    # my_list = [np.ceil(nx / AR / N), MIN_Y]
+    # print(f"{my_list=}")
+
+    # print(f"{nx=} {ny=} {nz=}")
+
+    if solve_buckling:
+        stiff_analysis.pre_analysis(
+            nx_plate=int(nx), #90
+            ny_plate=int(ny), #30
+            nz_stiff=int(nz), #5
+            nx_stiff_mult=2,
+            # exx=stiff_analysis.affine_exx,
+            exx=0.0,
+            exy=stiff_analysis.affine_exy,
+            clamped=False,
+            # _make_rbe=args.rbe, 
+            _make_rbe=False,
+            _explicit_poisson_exp=True, 
+        )
 
     comm.Barrier()
 
-    if comm.rank == 0:
-        print(stiff_analysis)
+    # if comm.rank == 0 and solve_buckling:
+    #     print(stiff_analysis)
+    # exit()
 
-    # guess using closed-form
-    # pred_lambda,_ = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
-    # sigma = pred_lambda
-    # sigma = 10.0 if pred_lambda > 10.0 else 5.0
-    sigma = 5.0
+    if solve_buckling:
 
-    tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-        sigma=sigma, num_eig=50, write_soln=False
-    )
+        tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
+            sigma=5.0, 
+            num_eig=100, #50, 100
+            write_soln=True
+        )
 
-    if args.lamCorr:
-        avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
-        lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=True)
-        # exit()
-
-    stiff_analysis.post_analysis()
+        # if args.static:
+        # stiff_analysis.run_static_analysis(write_soln=True)
+        stiff_analysis.post_analysis()
 
 
-    global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
-    if args.lamCorr:
-        global_lambda_star *= lam_corr_fact
+        global_lambda_star = stiff_analysis.get_mac_global_mode(
+            axial=False, 
+            # min_similarity=0.7, #0.5
+            local_mode_tol=0.7,
+        )
+        # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
-    if abs(errors[0]) > 1e-4:
+        if global_lambda_star is None:
+            global_lambda_star = np.nan
+
+        if comm.rank == 0:
+            stiff_analysis.print_mode_classification()
+            print(stiff_analysis)
+
+    else:
         global_lambda_star = None
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load_no_centroid(exy=stiff_analysis.affine_exy_no_centroid)
+    pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=False)
 
-    if comm.rank == 0:
-        stiff_analysis.print_mode_classification()
-        print(stiff_analysis)
-
-    if global_lambda_star is None:
-        print(f"{rho_0=}, {gamma=}, {global_lambda_star=}")
-        # exit()
-
-    if args.lamCorr:
-        global_lambda_star *= lam_corr_fact
-        if comm.rank == 0: 
-            print(f"{avg_stresses=}")
-            print(f"{lam_corr_fact=}")
-        # exit()
+    
+    # # timoshenko isotropic closed-form
+    # beta = geometry.a / geometry.b
+    # TS_gamma = stiff_analysis.gamma / 2.0
+    # TS_delta = stiff_analysis.delta / 2.0
+    # timosh_crit = 1e10
+    # for m in range(1,100):
+    #     # in book we assume m = 1
+    #     temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * TS_gamma ) * m**2 / beta**2 / (1.0 + 2.0 * TS_delta)
+    #     if temp < timosh_crit:
+    #         timosh_crit = temp
 
     # min_eigval = tacs_eigvals[0]
     # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
-    if comm.rank == 0:
+    if comm.rank == 0 and solve_buckling:
+        print(f"{stiff_analysis.intended_Nxx}")
+
         print(f"Mode type predicted as {mode_type}")
-        print(f"\tCF min lambda = {pred_lambda}")
+        # print(f"\ttimoshenko CF lambda = {timosh_crit}")
+        print(f"\tmy CF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
-        print("--------------------------------------\n", flush=True)
+
+    comm.Barrier()
 
     # returns (CF_eig, FEA_eig) as follows:
     return pred_lambda, global_lambda_star, stiff_analysis
