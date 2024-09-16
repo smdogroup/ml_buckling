@@ -164,8 +164,8 @@ def get_buckling_load(rho0, gamma, solve_buckling=True, first=False):
         )
         # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
-        if global_lambda_star is None:
-            global_lambda_star = np.nan
+        # if global_lambda_star is None:
+        #     global_lambda_star = np.nan
 
         if comm.rank == 0:
             stiff_analysis.print_mode_classification()
@@ -213,10 +213,10 @@ if __name__ == "__main__":
             if comm.rank == 0:
                 print(f"{eig_CF=}, {eig_FEA=}")
 
-            # for first 5 irho0 if eig_FEA doesn't exist
+            # for first 2 irho0 if eig_FEA doesn't exist
             # add CF values in its place to help the ML model training in this regime
             # will result in conservative training in this low rho0 regime
-            if irho0 < 5 and gamma >= 1.0 and eig_FEA is None:
+            if irho0 < 2 and gamma >= 1.0 and eig_FEA is None:
                 eig_FEA = eig_CF
 
             if eig_FEA is None:
