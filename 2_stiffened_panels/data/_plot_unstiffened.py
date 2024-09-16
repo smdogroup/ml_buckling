@@ -46,9 +46,9 @@ zeta_bins = [
     [50.0, 100.0],
     [100.0, 200.0],
 ]
-xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1,7)]
+xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1, 7)]
 log_xi_bins = [list(np.log(np.array(xi_bin))) for xi_bin in xi_bins]
-log_gamma_bins = [[-7, -4], [-4, -2], [-2, -1], [-1, 0], [0, 1], [1,4]]
+log_gamma_bins = [[-7, -4], [-4, -2], [-2, -1], [-1, 0], [0, 1], [1, 4]]
 
 _plot = True
 _plot_gamma = True
@@ -91,7 +91,7 @@ assert n_test > 100
 # reorder the data
 indices = [_ for _ in range(n_total)]
 train_indices = np.random.choice(indices, size=n_train)
-test_indices = [_ for _ in range(n_total) if not(_ in train_indices)]
+test_indices = [_ for _ in range(n_total) if not (_ in train_indices)]
 
 X_train = X[train_indices, :]
 X_test = X[test_indices, :]
@@ -115,6 +115,7 @@ sigma_n = 1e-2
 
 def relu(x):
     return max([0.0, x])
+
 
 def soft_relu(x, rho=10):
     return 1.0 / rho * np.log(1 + np.exp(rho * x))
@@ -153,8 +154,9 @@ def kernel(xp, xq, theta):
     # log(zeta) direction
     kernel2 = np.exp(-0.5 * d2 ** 2 / L2 ** 2)
     # log(gamma) direction
-    kernel3 = np.exp(-0.5 * d3 **2 / L3 ** 2)
+    kernel3 = np.exp(-0.5 * d3 ** 2 / L3 ** 2)
     return kernel0 * kernel1 * kernel2 * kernel3
+
 
 _compute = False
 if _compute:
@@ -185,10 +187,10 @@ if _plot:
     if _plot_gamma:
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
         xi_bin = [-1.2, -0.8]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
+        xi_mask = np.logical_and(xi_bin[0] <= X[:, 0], X[:, 0] <= xi_bin[1])
         avg_xi = -1.0
         zeta_bin = [6.0, 8.0]
-        zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
+        zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 2], X[:, 2] <= zeta_bin[1])
         avg_zeta = 7.0
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
@@ -196,24 +198,25 @@ if _plot:
 
         colors = plt.cm.jet(np.linspace(0.0, 1.0, len(log_gamma_bins)))
 
-        for igamma,gamma_bin in enumerate(log_gamma_bins):
+        for igamma, gamma_bin in enumerate(log_gamma_bins):
 
-            gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
+            gamma_mask = np.logical_and(
+                gamma_bin[0] <= X[:, 3], X[:, 3] <= gamma_bin[1]
+            )
             mask = np.logical_and(xi_zeta_mask, gamma_mask)
 
-            X_in_range = X[mask,:]
-            Y_in_range = Y[mask,:]
+            X_in_range = X[mask, :]
+            Y_in_range = Y[mask, :]
 
             print(f"X in range = {X_in_range}")
             print(f"Y in range = {Y_in_range}")
 
-
             plt.plot(
-                X_in_range[:,1],
-                Y_in_range[:,0],
+                X_in_range[:, 1],
+                Y_in_range[:, 0],
                 "o",
                 color=colors[igamma],
-                zorder=1+igamma
+                zorder=1 + igamma,
             )
 
         plt.savefig(os.path.join(GP_folder, f"2d-unstiffened.png"), dpi=400)
@@ -222,10 +225,10 @@ if _plot:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
         xi_bin = [-1.2, -0.8]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
+        xi_mask = np.logical_and(xi_bin[0] <= X[:, 0], X[:, 0] <= xi_bin[1])
         avg_xi = -1.0
         zeta_bin = [6.0, 8.0]
-        zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
+        zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 2], X[:, 2] <= zeta_bin[1])
         avg_zeta = 7.0
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
@@ -234,26 +237,27 @@ if _plot:
 
         colors = plt.cm.jet(np.linspace(0.0, 1.0, len(log_gamma_bins)))
 
-        for igamma,gamma_bin in enumerate(log_gamma_bins):
+        for igamma, gamma_bin in enumerate(log_gamma_bins):
 
-            gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
+            gamma_mask = np.logical_and(
+                gamma_bin[0] <= X[:, 3], X[:, 3] <= gamma_bin[1]
+            )
             mask = np.logical_and(xi_zeta_mask, gamma_mask)
 
-            X_in_range = X[mask,:]
-            Y_in_range = Y[mask,:]
+            X_in_range = X[mask, :]
+            Y_in_range = Y[mask, :]
 
             print(f"X in range = {X_in_range}")
             print(f"Y in range = {Y_in_range}")
 
-
             ax.scatter(
-                X_in_range[:,3],
-                X_in_range[:,1],
-                Y_in_range[:,0],
+                X_in_range[:, 3],
+                X_in_range[:, 1],
+                Y_in_range[:, 0],
                 s=20,
                 color=colors[igamma],
                 edgecolors="black",
-                zorder=1+igamma
+                zorder=1 + igamma,
             )
 
         # plot the scatter plot
@@ -272,10 +276,7 @@ if _plot:
 
         Kplot = np.array(
             [
-                [
-                    kernel(X_train[i, :], X_plot[j, :], theta0)
-                    for i in range(n_train)
-                ]
+                [kernel(X_train[i, :], X_plot[j, :], theta0) for i in range(n_train)]
                 for j in range(n_plot)
             ]
         )
@@ -311,7 +312,7 @@ if _plot:
         ax.set_ylabel(r"$log(\rho_0)$")
         ax.set_zlabel(r"$log(\lambda_{min}^*)$")
         ax.set_ylim3d(np.log(0.1), np.log(10.0))
-        #ax.set_zlim3d(0.0, np.log(50.0))
+        # ax.set_zlim3d(0.0, np.log(50.0))
         ax.set_zlim3d(1.0, 3.0)
         ax.view_init(elev=20, azim=20, roll=0)
         plt.gca().invert_xaxis()
@@ -319,4 +320,3 @@ if _plot:
         plt.show()
         plt.savefig(os.path.join(GP_folder, f"gamma-3d.png"), dpi=400)
         plt.close(f"3d rho_0, gamma, lam_star")
-

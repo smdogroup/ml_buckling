@@ -6,6 +6,7 @@ import scipy.optimize as sopt
 comm = MPI.COMM_WORLD
 
 import argparse
+
 # choose the aspect ratio and gamma values to evaluate on the panel
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--stiffAR", type=float, default=20.0)
@@ -22,11 +23,10 @@ parent_parser.add_argument("--sigma", type=float, default=5.0)
 args = parent_parser.parse_args()
 
 
-
 AR = args.rho0
 b = args.b
 a = b * AR
-h = b / args.SR # 10 mm
+h = b / args.SR  # 10 mm
 
 # h_w = args.hw
 # t_w = h_w / args.stiffAR
@@ -48,6 +48,7 @@ plate_material = mlb.CompositeMaterial(
 
 stiff_material = plate_material
 
+
 def gamma_rho0_resid(x):
     h_w = x[0]
     AR = x[1]
@@ -66,11 +67,12 @@ def gamma_rho0_resid(x):
     )
 
     return [
-        args.rho0-stiff_analysis.affine_aspect_ratio,
-        args.gamma - stiff_analysis.gamma
+        args.rho0 - stiff_analysis.affine_aspect_ratio,
+        args.gamma - stiff_analysis.gamma,
     ]
 
-xopt = sopt.fsolve(func=gamma_rho0_resid, x0=(0.08*args.gamma/11.25, args.rho0))
+
+xopt = sopt.fsolve(func=gamma_rho0_resid, x0=(0.08 * args.gamma / 11.25, args.rho0))
 
 h_w = xopt[0]
 AR = xopt[1]
@@ -78,7 +80,7 @@ a = b * AR
 
 # make a new plate geometry
 geometry = mlb.StiffenedPlateGeometry(
-    a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=h_w/args.stiffAR
+    a=a, b=b, h=h, num_stiff=args.nstiff, h_w=h_w, t_w=h_w / args.stiffAR
 )
 stiff_analysis = mlb.StiffenedPlateAnalysis(
     comm=comm,
@@ -90,12 +92,12 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 _nelems = args.nelems
 # MIN_Y = 20 / geometry.num_local
 MIN_Y = 5
-MIN_Z = 5 #5
+MIN_Z = 5  # 5
 N = geometry.num_local
 AR_s = geometry.a / geometry.h_w
-#print(f"AR = {AR}, AR_s = {AR_s}")
-nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
-den = (1.0/AR + (N-1) * 1.0 / AR_s)
+# print(f"AR = {AR}, AR_s = {AR_s}")
+nx = np.ceil(np.sqrt(_nelems / (1.0 / AR + (N - 1) / AR_s)))
+den = 1.0 / AR + (N - 1) * 1.0 / AR_s
 ny = max([np.ceil(nx / AR / N), MIN_Y])
 # nz = max([np.ceil(nx / AR_s), MIN_Z])
 nz = 5
@@ -106,16 +108,16 @@ nz = 5
 print(f"{nx=} {ny=} {nz=}")
 
 stiff_analysis.pre_analysis(
-    nx_plate=int(nx), #90
-    ny_plate=int(ny), #30
-    nz_stiff=int(nz), #5
+    nx_plate=int(nx),  # 90
+    ny_plate=int(ny),  # 30
+    nz_stiff=int(nz),  # 5
     nx_stiff_mult=2,
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
-    # _make_rbe=args.rbe, 
+    # _make_rbe=args.rbe,
     _make_rbe=True,
-    _explicit_poisson_exp=False, 
+    _explicit_poisson_exp=False,
 )
 
 # print(f"{}")
@@ -123,9 +125,7 @@ stiff_analysis.pre_analysis(
 comm.Barrier()
 
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-    sigma=args.sigma, 
-    num_eig=100, #50, 100
-    write_soln=True
+    sigma=args.sigma, num_eig=100, write_soln=True  # 50, 100
 )
 
 # if args.static:
@@ -135,13 +135,13 @@ stiff_analysis.post_analysis()
 
 # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 global_lambda_star = stiff_analysis.get_mac_global_mode(
-    axial=True, 
+    axial=True,
     min_similarity=0.7,
     local_mode_tol=0.7,
 )
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=True)
+pred_lambda, mode_type = stiff_analysis.predict_crit_load(axial=True)
 
 if comm.rank == 0:
     stiff_analysis.print_mode_classification()
@@ -155,9 +155,14 @@ if comm.rank == 0:
     gamma = stiff_analysis.gamma / 2.0
     delta = stiff_analysis.delta / 2.0
     timosh_crit = 1e10
-    for m in range(1,100):
+    for m in range(1, 100):
         # in book we assume m = 1
-        temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * gamma ) * m**2 / beta**2 / (1.0 + 2.0 * delta)
+        temp = (
+            ((1.0 + beta ** 2 / m ** 2) ** 2 + 2.0 * gamma)
+            * m ** 2
+            / beta ** 2
+            / (1.0 + 2.0 * delta)
+        )
         if temp < timosh_crit:
             timosh_crit = temp
 

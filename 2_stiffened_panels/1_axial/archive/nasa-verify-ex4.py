@@ -29,10 +29,15 @@ The minimum eigenvalues for this very thin stiffAR is based on local mode though
 comm = MPI.COMM_WORLD
 
 import argparse
+
 # choose the aspect ratio and gamma values to evaluate on the panel
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--buckling', default=True, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument(
+    "--static", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--buckling", default=True, action=argparse.BooleanOptionalAction
+)
 
 args = parent_parser.parse_args()
 
@@ -41,11 +46,11 @@ nu = 0.32
 
 plate_material = mlb.CompositeMaterial(
     E11=E,  # Pa
-    E22=E, #8.96e9
-    G12=E/2.0/(1+nu),
+    E22=E,  # 8.96e9
+    G12=E / 2.0 / (1 + nu),
     nu12=nu,
-    ply_angles=[0, 90]*2,
-    ply_fractions=[0.25]*4,
+    ply_angles=[0, 90] * 2,
+    ply_fractions=[0.25] * 4,
     ref_axis=[1, 0, 0],
 )
 
@@ -56,7 +61,7 @@ geometry = mlb.StiffenedPlateGeometry(
     a=0.762,
     b=0.762,
     h=0.00127,
-    num_stiff=6, # 7 panel sections
+    num_stiff=6,  # 7 panel sections
     h_w=0.03434,
     t_w=0.00147,
 )
@@ -72,14 +77,14 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 stiff_analysis.pre_analysis(
     nx_plate=30,
     ny_plate=14,
-    nz_stiff=3, #5
+    nz_stiff=3,  # 5
     nx_stiff_mult=1,
     exx=stiff_analysis.affine_exx,
     # exx = 1e-3,
     exy=0.0,
     clamped=False,
     _make_rbe=False,
-    _explicit_poisson_exp=True,  
+    _explicit_poisson_exp=True,
 )
 
 comm.Barrier()
@@ -96,14 +101,14 @@ if args.buckling:
         sigma=5.0, num_eig=50, write_soln=True
     )
 
-
     stiff_analysis.post_analysis()
-
 
     global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    pred_lambda, mode_type = stiff_analysis.predict_crit_load(
+        exx=stiff_analysis.affine_exx
+    )
 
     if comm.rank == 0:
         stiff_analysis.print_mode_classification()
@@ -116,7 +121,7 @@ if args.buckling:
 
     if args.lamCorr:
         global_lambda_star *= lam_corr_fact
-        if comm.rank == 0: 
+        if comm.rank == 0:
             print(f"{avg_stresses=}")
             print(f"{lam_corr_fact=}")
 
@@ -126,5 +131,5 @@ if args.buckling:
         print(f"Mode type predicted as {mode_type}")
         print(f"\tCF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
-        x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
+        x_zeta = np.log(1.0 + 1e3 * stiff_analysis.zeta_plate)
         print(f"{x_zeta=}")

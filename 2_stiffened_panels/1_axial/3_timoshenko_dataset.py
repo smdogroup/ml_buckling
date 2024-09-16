@@ -16,23 +16,24 @@ Even if you change the boundary there are always borderline modes like this to r
 comm = MPI.COMM_WORLD
 
 import argparse
+
 # choose the aspect ratio and gamma values to evaluate on the panel
 parent_parser = argparse.ArgumentParser(add_help=False)
 args = parent_parser.parse_args()
 
+
 def axial_load(rho0, gamma, solve_buckling=True, first=False):
 
     stiff_AR = 20.0
-    plate_SR = 100.0 #100.0
+    plate_SR = 100.0  # 100.0
     b = 1.0
-    h = b / plate_SR # 10 mm
+    h = b / plate_SR  # 10 mm
     nu = 0.3
     E = 138e9
     G = E / 2.0 / (1 + nu)
     # h_w = 0.08 #0.08
     # t_w = h_w / stiff_AR # 0.005
     nstiff = 1 if gamma > 0 else 0
-
 
     plate_material = mlb.CompositeMaterial(
         E11=E,  # Pa
@@ -63,12 +64,9 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
             plate_material=plate_material,
         )
 
-        return [
-            rho0-stiff_analysis.affine_aspect_ratio,
-            gamma - stiff_analysis.gamma
-        ]
+        return [rho0 - stiff_analysis.affine_aspect_ratio, gamma - stiff_analysis.gamma]
 
-    xopt = sopt.fsolve(func=gamma_rho0_resid, x0=(0.08*gamma/11.25, rho0))
+    xopt = sopt.fsolve(func=gamma_rho0_resid, x0=(0.08 * gamma / 11.25, rho0))
 
     h_w = xopt[0]
     AR = xopt[1]
@@ -76,7 +74,7 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
 
     # make a new plate geometry
     geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=h_w/stiff_AR
+        a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=h_w / stiff_AR
     )
     stiff_analysis = mlb.StiffenedPlateAnalysis(
         comm=comm,
@@ -88,12 +86,12 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
     _nelems = 2000
     # MIN_Y = 20 / geometry.num_local
     MIN_Y = 5
-    MIN_Z = 5 #5
+    MIN_Z = 5  # 5
     N = geometry.num_local
     AR_s = geometry.a / geometry.h_w
-    #print(f"AR = {AR}, AR_s = {AR_s}")
-    nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
-    den = (1.0/AR + (N-1) * 1.0 / AR_s)
+    # print(f"AR = {AR}, AR_s = {AR_s}")
+    nx = np.ceil(np.sqrt(_nelems / (1.0 / AR + (N - 1) / AR_s)))
+    den = 1.0 / AR + (N - 1) * 1.0 / AR_s
     ny = max([np.ceil(nx / AR / N), MIN_Y])
     # nz = max([np.ceil(nx / AR_s), MIN_Z])
     nz = 3
@@ -105,16 +103,16 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
 
     if solve_buckling:
         stiff_analysis.pre_analysis(
-            nx_plate=int(nx), #90
-            ny_plate=int(ny), #30
-            nz_stiff=int(nz), #5
+            nx_plate=int(nx),  # 90
+            ny_plate=int(ny),  # 30
+            nz_stiff=int(nz),  # 5
             nx_stiff_mult=2,
             exx=stiff_analysis.affine_exx,
             exy=0.0,
             clamped=False,
-            # _make_rbe=args.rbe, 
+            # _make_rbe=args.rbe,
             _make_rbe=False,
-            _explicit_poisson_exp=True, 
+            _explicit_poisson_exp=True,
         )
 
     comm.Barrier()
@@ -126,19 +124,16 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
     if solve_buckling:
 
         tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-            sigma=5.0, 
-            num_eig=50, #50, 100
-            write_soln=True
+            sigma=5.0, num_eig=50, write_soln=True  # 50, 100
         )
 
         # if args.static:
         # stiff_analysis.run_static_analysis(write_soln=True)
         stiff_analysis.post_analysis()
 
-
         global_lambda_star = stiff_analysis.get_mac_global_mode(
-            axial=True, 
-            min_similarity=0.7, #0.5
+            axial=True,
+            min_similarity=0.7,  # 0.5
             local_mode_tol=0.7,
         )
         # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
@@ -154,17 +149,21 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
         global_lambda_star = None
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(axial=True)
+    pred_lambda, mode_type = stiff_analysis.predict_crit_load(axial=True)
 
-    
     # timoshenko isotropic closed-form
     beta = geometry.a / geometry.b
     TS_gamma = stiff_analysis.gamma / 2.0
     TS_delta = stiff_analysis.delta / 2.0
     timosh_crit = 1e10
-    for m in range(1,100):
+    for m in range(1, 100):
         # in book we assume m = 1
-        temp = ( (1.0 + beta**2/m**2)**2 + 2.0 * TS_gamma ) * m**2 / beta**2 / (1.0 + 2.0 * TS_delta)
+        temp = (
+            ((1.0 + beta ** 2 / m ** 2) ** 2 + 2.0 * TS_gamma)
+            * m ** 2
+            / beta ** 2
+            / (1.0 + 2.0 * TS_delta)
+        )
         if temp < timosh_crit:
             timosh_crit = temp
 
@@ -180,10 +179,10 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
 
         # write the data to csv  after each buckling solve
         my_df_dict = {
-            "rho0" : [rho0],
-            "gamma" : [gamma],
-            "eig_CF" : [pred_lambda],
-            "eig_FEA" : [global_lambda_star],
+            "rho0": [rho0],
+            "gamma": [gamma],
+            "eig_CF": [pred_lambda],
+            "eig_FEA": [global_lambda_star],
         }
         my_df = pd.DataFrame(my_df_dict)
         my_df.to_csv("axialCF-FEA.csv", header=first, mode="w" if first else "a")
@@ -194,12 +193,13 @@ def axial_load(rho0, gamma, solve_buckling=True, first=False):
 
     return [global_lambda_star, pred_lambda, timosh_crit]
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     rho0_min = 0.2
     rho0_max = 10.0
-    n_FEA = 50 #50 (should be 50 in order to not plot as densely..)
+    n_FEA = 50  # 50 (should be 50 in order to not plot as densely..)
 
     # TODO : make it so we can set gamma here also and adaptively select hw
 
@@ -215,9 +215,9 @@ if __name__=="__main__":
 
         n_CF = n_FEA
         rho0_CF = np.geomspace(rho0_min, rho0_max, n_CF)
-        N11_CF = np.array([
-            axial_load(rho0, gamma=gamma, solve_buckling=False)[1] for rho0 in rho0_CF
-        ])
+        N11_CF = np.array(
+            [axial_load(rho0, gamma=gamma, solve_buckling=False)[1] for rho0 in rho0_CF]
+        )
 
         if comm.rank == 0:
             # label="closed-form"
@@ -237,25 +237,33 @@ if __name__=="__main__":
             # exit()
 
         rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
-        N11_FEA = np.array([
-            axial_load(rho0, gamma=gamma, first=igamma==0 and irho0==0)[0] for irho0,rho0 in enumerate(rho0_FEA)
-        ])
+        N11_FEA = np.array(
+            [
+                axial_load(rho0, gamma=gamma, first=igamma == 0 and irho0 == 0)[0]
+                for irho0, rho0 in enumerate(rho0_FEA)
+            ]
+        )
 
         if comm.rank == 0:
             # FEA
-            plt.plot(rho0_FEA, N11_FEA, "o", label=r"$\gamma = " + f"{gamma:.1f}" + r"$", color=colors[igamma])
+            plt.plot(
+                rho0_FEA,
+                N11_FEA,
+                "o",
+                label=r"$\gamma = " + f"{gamma:.1f}" + r"$",
+                color=colors[igamma],
+            )
 
         comm.Barrier()
-    
+
     # finish making the plot
     if comm.rank == 0:
         plt.legend()
         # plt.title(r"$\gamma = 11.25$")
         plt.xlabel(r"$\rho_0$")
         plt.ylabel(r"$N_{11,cr}^*$")
-        plt.xscale('log')
-        plt.yscale('log')
+        plt.xscale("log")
+        plt.yscale("log")
         plt.margins(x=0.05, y=0.05)
         # plt.show()
         plt.savefig("axial-CF-vs-FEA-demo.png", dpi=400)
-    

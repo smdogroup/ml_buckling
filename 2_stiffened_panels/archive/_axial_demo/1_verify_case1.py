@@ -15,21 +15,24 @@ comm = MPI.COMM_WORLD
 # to prevent low thickness problems => just make overall plate size smaller
 
 case = 1
-assert case in [1,2,3,4]
+assert case in [1, 2, 3, 4]
 # FEA seems to match better with higher gamma right now
 # for low gamma it is off by 2x or even higher for very small gamma
 if case == 1:
-    h_w = 1e-3; t_w = 5e-3
+    h_w = 1e-3
+    t_w = 5e-3
     num_stiff = 3
 elif case == 2:
     # really have to beef up the stiffener sometimes for low # of stiffeners
     # otherwise the stiffener might cripple
-    h_w = 1e-3; t_w = 8e-3
+    h_w = 1e-3
+    t_w = 8e-3
     num_stiff = 1
 # very short stiffener with bad element AR leads to lower eigenvalue (easier to buckle?)
 # think this is an artifact of the FEA solution.
-elif case == 3: 
-    h_w = 1e-4; t_w = 8e-3
+elif case == 3:
+    h_w = 1e-4
+    t_w = 8e-3
     num_stiff = 1
 elif case == 4:
     h_w = 1.0
@@ -55,7 +58,7 @@ plate_material = mlb.CompositeMaterial(
     # ply_angles=[0],
     # ply_fractions=[1.0],
     ply_angles=[0, 90, 0, 90],
-    ply_fractions=[0.25]*4,
+    ply_fractions=[0.25] * 4,
     ref_axis=[1, 0, 0],
 )
 
@@ -80,9 +83,9 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 )
 
 stiff_analysis.pre_analysis(
-    nx_plate=45, #90
-    ny_plate=15, #30
-    nz_stiff=5, #5
+    nx_plate=45,  # 90
+    ny_plate=15,  # 30
+    nz_stiff=5,  # 5
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
@@ -95,7 +98,7 @@ if comm.rank == 0:
     print(stiff_analysis)
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda, mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 pred_lambda2 = stiff_analysis.predict_crit_load_old(exx=stiff_analysis.affine_exx)
 
 if comm.rank == 0:
@@ -122,7 +125,7 @@ stiff_analysis.post_analysis()
 global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda, mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 pred_lambda2 = stiff_analysis.predict_crit_load_old(exx=stiff_analysis.affine_exx)
 
 if comm.rank == 0:

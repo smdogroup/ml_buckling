@@ -23,7 +23,7 @@ for i in range(materials.shape[0]):
     ply_angle = ply_angles[i]
     h = 1.0
     b = h * SR[i]
-    AR = 1.0 # doesn't affect zeta..
+    AR = 1.0  # doesn't affect zeta..
     a = b * AR
     material = mlb.UnstiffenedPlateAnalysis.get_material_from_str(material_name)
     new_plate: mlb.UnstiffenedPlateAnalysis = material(
@@ -34,7 +34,7 @@ for i in range(materials.shape[0]):
         h=h,
         ply_angle=ply_angle,
     )
-    
+
     zeta[i] = new_plate.zeta
 
 log_xi = np.log(1.0 + xi)
@@ -44,11 +44,11 @@ log_zeta = np.log(1.0 + 1000.0 * zeta)
 log_kmin = np.log(kmin)
 
 data_dict = {
-    "x0" : list(log_xi),
-    "x1" : list(log_rho0),
-    "x2" : list(log_eps),
-    "x3" : list(log_zeta),
-    "y" : list(log_kmin)
+    "x0": list(log_xi),
+    "x1": list(log_rho0),
+    "x2": list(log_eps),
+    "x3": list(log_zeta),
+    "y": list(log_kmin),
 }
 
 new_df = pd.DataFrame(data_dict)

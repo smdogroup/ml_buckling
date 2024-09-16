@@ -20,7 +20,7 @@ geometry = mlb.StiffenedPlateGeometry(
     h=5e-3,
     num_stiff=3,
     h_w=3e-3,
-    t_w=1e-3,  
+    t_w=1e-3,
 )
 
 material = mlb.CompositeMaterial.solvay5320(ref_axis=np.array([1, 0, 0]))
@@ -37,7 +37,7 @@ stiff_analysis.pre_analysis(
     ny_plate=60,
     nz_stiff=10,
     exx=stiff_analysis.affine_exx,
-    exy=0.0,    #  stiff_analysis.affine_exy,     #0.0
+    exy=0.0,  #  stiff_analysis.affine_exy,     #0.0
     clamped=False,
 )
 
@@ -45,7 +45,7 @@ if comm.rank == 0:
     print(stiff_analysis)
 
 # predict closed-form solution
-lam_ND,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+lam_ND, mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
     sigma=10.0, num_eig=20, write_soln=True
 )

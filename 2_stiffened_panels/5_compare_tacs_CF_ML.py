@@ -16,7 +16,9 @@ import argparse
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
-parent_parser.add_argument('--show', default=True, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument(
+    "--show", default=True, action=argparse.BooleanOptionalAction
+)
 parent_parser.add_argument("--xi", type=float, default=1.0)
 parent_parser.add_argument("--zeta", type=float, default=0.0)
 
@@ -48,8 +50,12 @@ ortho_ply = constitutive.OrthotropicPly(1e-3, ortho_prop)
 
 # build the axial GP object (which is the main ML object we are testing for this example)
 # however it is used inside of the constitutive object so we need to build that too
-axialGP = constitutive.AxialGP.from_csv(csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv)
-shearGP = constitutive.ShearGP.from_csv(csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv)
+axialGP = constitutive.AxialGP.from_csv(
+    csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv
+)
+shearGP = constitutive.ShearGP.from_csv(
+    csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv
+)
 panelGP = constitutive.PanelGPs(axialGP=axialGP, shearGP=shearGP)
 
 # don't put in any GP models (so using closed-form solutions rn)
@@ -105,7 +111,7 @@ CF_vec = np.zeros((n,), dtype=TACS.dtype)
 ML_vec = np.zeros((n,), dtype=TACS.dtype)
 
 for igamma, gamma in enumerate([0.0, 1.0, 100.0, 1000.0]):
-# for igamma, gamma in enumerate([0.05, 0.64, 6.4, 53.0]):
+    # for igamma, gamma in enumerate([0.05, 0.64, 6.4, 53.0]):
     for i, rho0 in enumerate(rho0_vec):
         if args.load == "Nx":
             CF_vec[i] = CF_con.nondimCriticalGlobalAxialLoad(rho0, xi, gamma)
@@ -113,8 +119,21 @@ for igamma, gamma in enumerate([0.0, 1.0, 100.0, 1000.0]):
         else:
             CF_vec[i] = CF_con.nondimCriticalGlobalShearLoad(rho0, xi, gamma)
             ML_vec[i] = ML_con.nondimCriticalGlobalShearLoad(rho0, xi, gamma, zeta)
-    plt.plot(rho0_vec, CF_vec, "-", label=f"CF-gam={gamma:.2f}", linewidth=2, color=colors[2*igamma])
-    plt.plot(rho0_vec, ML_vec, "--", label=f"ML-gam={gamma:.2f}", color=colors[2*igamma+1])
+    plt.plot(
+        rho0_vec,
+        CF_vec,
+        "-",
+        label=f"CF-gam={gamma:.2f}",
+        linewidth=2,
+        color=colors[2 * igamma],
+    )
+    plt.plot(
+        rho0_vec,
+        ML_vec,
+        "--",
+        label=f"ML-gam={gamma:.2f}",
+        color=colors[2 * igamma + 1],
+    )
 
 # plot it
 plt.margins(x=0.05, y=0.05)
@@ -123,8 +142,8 @@ if args.load == "Nx":
     plt.ylabel(r"$N_{11,cr}^*$")
 else:
     plt.ylabel(r"$N_{12,cr}^*$")
-plt.xscale('log')
-plt.yscale('log')
+plt.xscale("log")
+plt.yscale("log")
 plt.legend()
 
 if args.show:

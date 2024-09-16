@@ -49,9 +49,9 @@ Y = Y[rand_perm, :]
 
 # REMOVE THE OUTLIERS in local 4d regions
 # loop over different slenderness bins
-xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1,7)]
+xi_bins = [[0.25 * i, 0.25 * (i + 1)] for i in range(1, 7)]
 log_xi_bins = [list(np.log(np.array(xi_bin))) for xi_bin in xi_bins]
-log_gamma_bins = [[0,1], [1,2], [2,3], [3,4]]
+log_gamma_bins = [[0, 1], [1, 2], [2, 3], [3, 4]]
 
 _plot = True
 _plot_gamma = False
@@ -85,7 +85,7 @@ assert n_test > 100
 # reorder the data
 indices = [_ for _ in range(n_total)]
 train_indices = np.random.choice(indices, size=n_train)
-test_indices = [_ for _ in range(n_total) if not(_ in train_indices)]
+test_indices = [_ for _ in range(n_total) if not (_ in train_indices)]
 
 X_train = X[train_indices, :]
 X_test = X[test_indices, :]
@@ -105,8 +105,10 @@ y = Y_train
 # sigma_n, sigma_f, L1, L2, L3
 theta0 = np.array([1e-1, 3e-1, -1, 0.2, 1.0, 1.0, 0.5, 2, 0.8, 1.0, 0.2, 1e-2])
 
+
 def relu(x):
     return max([0.0, x])
+
 
 def soft_relu(x, rho=10):
     return 1.0 / rho * np.log(1 + np.exp(rho * x))
@@ -146,20 +148,25 @@ def kernel(xp, xq, theta):
     # log(zeta) direction
     kernel2 = S6 * np.exp(-0.5 * d2 ** 2 / L2 ** 2) + S7 * xp[2] * xq[2]
     # log(gamma) direction
-    kernel3 = S8 * np.exp(-0.5 * d3 **2 / L3 ** 2) + S9 * xp[3] * xq[3]
+    kernel3 = S8 * np.exp(-0.5 * d3 ** 2 / L3 ** 2) + S9 * xp[3] * xq[3]
     return kernel0 * kernel1 * kernel2 * kernel3
+
 
 ntheta = theta0.shape[0]
 
+
 def soft_abs(x, rho=1.0):
-    return 1.0/rho * np.log(np.exp(rho*x) + np.exp(-rho*x))
+    return 1.0 / rho * np.log(np.exp(rho * x) + np.exp(-rho * x))
+
 
 def soft_abs_deriv(x, rho=1.0):
-    return (np.exp(rho*x) - np.exp(-rho*x)) / (np.exp(rho*x) + np.exp(-rho*x))
+    return (np.exp(rho * x) - np.exp(-rho * x)) / (np.exp(rho * x) + np.exp(-rho * x))
+
 
 class MyOpt:
     def __init__(self):
         self.objective_hist = []
+
     def objective(self, xdict):
         """negative marginal likelihood objective function log p(y|X,theta)"""
         # computed faster using Cholesky decomposition
@@ -176,21 +183,23 @@ class MyOpt:
         # eqn log p(y|X,theta) = - 0.5 * y^T Sigma^-1 y - 1/2 * log|Sigma| - n/2 * log(2*pi)
         L = scipy.linalg.cholesky(Sigma, lower=True)
         beta = L.T @ Y_train
-        beta_vec = beta[:,0]
+        beta_vec = beta[:, 0]
         log_Sigma = 2.0 * np.sum(np.log(np.diag(L)))
-        neg_obj = -0.5 * np.dot(beta_vec, beta_vec) - 0.5 * log_Sigma - 0.5 * n_train * np.log(2.0 * np.pi)
+        neg_obj = (
+            -0.5 * np.dot(beta_vec, beta_vec)
+            - 0.5 * log_Sigma
+            - 0.5 * n_train * np.log(2.0 * np.pi)
+        )
         obj = -1.0 * neg_obj
 
         # take log on the objective again
         # log(-log p(y|X,theta))
-        obj2 = np.cbrt(obj) # differentiable as obj goes from positive to negative
+        obj2 = np.cbrt(obj)  # differentiable as obj goes from positive to negative
         # obj2 = np.log(soft_abs(obj))
 
         print(f"obj2 = {obj2}")
         print(f"theta = {theta}")
-        funcs = {
-            "obj" : obj2
-        }
+        funcs = {"obj": obj2}
 
         self.objective_hist += [obj2]
 
@@ -216,12 +225,15 @@ class MyOpt:
         # perform complex-step to get dSigma/dtheta_j
         #  can't really complex-step full objective due to Cholesky decomposition being tricky with imaginary numbers
         for itheta in range(ntheta):
-            theta_pert = theta * 1.0 # copy
+            theta_pert = theta * 1.0  # copy
             theta_pert = theta_pert.astype(np.complex128)
             theta_pert[itheta] += 1e-30 * 1j
             Sigma_final = np.array(
                 [
-                    [kernel(X_train[i, :], X_train[j, :], theta_pert) for i in range(n_train)]
+                    [
+                        kernel(X_train[i, :], X_train[j, :], theta_pert)
+                        for i in range(n_train)
+                    ]
                     for j in range(n_train)
                 ]
             ) + theta_pert[-1] ** 2 * np.eye(n_train)
@@ -231,7 +243,7 @@ class MyOpt:
             # now compute the following formula for an analytic derivative
             # dlogp/dth = 0.5 * tr((alpha*alpha^T - Sigma^-1) * dSigma/dth) where alpha = Sigma^-1 * Y using Cholesky decomp
             term1_inside = alpha @ alpha.T @ dSigma_dth
-            
+
             temp_mat = scipy.linalg.solve_triangular(L, dSigma_dth, lower=True)
             temp_mat2 = scipy.linalg.solve_triangular(L.T, temp_mat, lower=False)
             deriv = 0.5 * np.trace(term1_inside - temp_mat2)
@@ -243,17 +255,18 @@ class MyOpt:
 
         # now convert to gradient of objective 2
         obj = np.exp(funcs["obj"])
-        _gradient2 = _gradient/obj # derivative of the log(cdot) part
+        _gradient2 = _gradient / obj  # derivative of the log(cdot) part
 
         print(f"_gradient2 = {_gradient2}")
 
         funcsSens = {
             "obj": {
-                "theta" : _gradient2,
+                "theta": _gradient2,
             },
         }
-        
+
         return funcsSens, False
+
 
 my_opt = MyOpt()
 
@@ -264,21 +277,26 @@ def run_optmization():
 
     # Design Variables
     # sigma_n = theta[11]
-    optProb.addVarGroup("theta", 12,
-                        # [S1, S2, L1, S4, S5, L2, L3, S6, S7, S8, S9, sigma_n]
-                        lower=np.array([1e-4, 0.1, 0.1, 1e-4, 0.1, 0.1, 0.1, 1e-2, 1e-1, 1e-2, 1e-1, 1e-4]),
-                        upper=np.array([3, 3, 5, 3, 3, 5, 5, 3, 3, 3, 3, 1e-2]),
-                        value=np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 0.5, 0.8, 1.0, 0.2, 0.2, 1.0, 1e-2]))
+    optProb.addVarGroup(
+        "theta",
+        12,
+        # [S1, S2, L1, S4, S5, L2, L3, S6, S7, S8, S9, sigma_n]
+        lower=np.array(
+            [1e-4, 0.1, 0.1, 1e-4, 0.1, 0.1, 0.1, 1e-2, 1e-1, 1e-2, 1e-1, 1e-4]
+        ),
+        upper=np.array([3, 3, 5, 3, 3, 5, 5, 3, 3, 3, 3, 1e-2]),
+        value=np.array([1e-1, 3e-1, 0.2, 1.0, 1.0, 0.5, 0.8, 1.0, 0.2, 0.2, 1.0, 1e-2]),
+    )
     optProb.addObj("obj")
     # Optimizer
-    opt = SNOPT(options={
-    })
+    opt = SNOPT(options={})
     optProb.printSparsity()
     return opt, optProb
 
+
 if __name__ == "__main__":
 
-    #test the forward + gradient
+    # test the forward + gradient
     # _obj,_ = objective({"theta" : theta0})
     # print(f"_obj = {_obj["obj"]:.4e}")
     # _grad,_ = my_gradient({"theta" : theta0},{})
@@ -298,13 +316,12 @@ if __name__ == "__main__":
     # have to do Cholesky decomp 13 times in the gradient and 1 in the forward normally
     # so ~12 in the forward for FD approach => results in FD being about same comp speed as analytic gradient here..
     sol = opt(optProb)
-    #sol = opt(optProb, sens=my_opt.my_gradient)
+    # sol = opt(optProb, sens=my_opt.my_gradient)
     print(sol)
 
     # write out the data for the objective history
     import pandas as pd
-    obj_hist_dict = {
-        "obj" : my_opt.objective_hist
-    }
+
+    obj_hist_dict = {"obj": my_opt.objective_hist}
     df = pd.DataFrame(obj_hist_dict)
     df.to_csv("data/train_hist.csv")

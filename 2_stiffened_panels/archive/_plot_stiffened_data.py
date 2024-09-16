@@ -29,7 +29,7 @@ max_lam = np.max(lam_star[base_mask])
 print(f"max_lam = {max_lam}")
 
 
-gamma_bins = [[np.power(10.0,i),np.power(10.0,i+1)] for i in range(-2,2,1)]
+gamma_bins = [[np.power(10.0, i), np.power(10.0, i + 1)] for i in range(-2, 2, 1)]
 # print(f"gamma bins = {gamma_bins}")
 
 plt.style.use(niceplots.get_style())
@@ -37,17 +37,19 @@ plt.figure("something")
 
 colors = plt.cm.jet(np.linspace(0.0, 1.0, len(gamma_bins)))
 
-for igamma,gamma_bin in enumerate(gamma_bins[::-1]):
-    gamma_mask = np.logical_and(
-        gamma_bin[0] <= gamma,
-        gamma < gamma_bin[1]
-    )
+for igamma, gamma_bin in enumerate(gamma_bins[::-1]):
+    gamma_mask = np.logical_and(gamma_bin[0] <= gamma, gamma < gamma_bin[1])
 
     mask = np.logical_and(base_mask, gamma_mask)
-    
-    plt.plot(rho_0[mask], lam_star[mask], "o", color=colors[igamma],
-             label=r"$\gamma in [" + f"{gamma_bin[0]},{gamma_bin[1]}" + r"]$")
-    
+
+    plt.plot(
+        rho_0[mask],
+        lam_star[mask],
+        "o",
+        color=colors[igamma],
+        label=r"$\gamma in [" + f"{gamma_bin[0]},{gamma_bin[1]}" + r"]$",
+    )
+
 plt.xlabel(r"$\rho_0$")
 plt.ylabel(r"$\lambda_{global}^*$")
 # plt.show()

@@ -24,9 +24,7 @@ geometry = mlb.StiffenedPlateGeometry(
 )
 
 material = mlb.CompositeMaterial.solvay5320(
-    ply_angles=[0],
-    ply_fractions=[1.0],
-    ref_axis=[1,0,0]
+    ply_angles=[0], ply_fractions=[1.0], ref_axis=[1, 0, 0]
 )
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(
@@ -37,9 +35,9 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 )
 
 stiff_analysis.pre_analysis(
-    nx_plate=30, #90
-    ny_plate=30, #30
-    nz_stiff=0, #5
+    nx_plate=30,  # 90
+    ny_plate=30,  # 30
+    nz_stiff=0,  # 5
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
@@ -49,7 +47,7 @@ stiff_analysis.pre_analysis(
 comm.Barrier()
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda, mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 if geometry.num_stiff == 1:
     pred_lambda2 = stiff_analysis.predict_crit_load_old(exx=stiff_analysis.affine_exx)
 
@@ -73,7 +71,7 @@ stiff_analysis.post_analysis()
 global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
 # predict the actual eigenvalue
-pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+pred_lambda, mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
 if geometry.num_stiff == 1:
     pred_lambda2 = stiff_analysis.predict_crit_load_old(exx=stiff_analysis.affine_exx)
 
