@@ -36,7 +36,7 @@ fun3d_aim.set_config_parameter("symPlane", 0)
 
 # ------------------------------------------------
 
-# refinement levels 1, 2 
+# refinement levels 1, 2
 # (lower number is finer, higher is coarser)
 refinement = 2
 
@@ -95,14 +95,14 @@ if refinement == 1:
             "edgeDistribution": "Tanh",
             "initialNodeSpacing": [0.002, 0.005],
         },
-        "rootMesh" : {"tessParams": [0.05, 0.01, 20.0]},
+        "rootMesh": {"tessParams": [0.05, 0.01, 20.0]},
         "tipMesh": {"tessParams": [0.05, 0.01, 20.0]},
     }
 
 elif refinement == 2:
-    num_pts_up = 40 #60
-    num_pts_bot = 40 #60
-    num_pts_y = 40 #70
+    num_pts_up = 40  # 60
+    num_pts_bot = 40  # 60
+    num_pts_y = 40  # 70
     num_finite_te = 4
 
     horiz_spacing = [0.16, 0.1]
@@ -144,7 +144,7 @@ elif refinement == 2:
             "edgeDistribution": "Tanh",
             "initialNodeSpacing": [0.004, 0.01],
         },
-        "rootMesh" : {"tessParams": [0.08, 0.01, 20.0]},
+        "rootMesh": {"tessParams": [0.08, 0.01, 20.0]},
         "tipMesh": {"tessParams": [0.05, 0.01, 20.0]},
     }
 

@@ -1,6 +1,7 @@
 import ml_buckling as mlb
 import unittest
 
+
 class TestCompund(unittest.TestCase):
     def test_one(self):
         print("test compound one")
@@ -15,5 +16,6 @@ class TestCompund(unittest.TestCase):
         expr *= mlb.Symbol("d") + mlb.Symbol("Ergfalo")
         print(expr)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     unittest.main()

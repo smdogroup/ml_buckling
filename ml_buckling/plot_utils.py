@@ -1,4 +1,3 @@
-
 # color palletes from [color pallete website](https://coolors.co/palettes/popular/4%20colors)
 
 four_colors1 = ["#191d32", "#282f44", "#453a49", "#6d3b47"]

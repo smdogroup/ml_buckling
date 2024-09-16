@@ -45,9 +45,9 @@ mesh_aim.surface_aim.set_surface_mesh(
     max_surf_offset=0.0008,
     max_dihedral_angle=15,
 )
-num_pts_up = 40 #90
-num_pts_bot = 40 #90
-num_pts_y = 70 #180
+num_pts_up = 40  # 90
+num_pts_bot = 40  # 90
+num_pts_y = 70  # 180
 num_finite_te = 4
 mesh_aim.surface_aim.aim.input.Mesh_Sizing = {
     "teHorizEdgeMesh": {

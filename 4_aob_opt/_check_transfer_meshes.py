@@ -23,9 +23,11 @@ args = parent_parser.parse_args()
 
 if args.useML:
     from _gp_callback import gp_callback_generator
+
     model_name = "ML-oneway"
 else:
     from _closed_form_callback import closed_form_callback as callback
+
     model_name = "CF-oneway"
 
 
@@ -107,9 +109,15 @@ for icomp, comp in enumerate(component_groups):
         panel_length = 0.36
     elif "OML" in comp:
         panel_length = 0.65
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.LENGTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0, state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
     # stiffener pitch variable
     Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
@@ -131,9 +139,15 @@ for icomp, comp in enumerate(component_groups):
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0,  state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
 caps2tacs.PinConstraint("root", dof_constraint=246).register_to(tacs_model)
 caps2tacs.PinConstraint("sob", dof_constraint=13).register_to(tacs_model)
@@ -215,13 +229,13 @@ for igroup, comp_group in enumerate(comp_groups):
         # minimum stiffener AR
         min_stiff_AR = sheight_var - 2.0 * sthick_var
         min_stiff_AR.set_name(f"{comp_group}{icomp}-minstiffAR").optimize(
-                lower=0.0, scale=1.0, objective=False
+            lower=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
         # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
         max_stiff_AR = sheight_var - 8.0 * sthick_var
         max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
-                upper=0.0, scale=1.0, objective=False
+            upper=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
 # DISCIPLINE INTERFACES AND DRIVERS
@@ -263,7 +277,7 @@ import matplotlib.pyplot as plt
 aero_X = wing.aero_X
 struct_X = wing.struct_X
 
-ax = plt.figure().add_subplot(projection='3d')
+ax = plt.figure().add_subplot(projection="3d")
 ax.scatter(aero_X[0::3], aero_X[1::3], aero_X[2::3])
 ax.scatter(struct_X[0::3], struct_X[1::3], struct_X[2::3])
 plt.show()

@@ -3,6 +3,7 @@ __all__ = ["StiffenedPlateGeometry"]
 import numpy as np
 import math
 
+
 class StiffenedPlateGeometry:
     def __init__(
         self,
@@ -13,7 +14,7 @@ class StiffenedPlateGeometry:
         t_w,  # thickness of stiffener wall
         w_b=None,  # width of base
         t_b=None,  # thickness of base
-        s_p:float=None, # stiffener pitch
+        s_p: float = None,  # stiffener pitch
         num_stiff=None,  # num stiffeners
         rib_h=2e-3,  # thickness of rib
     ):
@@ -50,20 +51,19 @@ class StiffenedPlateGeometry:
             return self.s_p
         else:
             return (self.b / 2.0) % self.s_p
-        
+
     @property
     def num_stiff(self) -> int:
         if self._num_stiff is not None:
             return self._num_stiff
         else:
             # symmetricly placed stiffeners with extra space at ends
-            return 2*math.ceil(self.b / 2.0 / self.s_p) - 1
+            return 2 * math.ceil(self.b / 2.0 / self.s_p) - 1
 
     @property
     def N(self) -> int:
         """number of panel sections"""
         return self.num_stiff + 1
-
 
     @property
     def area_w(self) -> float:
@@ -130,9 +130,8 @@ class StiffenedPlateGeometry:
         stiff_volume = self.num_stiff * self.h_w * self.t_w * self.a
         return panel_volume + stiff_volume
 
-    def get_mass(self, density:float):
+    def get_mass(self, density: float):
         return density * self.volume
-
 
     def __str__(self):
         mystr = "Stiffened panel geometry object:\n"

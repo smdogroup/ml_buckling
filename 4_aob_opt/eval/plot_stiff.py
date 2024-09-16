@@ -8,6 +8,7 @@ from funtofem import *
 from mpi4py import MPI
 from tacs import caps2tacs
 import os, sys
+
 sys.path.append("../")
 
 parent_parser = argparse.ArgumentParser(add_help=False)
@@ -16,9 +17,11 @@ args = parent_parser.parse_args()
 
 if args.useML:
     from _gp_callback import gp_callback_generator
+
     model_name = "ML-oneway"
 else:
     from _closed_form_callback import closed_form_callback as callback
+
     model_name = "CF-oneway"
 
 
@@ -69,11 +72,11 @@ null_material = caps2tacs.Orthotropic.null().register_to(tacs_model)
 
 # create the design variables by components now
 # since this mirrors the way TACS creates design variables
-component_groups = [f"uOML{iOML}" for iOML in range(1, nOML+1)]
+component_groups = [f"uOML{iOML}" for iOML in range(1, nOML + 1)]
 component_groups += [f"rib{irib}" for irib in range(1, nribs + 1)]
 for prefix in ["spLE", "spTE"]:
     component_groups += [f"{prefix}{iOML}" for iOML in range(1, nOML + 1)]
-component_groups += [f"lOML{iOML}" for iOML in range(1, nOML+1)]
+component_groups += [f"lOML{iOML}" for iOML in range(1, nOML + 1)]
 
 component_groups = sorted(component_groups)
 
@@ -94,9 +97,15 @@ for icomp, comp in enumerate(component_groups):
         panel_length = 0.36
     elif "OML" in comp:
         panel_length = 0.65
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.LENGTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0, state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
     # stiffener pitch variable
     Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
@@ -109,18 +118,26 @@ for icomp, comp in enumerate(component_groups):
     ).register_to(wing)
 
     # stiffener height
-    sheight_var = Variable.structural(f"{comp}-sheight", value=0.05).set_bounds(
-        lower=0.002, upper=0.1, scale=10.0
-    ).register_to(wing)
+    sheight_var = (
+        Variable.structural(f"{comp}-sheight", value=0.05)
+        .set_bounds(lower=0.002, upper=0.1, scale=10.0)
+        .register_to(wing)
+    )
 
     # stiffener thickness
     Variable.structural(f"{comp}-sthick", value=0.02).set_bounds(
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0,  state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
 # register the wing body to the model
 wing.register_to(f2f_model)
@@ -138,7 +155,9 @@ Function.mass().optimize(
 cruise.register_to(f2f_model)
 
 # read the DV file
-design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
+design_out_file = os.path.join(
+    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+)
 
 # reload previous design
 f2f_model.read_design_variables_file(comm, design_out_file)
@@ -148,35 +167,35 @@ f2f_model.read_design_variables_file(comm, design_out_file)
 
 # Create a simple plot
 fig, ax = plt.subplots()
-ax.plot([1,1,1], [1,1,1], color="white")
+ax.plot([1, 1, 1], [1, 1, 1], color="white")
 
 # make the wing upper skin panel rectangle
 sspan = 14.0
 wthick = 0.04
-ax.add_patch(Rectangle((0,0), sspan, wthick, color="gray"))
+ax.add_patch(Rectangle((0, 0), sspan, wthick, color="gray"))
 
 # Add a rectangle for each stiffener
-#ax.add_patch(Rectangle((2, 2), 1, 3, color="gray"))
+# ax.add_patch(Rectangle((2, 2), 1, 3, color="gray"))
 
 # scale for stiffeners in the plot
 scale = 7.0
 
-for iOML in range(1,nOML+1):
+for iOML in range(1, nOML + 1):
     if args.useML:
-        cen_pos = sspan * iOML / (nOML+1)
+        cen_pos = sspan * iOML / (nOML + 1)
     else:
-        cen_pos = sspan * (nOML+1-iOML) / (nOML+1)
-    
+        cen_pos = sspan * (nOML + 1 - iOML) / (nOML + 1)
+
     # get stiffener height, thick
     sheight = f2f_model.get_variables(f"uOML{iOML}-sheight").value
     sthick = f2f_model.get_variables(f"uOML{iOML}-sthick").value
 
-    left_pos = (cen_pos-sthick/2.0*scale, wthick)
-    ax.add_patch(Rectangle(left_pos, sthick*scale, sheight*scale, color="gray"))
+    left_pos = (cen_pos - sthick / 2.0 * scale, wthick)
+    ax.add_patch(Rectangle(left_pos, sthick * scale, sheight * scale, color="gray"))
 
 plt.xlabel("X-AXIS")
 plt.ylabel("Y-AXIS")
 plt.title("PLOT-1")
-plt.axis('equal')
+plt.axis("equal")
 # plt.show()
-plt.savefig("CF-stiff.png" if not(args.useML) else "ML-stiff.png", dpi=400)
+plt.savefig("CF-stiff.png" if not (args.useML) else "ML-stiff.png", dpi=400)

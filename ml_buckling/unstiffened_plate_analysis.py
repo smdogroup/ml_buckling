@@ -5,7 +5,8 @@ from tacs import pyTACS, constitutive, elements, utilities
 import os
 from pprint import pprint
 from .composite_material_utility import CompositeMaterialUtility
-#from typing_extensions import Self
+
+# from typing_extensions import Self
 
 dtype = utilities.BaseUI.dtype
 
@@ -69,9 +70,7 @@ class UnstiffenedPlateAnalysis:
     MAC_THRESHOLD = 0.1  # 0.6
 
     @classmethod
-    def mac_permutation(
-        cls, nominal_plate, new_plate, num_modes: int
-    ) -> dict:
+    def mac_permutation(cls, nominal_plate, new_plate, num_modes: int) -> dict:
         """
         compute the permutation of modes in the new plate that correspond to the modes in the nominal plate
         using 2D Discrete Fourier transform in a model assurance criterion
@@ -346,19 +345,19 @@ class UnstiffenedPlateAnalysis:
     @property
     def D66(self) -> float:
         return self.G12 * self.h ** 3 / 12.0
-    
+
     @property
     def A11(self) -> float:
-        return self.D11 * 12.0 / self.h**2
-    
+        return self.D11 * 12.0 / self.h ** 2
+
     @property
     def A66(self) -> float:
-        return self.D66 * 12.0 / self.h**2
-    
+        return self.D66 * 12.0 / self.h ** 2
+
     @property
     def zeta(self) -> float:
-        old_zeta = self.A66 / self.A11 * (self.b / self.h)**2
-        return 1.0/old_zeta
+        old_zeta = self.A66 / self.A11 * (self.b / self.h) ** 2
+        return 1.0 / old_zeta
 
     @property
     def affine_exx(self):
@@ -399,10 +398,7 @@ class UnstiffenedPlateAnalysis:
             A66 = self.h * self.G12
             # 0.5 factor because we are converting from gamma_12 to engineering shear strain eps_12
             exy_T = 0.5 * (
-                np.pi ** 2
-                * (self.D11 * self.D22 ** 3) ** 0.25
-                / self.b ** 2
-                / A66
+                np.pi ** 2 * (self.D11 * self.D22 ** 3) ** 0.25 / self.b ** 2 / A66
             )
         return exy_T
 
@@ -697,11 +693,17 @@ class UnstiffenedPlateAnalysis:
             # plt.contour(X,Y,W, corner_mask=True, antialiased=True)
             # plt.show()
 
-            fp.write("MAT1*                 1              0.                              0. *0      \n")
-            fp.write("*0                   0.                                                 *1      \n")
+            fp.write(
+                "MAT1*                 1              0.                              0. *0      \n"
+            )
+            fp.write(
+                "*0                   0.                                                 *1      \n"
+            )
             fp.write("*1                   1.              0.              0. \n")
             fp.write("$ Femap Property  : panel\n")
-            fp.write("PSHELL*               1               1           1.E-2               1 *0      \n")
+            fp.write(
+                "PSHELL*               1               1           1.E-2               1 *0      \n"
+            )
             fp.write("*0                   1.               1 0.8333333333333 \n")
 
             fp.write("ENDDATA")

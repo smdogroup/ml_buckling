@@ -60,10 +60,10 @@ for proc in tacs_aim.active_procs:
         # turn off all other TFI_Templates for internal struct
         # and set # elems to 8 in Z direction [vert is half/midplane edges]
         egads_aim.input.Mesh_Sizing = {
-            "rib" : {"TFI_Templates" : True},
-            "spar" : {"TFI_Templates" : True},
+            "rib": {"TFI_Templates": True},
+            "spar": {"TFI_Templates": True},
             "vert": {"numEdgePoints": 4},
-            "vert2" : {"numEdgePoints" : 6},
+            "vert2": {"numEdgePoints": 6},
         }
 
 # add tacs constraints in

@@ -5,23 +5,26 @@ Local machine optimization for the panel thicknesses using nribs-1 OML panels an
 """
 
 import time, numpy as np
-#from pyoptsparse import SNOPT, Optimization
+
+# from pyoptsparse import SNOPT, Optimization
 from funtofem import *
 from mpi4py import MPI
 import os, argparse
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=4)
-#parent_parser.add_argument("--hotstart", type=bool, default=False)
+# parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
 args = parent_parser.parse_args()
 
 if args.useML:
     from _gp_callback import gp_callback_generator
+
     callback = gp_callback_generator(["panel"])
     model_name = "ML-panel"
 else:
     from _closed_form_callback import closed_form_callback as callback
+
     model_name = "CF-panel"
 
 comm = MPI.COMM_WORLD
@@ -85,9 +88,9 @@ Function.ksfailure(ks_weight=20.0, safety_factor=1.5).optimize(
     scale=1.0, upper=1.0, objective=False, plot=True
 ).register_to(oneway_struct)
 
-Function.mass().optimize(
-    scale=1.0e-3, objective=True, plot=True
-).register_to(oneway_struct)
+Function.mass().optimize(scale=1.0e-3, objective=True, plot=True).register_to(
+    oneway_struct
+)
 
 oneway_struct.register_to(f2f_model)
 
@@ -101,7 +104,7 @@ solvers.structural = TacsSteadyInterface.create_from_bdf(
     comm=comm,
     nprocs=args.procs,
     bdf_file="_plate.bdf",
-    prefix="_struct", # baseline file path is current so empty string
+    prefix="_struct",  # baseline file path is current so empty string
     callback=callback,
     panel_length_dv_index=0,
     panel_width_dv_index=5,
@@ -124,7 +127,9 @@ tacs_driver = OnewayStructDriver(
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
+design_out_file = os.path.join(
+    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+)
 f2f_model.read_design_variables_file(comm, design_out_file)
 
 tacs_driver.solve_forward()

@@ -26,9 +26,11 @@ args = parent_parser.parse_args()
 
 if args.useML:
     from _gp_callback import gp_callback_generator
+
     model_name = "ML-AE"
 else:
     from _closed_form_callback import closed_form_callback as callback
+
     model_name = "CF-AE"
 
 
@@ -110,9 +112,15 @@ for icomp, comp in enumerate(component_groups):
         panel_length = 0.36
     elif "OML" in comp:
         panel_length = 0.65
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.LENGTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0, state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
     # stiffener pitch variable
     Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
@@ -134,9 +142,15 @@ for icomp, comp in enumerate(component_groups):
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0,  state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
 caps2tacs.PinConstraint("root", dof_constraint=246).register_to(tacs_model)
 caps2tacs.PinConstraint("sob", dof_constraint=13).register_to(tacs_model)
@@ -168,16 +182,16 @@ q_mod = 10.2319e3
 # 2 - sea level pull up maneuver
 pull_up = Scenario.steady(
     "pull_up",
-    steps=400, #400
-    forward_coupling_frequency=60, # max 1000 forward steps
+    steps=400,  # 400
+    forward_coupling_frequency=60,  # max 1000 forward steps
     adjoint_steps=35,
-    adjoint_coupling_frequency=60, # max 6000 adjoint steps
-    uncoupled_steps= 200 #300
+    adjoint_coupling_frequency=60,  # max 6000 adjoint steps
+    uncoupled_steps=200,  # 300
 )
 pull_up.set_stop_criterion(
-    early_stopping=True, 
-    min_forward_steps=int(3000/60), # 100 uncoupled + 10 coupled 
-    min_adjoint_steps=int(1200/60),
+    early_stopping=True,
+    min_forward_steps=int(3000 / 60),  # 100 uncoupled + 10 coupled
+    min_adjoint_steps=int(1200 / 60),
     post_tight_forward_steps=0,
     post_tight_adjoint_steps=0,
     post_forward_coupling_freq=1,
@@ -197,23 +211,27 @@ mass_wingbox = (
 )
 
 qfactor = 1.0
-aoa_pull_up = pull_up.get_variable("AOA").set_bounds(lower=0.0, value=9.0, upper=13, scale=10)
+aoa_pull_up = pull_up.get_variable("AOA").set_bounds(
+    lower=0.0, value=9.0, upper=13, scale=10
+)
 pull_up.set_temperature(T_ref=T_sl, T_inf=T_sl)
-pull_up.set_flow_ref_vals(qinf=qfactor*q_sl)
+pull_up.set_flow_ref_vals(qinf=qfactor * q_sl)
 pull_up.register_to(f2f_model)
 
 # COMPOSITE FUNCTIONS
 # -------------------------------------------------------
 
 # pull up load factor constraint
-mass_wing = 10.147 * mass_wingbox**0.8162  # Elham regression model
+mass_wing = 10.147 * mass_wingbox ** 0.8162  # Elham regression model
 mass_payload = 14.5e3  # kg
 mass_frame = 25e3  # kg
 mass_fuel_res = 2e3  # kg
 LGM = mass_payload + mass_frame + mass_fuel_res + 2 * mass_wing
 LGW = 9.81 * LGM  # kg => N
-pull_up_lift = clift * 2 * q_sl #already multiplied by area 
-mod_lift = 1.5 # for numerical case, just lower weight of vehicle so AOA settles at 8,9 deg
+pull_up_lift = clift * 2 * q_sl  # already multiplied by area
+mod_lift = (
+    1.5  # for numerical case, just lower weight of vehicle so AOA settles at 8,9 deg
+)
 pull_up_LF = mod_lift * pull_up_lift - 2.5 * LGW
 pull_up_LF.set_name("pull_up_LF").optimize(
     lower=0.0, upper=0.0, scale=1e-3, objective=False, plot=True
@@ -267,13 +285,13 @@ for igroup, comp_group in enumerate(comp_groups):
         # minimum stiffener AR
         min_stiff_AR = sheight_var - 2.0 * sthick_var
         min_stiff_AR.set_name(f"{comp_group}{icomp}-minstiffAR").optimize(
-                lower=0.0, scale=1.0, objective=False
+            lower=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
         # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
         max_stiff_AR = sheight_var - 8.0 * sthick_var
         max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
-                upper=0.0, scale=1.0, objective=False
+            upper=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
 # DISCIPLINE INTERFACES AND DRIVERS
@@ -281,16 +299,16 @@ for igroup, comp_group in enumerate(comp_groups):
 solvers = SolverManager(comm)
 
 solvers.flow = Fun3d14Interface(
-     comm,
-     f2f_model,
-     fun3d_dir="cfd",
-     adjoint_options={"getgrad" : True, "outer_loop_krylov" : True},
-     #adjoint_options={"getgrad" : True},
-     forward_stop_tolerance=5e-13,
-     forward_min_tolerance=1e-10, #1e-10
-     adjoint_stop_tolerance=5e-12,
-     adjoint_min_tolerance=1e-7,
-     debug=False,
+    comm,
+    f2f_model,
+    fun3d_dir="cfd",
+    adjoint_options={"getgrad": True, "outer_loop_krylov": True},
+    # adjoint_options={"getgrad" : True},
+    forward_stop_tolerance=5e-13,
+    forward_min_tolerance=1e-10,  # 1e-10
+    adjoint_stop_tolerance=5e-12,
+    adjoint_min_tolerance=1e-7,
+    debug=False,
 )
 
 solvers.structural = TacsSteadyInterface.create_from_bdf(
@@ -308,7 +326,7 @@ solvers.structural = TacsSteadyInterface.create_from_bdf(
 # read in aero loads
 aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_turb_loads.txt")
 
-#transfer_settings = TransferSettings(npts=50, beta=0.1)
+# transfer_settings = TransferSettings(npts=50, beta=0.1)
 transfer_settings = TransferSettings(npts=200)
 
 # build the funtofem nlbgs coupled driver from the file
@@ -350,8 +368,12 @@ if args.deriv:  # test using the finite difference test
 # -------------------------------------------------------------
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
-design_in_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
-design_out_file = os.path.join(base_dir, "design", "ML-AE.txt" if args.useML else "CF-AE.txt")
+design_in_file = os.path.join(
+    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+)
+design_out_file = os.path.join(
+    base_dir, "design", "ML-AE.txt" if args.useML else "CF-AE.txt"
+)
 
 design_folder = os.path.join(base_dir, "design")
 if not os.path.exists(design_folder) and comm.rank == 0:
@@ -393,12 +415,12 @@ snoptimizer = SNOPT(
         "Minor iterations limit": 150000000,
         "Iterations limit": 100000000,
         # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
-        "Nonderivative linesearch": True, # turns off derivative linesearch
+        "Nonderivative linesearch": True,  # turns off derivative linesearch
         "Linesearch tolerance": 0.9,
         "Difference interval": 1e-6,
         "Function precision": 1e-10,
         "New superbasics limit": 2000,
-        "Penalty parameter": 1.0, # had this off for faster opt in the single panel case
+        "Penalty parameter": 1.0,  # had this off for faster opt in the single panel case
         # however ksfailure becomes too large with this off. W/ on merit function goes down too slowly though
         # try intermediate value btw 0 and 1 (smaller penalty)
         # this may be the most important switch to change for opt performance w/ ksfailure in the opt
@@ -414,7 +436,7 @@ snoptimizer = SNOPT(
 sol = snoptimizer(
     opt_problem,
     sens=manager.eval_gradients,
-    storeHistory=history_file, #None
+    storeHistory=history_file,  # None
     hotStart=history_file if args.hotstart else None,
 )
 

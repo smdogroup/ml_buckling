@@ -275,7 +275,7 @@ for ifolder, folder in enumerate(
 
 # # change from log to exp scale again
 # X[:, 0:2] = np.exp(X[:, 0:2])
-X[:, 2] = np.log(X[:,2]) # convert to log(b/h)
+X[:, 2] = np.log(X[:, 2])  # convert to log(b/h)
 # Y = np.exp(Y)
 
 plt.style.use(niceplots.get_style())

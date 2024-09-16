@@ -166,7 +166,7 @@ for iOML in range(1, nOML + 1):
     # z/y position of inboard rib of each rib-rib section of an OML panel
     # it's the z position before yz swap and y position after yz swap
     fr1 = (iOML - 1) / (nribs - 1)
-    rib_fr = rib_a1 * fr1 + rib_a2 * fr1**2 + rib_a3 * fr1**3
+    rib_fr = rib_a1 * fr1 + rib_a2 * fr1 ** 2 + rib_a3 * fr1 ** 3
     z_rib = z_root * (1 - rib_fr) + z_tip * rib_fr
 
     # get the min x position of this trimmed rib (by finding the loft section it belongs to)

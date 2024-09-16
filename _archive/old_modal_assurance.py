@@ -1,9 +1,6 @@
-   
 class OldModalAssurance:
     @classmethod
-    def mac_permutation(
-        cls, nominal_plate, new_plate, num_modes: int
-    ) -> dict:
+    def mac_permutation(cls, nominal_plate, new_plate, num_modes: int) -> dict:
         """
         compute the permutation of modes in the new plate that correspond to the modes in the nominal plate
         using Gaussian Process interpolation for modal assurance criterion
@@ -110,8 +107,8 @@ class OldModalAssurance:
             raise AssertionError(
                 "Haven't written part of extrapolate eigenvector to get the conditional covariance yet."
             )
-        
-    def eigenvalue_correction_factor(self, in_plane_loads, axial:bool=True):
+
+    def eigenvalue_correction_factor(self, in_plane_loads, axial: bool = True):
         if axial:
             # since we compute exx BCs so that we wanted N11_intended and lambda1 = N11,cr/N11_intended
             #  but we actually get lambda2 = N11,cr/N11_achieved
@@ -120,7 +117,7 @@ class OldModalAssurance:
             print(f"{N11_intended=}")
             N11_achieved = -in_plane_loads[0]
             return np.real(N11_achieved / N11_intended)
-        else: # shear, TODO
+        else:  # shear, TODO
             pass
 
     def write_geom(

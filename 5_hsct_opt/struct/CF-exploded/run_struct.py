@@ -5,6 +5,7 @@ Local machine optimization for the panel thicknesses using all OML and LE panels
 """
 
 from funtofem import *
+
 # import openmdao.api as om
 from mpi4py import MPI
 from tacs import caps2tacs
@@ -28,6 +29,7 @@ elif args.exploded == 3:
 comm = MPI.COMM_WORLD
 
 from _closed_form_callback import closed_form_callback as callback
+
 model_name = "CF-oneway"
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -136,8 +138,8 @@ for prefix in prefix_list:
 if exploded_view == 2:
     rib_groups = ["rib" + comp[6:] for comp in component_groups if "OMLtop" in comp]
     rib_groups += [f"rib20-{ispar}" for ispar in range(35, 41 + 1)]
-    component_groups = rib_groups # overwrite not += so only does ribs
-    
+    component_groups = rib_groups  # overwrite not += so only does ribs
+
 # add spar component groups
 if exploded_view == 2:
     component_groups += [f"LEspar-{iOML}" for iOML in range(1, 19 + 1)]
@@ -182,7 +184,7 @@ if exploded_view == 2:
     component_groups += [f"spar38-{iOML}" for iOML in range(1, 19 + 1)]
     component_groups += [f"spar39-{iOML}" for iOML in range(1, 19 + 1)]
     component_groups += [f"spar40-{iOML}" for iOML in range(1, 19 + 1)]
-    
+
 component_groups = sorted(component_groups)
 
 
@@ -284,8 +286,9 @@ solvers.structural = TacsSteadyInterface.create_from_bdf(
 )
 
 # read in aero loads
-aero_loads_file = os.path.join(os.getcwd(), "..", "..", "..", \
-                               "cfd", "loads", "uncoupled_turb_loads.txt")
+aero_loads_file = os.path.join(
+    os.getcwd(), "..", "..", "..", "cfd", "loads", "uncoupled_turb_loads.txt"
+)
 
 transfer_settings = TransferSettings(npts=200)
 
@@ -299,12 +302,11 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
     init_transfer=True,
 )
 
-#f2f_model.read_design_variables_file(comm, "../../../design/CF-sizing.txt")
+# f2f_model.read_design_variables_file(comm, "../../../design/CF-sizing.txt")
 f2f_model.read_design_variables_file(comm, "../CF-sizing.txt")
 
-#for var in f2f_model.get_variables():
+# for var in f2f_model.get_variables():
 #    print(f"var {var.name} = {var.value}")
-#print(f"nvars = {len(f2f_model.get_variables())}")
+# print(f"nvars = {len(f2f_model.get_variables())}")
 
 tacs_driver.solve_forward()
-

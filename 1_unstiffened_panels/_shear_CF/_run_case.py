@@ -26,16 +26,18 @@ flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
     a=args.AR * 0.1,
     b=0.1,
     h=0.005,
-    ply_angle=45, # so that D11 = D22 and rho0 = rho
+    ply_angle=45,  # so that D11 = D22 and rho0 = rho
 )
 
 nelems = 1000
-nmin = int(np.sqrt(nelems/args.AR))
+nmin = int(np.sqrt(nelems / args.AR))
 nmax = int(nmin * args.AR)
 if args.AR > 1.0:
-    nx = nmax; ny = nmin
+    nx = nmax
+    ny = nmin
 else:
-    nx = nmin; ny = nmax
+    nx = nmin
+    ny = nmax
 
 flat_plate.generate_bdf(
     nx=nx,

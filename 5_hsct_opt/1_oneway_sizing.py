@@ -33,9 +33,15 @@ import argparse
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=4)  # 128
-parent_parser.add_argument('--hotstart', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--useML', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--newMesh', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument(
+    "--hotstart", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--useML", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--newMesh", default=False, action=argparse.BooleanOptionalAction
+)
 args = parent_parser.parse_args()
 
 hot_start = args.hotstart
