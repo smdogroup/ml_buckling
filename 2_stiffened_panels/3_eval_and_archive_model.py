@@ -720,11 +720,11 @@ if args.plotmodel3d:
     if _plot_3d_gamma:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-        xi_bin = [0.2, 0.4]
+        xi_bin = [0.6, 0.7]
         xi_mask = np.logical_and(xi_bin[0] <= X[:, 0], X[:, 0] <= xi_bin[1])
         avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
-        zeta_bin = [0, 1]
+        zeta_bin = [0.2, 0.4]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 2], X[:, 2] <= zeta_bin[1])
         avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
@@ -822,12 +822,12 @@ if args.plotmodel3d:
         )
 
         # save the figure
-        ax.set_xlabel(r"$\log(1+\gamma)$")
-        ax.set_ylabel(r"$log(\rho_0)$")
+        ax.set_xlabel(r"$ln(1+\gamma)$")
+        ax.set_ylabel(r"$ln(\rho_0)$")
         if args.load == "Nx":
-            ax.set_zlabel(r"$log(N_{11,cr}^*)$")
+            ax.set_zlabel(r"$ln(N_{11,cr}^*)$")
         else:
-            ax.set_zlabel(r"$log(N_{12,cr}^*)$")
+            ax.set_zlabel(r"$ln(N_{12,cr}^*)$")
         ax.set_ylim3d(np.log(0.1), np.log(10.0))
         # ax.set_zlim3d(0.0, np.log(50.0))
         # ax.set_zlim3d(1.0, 3.0)
@@ -944,12 +944,12 @@ if args.plotmodel3d:
         )
 
         # save the figure
-        ax.set_xlabel(r"$\log(1+\xi)$")
-        ax.set_ylabel(r"$log(\rho_0)$")
+        ax.set_xlabel(r"$ln(1+\xi)$")
+        ax.set_ylabel(r"$ln(\rho_0)$")
         if args.load == "Nx":
-            ax.set_zlabel(r"$log(N_{11,cr}^*)$")
+            ax.set_zlabel(r"$ln(N_{11,cr}^*)$")
         else:
-            ax.set_zlabel(r"$log(N_{12,cr}^*)$")
+            ax.set_zlabel(r"$ln(N_{12,cr}^*)$")
         ax.set_ylim3d(np.log(0.1), np.log(10.0))
         # ax.set_zlim3d(0.0, np.log(50.0))
         # ax.set_zlim3d(1.0, 3.0)
