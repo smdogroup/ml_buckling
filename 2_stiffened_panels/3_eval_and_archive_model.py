@@ -6,7 +6,7 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil, random
-from _saved_kernel import kernel, axial_theta_opt, shear_theta_opt, theta_a1, theta_a2
+from _saved_kernel import kernel, axial_theta_opt, shear_theta_opt
 import ml_buckling as mlb
 
 """
@@ -44,6 +44,9 @@ parent_parser.add_argument(
 )
 parent_parser.add_argument(
     "--doubleGP", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--eval", default=False, action=argparse.BooleanOptionalAction
 )
 
 args = parent_parser.parse_args()
@@ -938,23 +941,12 @@ if args.plotmodel3d:
     if _plot_3d_gamma:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-<<<<<<< HEAD
         xi_bin = [0.6, 0.7]
         xi_mask = np.logical_and(xi_bin[0] <= X[:, 0], X[:, 0] <= xi_bin[1])
         avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
         zeta_bin = [0.2, 0.4]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 2], X[:, 2] <= zeta_bin[1])
-=======
-        # xi_bin = [0.2, 0.4]
-        xi_bin = xi_bins[2]
-        xi_mask = np.logical_and(xi_bin[0] <= X[:,0], X[:,0] <= xi_bin[1])
-        avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
-
-        # zeta_bin = [0, 1]
-        zeta_bin = zeta_bins[3] if args.load == "Nx" else zeta_bins[1]
-        zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
->>>>>>> 353d97c2745103aa2f10e832633bf4a2d16365a6
         avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
         xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
@@ -1014,15 +1006,6 @@ if args.plotmodel3d:
                 )
                 ct += 1
 
-<<<<<<< HEAD
-        Kplot = np.array(
-            [
-                [kernel(X_train[i, :], X_plot[j, :], theta_opt) for i in range(n_train)]
-                for j in range(n_plot)
-            ]
-        )
-        f_plot = Kplot @ alpha
-=======
         # single vs doubleGP section
         if not doubleGP:
             Kplot = np.array(
@@ -1059,7 +1042,6 @@ if args.plotmodel3d:
             f_plot2 = K_plot2 @ alpha2
 
             f_plot = f_plot1 + f_plot2
->>>>>>> 353d97c2745103aa2f10e832633bf4a2d16365a6
 
         if args.resid:
             f_resid = np.array(
@@ -1118,23 +1100,12 @@ if args.plotmodel3d:
     if _plot_3d_xi:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-<<<<<<< HEAD
         gamma_bin = [0.0, 0.1]
         gamma_mask = np.logical_and(gamma_bin[0] <= X[:, 3], X[:, 3] <= gamma_bin[1])
         avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
 
         zeta_bin = [0.0, 1.0]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 2], X[:, 2] <= zeta_bin[1])
-=======
-        # gamma_bin = [0.0, 0.1]
-        gamma_bin = gamma_bins[0]
-        gamma_mask = np.logical_and(gamma_bin[0] <= X[:,3], X[:,3] <= gamma_bin[1])
-        avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
-
-        # zeta_bin = [0.1, 0.5]
-        zeta_bin = zeta_bins[1]
-        zeta_mask = np.logical_and(zeta_bin[0] <= X[:,2], X[:,2] <= zeta_bin[1])
->>>>>>> 353d97c2745103aa2f10e832633bf4a2d16365a6
         avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
         gamma_zeta_mask = np.logical_and(gamma_mask, zeta_mask)
 
@@ -1193,15 +1164,6 @@ if args.plotmodel3d:
                 )
                 ct += 1
 
-<<<<<<< HEAD
-        Kplot = np.array(
-            [
-                [kernel(X_train[i, :], X_plot[j, :], theta_opt) for i in range(n_train)]
-                for j in range(n_plot)
-            ]
-        )
-        f_plot = Kplot @ alpha
-=======
         # single vs doubleGP section
         if not doubleGP:
             Kplot = np.array(
@@ -1240,7 +1202,6 @@ if args.plotmodel3d:
             f_plot = f_plot1 + f_plot2
 
 
->>>>>>> 353d97c2745103aa2f10e832633bf4a2d16365a6
         if args.resid:
             f_resid = np.array(
                 [
@@ -1358,15 +1319,6 @@ if args.plotmodel3d:
                 )
                 ct += 1
 
-<<<<<<< HEAD
-        Kplot = np.array(
-            [
-                [kernel(X_train[i, :], X_plot[j, :], theta_opt) for i in range(n_train)]
-                for j in range(n_plot)
-            ]
-        )
-        f_plot = Kplot @ alpha
-=======
         # single vs doubleGP section
         if not doubleGP:
             Kplot = np.array(
@@ -1405,7 +1357,6 @@ if args.plotmodel3d:
             f_plot = f_plot1 + f_plot2
 
 
->>>>>>> 353d97c2745103aa2f10e832633bf4a2d16365a6
         if args.resid:
             f_resid = np.array(
                 [
@@ -1460,7 +1411,6 @@ if args.plotmodel3d:
             plt.savefig(os.path.join(GP_folder, f"zeta-3d.png"), dpi=400)
         plt.close(f"3d rho_0, zeta, lam_star")
 
-<<<<<<< HEAD
 # only eval relative error on test set for zeta < 1
 # because based on the model plots it appears that the patterns break down some for that
 zeta_mask = X_test[:, 2] < 2.5
@@ -1519,8 +1469,6 @@ for i, sort_ind in enumerate(sort_indices[:n_worst]):  # first 10
     hdl.write(f"\trel err = {c_rel_err:.3e}\n")
 hdl.close()
 
-=======
->>>>>>> 353d97c2745103aa2f10e832633bf4a2d16365a6
 
 if args.archive:
     # archive the data to the format of the
