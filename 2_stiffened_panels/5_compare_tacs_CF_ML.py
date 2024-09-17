@@ -104,13 +104,13 @@ xi = args.xi
 zeta = args.zeta
 n = 500
 plt.style.use(niceplots.get_style())
-rho0_vec = np.linspace(0.5, 10.0, n)
+rho0_vec = np.linspace(0.2, 15.0, n)
 
-colors = plt.cm.jet(np.linspace(0.0, 1.0, 8))
+colors = plt.cm.jet(np.linspace(0.0, 1.0, 10))
 CF_vec = np.zeros((n,), dtype=TACS.dtype)
 ML_vec = np.zeros((n,), dtype=TACS.dtype)
 
-for igamma, gamma in enumerate([0.0, 1.0, 100.0, 1000.0]):
+for igamma, gamma in enumerate([0.0, 1.0, 2.0, 5.0, 10.0]):
     # for igamma, gamma in enumerate([0.05, 0.64, 6.4, 53.0]):
     for i, rho0 in enumerate(rho0_vec):
         if args.load == "Nx":
