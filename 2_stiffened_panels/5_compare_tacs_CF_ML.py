@@ -123,16 +123,17 @@ for igamma, gamma in enumerate([0.0, 1.0, 2.0, 5.0, 10.0]):
         rho0_vec,
         CF_vec,
         "-",
-        label=f"CF-gam={gamma:.2f}",
+        # label=f"CF-gam={gamma:.2f}",
+        label=f"gam={gamma:.2f}",
         linewidth=2,
-        color=colors[2 * igamma],
+        color=colors[igamma],
     )
     plt.plot(
         rho0_vec,
         ML_vec,
         "--",
-        label=f"ML-gam={gamma:.2f}",
-        color=colors[2 * igamma + 1],
+        # label=f"ML-gam={gamma:.2f}",
+        color=colors[igamma],
     )
 
 # plot it

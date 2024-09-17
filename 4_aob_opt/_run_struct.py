@@ -18,8 +18,10 @@ import os
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=6)
-# parent_parser.add_argument("--hotstart", type=bool, default=False)
-parent_parser.add_argument("--useML", type=bool, default=False)
+parent_parser.add_argument(
+    "--useML", default=False, action=argparse.BooleanOptionalAction
+)
+
 args = parent_parser.parse_args()
 
 if args.useML:
@@ -296,8 +298,13 @@ if test_derivatives:  # test using the finite difference test
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
+# design_out_file = os.path.join(
+#     base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+# )
+
+# temp just load CF-sizing.txt to compare ML and CF
 design_out_file = os.path.join(
-    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+    base_dir, "design", "CF-sizing.txt"
 )
 
 # reload previous design
@@ -306,3 +313,8 @@ f2f_model.read_design_variables_file(comm, design_out_file)
 
 # run a forward struct analysis
 tacs_driver.solve_forward()
+
+# print out the function values
+if comm.rank == 0:
+    for func in f2f_model.get_functions(optim=True):
+        print(f"func {func.name} = {func.value.real}")

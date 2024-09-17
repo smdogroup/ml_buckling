@@ -18,8 +18,9 @@ import os
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=6)
-# parent_parser.add_argument("--hotstart", type=bool, default=False)
-parent_parser.add_argument("--useML", type=bool, default=False)
+parent_parser.add_argument(
+    "--useML", default=False, action=argparse.BooleanOptionalAction
+)
 args = parent_parser.parse_args()
 
 if args.useML:

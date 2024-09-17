@@ -19,9 +19,15 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 # note there's a weird bug where total # of procs needs to match
 # #TACS procs with FUN3D
 parent_parser.add_argument("--procs", type=int, default=48)
-parent_parser.add_argument("--hotstart", type=bool, default=False)
-parent_parser.add_argument("--useML", type=bool, default=False)
-parent_parser.add_argument("--deriv", type=bool, default=False)
+parent_parser.add_argument(
+    "--hotstart", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--useML", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--deriv", default=False, action=argparse.BooleanOptionalAction
+)
 args = parent_parser.parse_args()
 
 if args.useML:

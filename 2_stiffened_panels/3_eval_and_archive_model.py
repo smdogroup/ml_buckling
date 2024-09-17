@@ -741,6 +741,12 @@ if args.plotmodel3d:
             )
             mask = np.logical_and(xi_zeta_mask, gamma_mask)
 
+            rho0_bin = [np.log(0.3), np.log(10.0)]
+            rho0_mask = np.logical_and(
+                rho0_bin[0] <= X[:,1], X[:,1] <= rho0_bin[1]
+            )
+            mask = np.logical_and(mask, rho0_mask)
+
             X_in_range = X[mask, :]
             Y_in_range = Y[mask, :]
             if args.resid:
@@ -770,8 +776,8 @@ if args.plotmodel3d:
         X_plot_mesh = np.zeros((30, 100))
         X_plot = np.zeros((n_plot, 4))
         ct = 0
-        gamma_vec = np.linspace(0.0, 4.0, 30)
-        AR_vec = np.log(np.linspace(0.1, 10.0, 100))
+        gamma_vec = np.linspace(0.0, 3.0, 30)
+        AR_vec = np.log(np.linspace(0.3, 10.0, 100))
         for igamma in range(30):
             for iAR in range(100):
                 X_plot[ct, :] = np.array(
@@ -828,7 +834,7 @@ if args.plotmodel3d:
             ax.set_zlabel(r"$ln(N_{11,cr}^*)$")
         else:
             ax.set_zlabel(r"$ln(N_{12,cr}^*)$")
-        ax.set_ylim3d(np.log(0.1), np.log(10.0))
+        ax.set_ylim3d(np.log(0.3), np.log(10.0))
         # ax.set_zlim3d(0.0, np.log(50.0))
         # ax.set_zlim3d(1.0, 3.0)
         ax.view_init(elev=20, azim=20, roll=0)
@@ -848,7 +854,7 @@ if args.plotmodel3d:
         gamma_mask = np.logical_and(gamma_bin[0] <= X[:, 3], X[:, 3] <= gamma_bin[1])
         avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
 
-        zeta_bin = [0.1, 0.5]
+        zeta_bin = [0.0, 1.0]
         zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 2], X[:, 2] <= zeta_bin[1])
         avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
         gamma_zeta_mask = np.logical_and(gamma_mask, zeta_mask)
@@ -863,6 +869,12 @@ if args.plotmodel3d:
             xi_mask = np.logical_and(xi_bin[0] <= X[:, 0], X[:, 0] <= xi_bin[1])
             avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
             mask = np.logical_and(gamma_zeta_mask, xi_mask)
+
+            rho0_bin = [np.log(0.3), np.log(10.0)]
+            rho0_mask = np.logical_and(
+                rho0_bin[0] <= X[:,1], X[:,1] <= rho0_bin[1]
+            )
+            mask = np.logical_and(mask, rho0_mask)
 
             X_in_range = X[mask, :]
             Y_in_range = Y[mask, :]
@@ -894,7 +906,7 @@ if args.plotmodel3d:
         X_plot = np.zeros((n_plot, 4))
         ct = 0
         xi_vec = np.linspace(0.2, 1.0, 30)
-        AR_vec = np.log(np.linspace(0.1, 10.0, 100))
+        AR_vec = np.log(np.linspace(0.3, 10.0, 100))
         for ixi in range(30):
             for iAR in range(100):
                 X_plot[ct, :] = np.array(
@@ -950,7 +962,7 @@ if args.plotmodel3d:
             ax.set_zlabel(r"$ln(N_{11,cr}^*)$")
         else:
             ax.set_zlabel(r"$ln(N_{12,cr}^*)$")
-        ax.set_ylim3d(np.log(0.1), np.log(10.0))
+        ax.set_ylim3d(np.log(0.3), np.log(10.0))
         # ax.set_zlim3d(0.0, np.log(50.0))
         # ax.set_zlim3d(1.0, 3.0)
         ax.view_init(elev=20, azim=20, roll=0)

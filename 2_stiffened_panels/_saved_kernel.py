@@ -48,7 +48,7 @@ def kernel(xp, xq, theta):
     vec = xp - xq
 
     # d0 = vec[0] # xi direction
-    d1 = vec[1]  # rho0 direction
+    # d1 = vec[1]  # rho0 direction
     # d2 = vec[2] # zeta direction
     d3 = vec[3]  # gamma direction
 
