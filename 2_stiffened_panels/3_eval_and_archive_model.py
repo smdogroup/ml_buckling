@@ -152,23 +152,6 @@ X_test = X[test_indices[:n_test], :]
 Y_train = Y[train_indices, :]
 Y_test = Y[test_indices[:n_test], :]
 
-# train the model:
-# ----------------
-theta_opt = axial_theta_opt if args.load == "Nx" else shear_theta_opt
-ntheta = theta_opt.shape[0]
-sigma_n = theta_opt[ntheta - 1]
-# compute the training kernel matrix
-K_y = np.array(
-    [
-        [kernel(X_train[i, :], X_train[j, :], theta_opt) for i in range(n_train)]
-        for j in range(n_train)
-    ]
-) + sigma_n ** 2 * np.eye(n_train)
-
-# print(f"K_y = {K_y}")
-# exit()
-
-alpha = np.linalg.solve(K_y, Y_train)
 
 # plot the raw data
 # ---------------------------------------------------------------------------------------------
@@ -381,6 +364,25 @@ print(f"Xtest = {_Xtest}")
 # pred = Ktest @ alpha
 # print(f"pred = {pred}")
 # exit()
+
+# train the model:
+# ----------------
+theta_opt = axial_theta_opt if args.load == "Nx" else shear_theta_opt
+ntheta = theta_opt.shape[0]
+sigma_n = theta_opt[ntheta - 1]
+# compute the training kernel matrix
+K_y = np.array(
+    [
+        [kernel(X_train[i, :], X_train[j, :], theta_opt) for i in range(n_train)]
+        for j in range(n_train)
+    ]
+) + sigma_n ** 2 * np.eye(n_train)
+
+# print(f"K_y = {K_y}")
+# exit()
+
+alpha = np.linalg.solve(K_y, Y_train)
+
 
 # plot the model againt the data
 # ------------------------------
