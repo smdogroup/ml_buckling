@@ -88,6 +88,7 @@ if comm.rank == 0:
     print(stiff_analysis)
 # exit()
 
+
 if args.static:
     stiff_analysis.run_static_analysis(write_soln=True)
 

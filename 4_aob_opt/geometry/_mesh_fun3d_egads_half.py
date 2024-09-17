@@ -10,13 +10,13 @@ comm = MPI.COMM_WORLD
 # case = "inviscid"
 case = "turbulent"
 
-project_name = "gbm-half"
+project_name = "gbm"
 # ------------------------------------------------
 
 # Set up FUN3D model, AIMs, and turn on the flow view
 # ------------------------------------------------
 fun3d_model = Fun3dModel.build(
-    csm_file="gbm-half.csm",
+    csm_file="gbm.csm",
     comm=comm,
     project_name=project_name,
     problem_name="capsFluidEgads-half",
@@ -29,6 +29,7 @@ fun3d_aim = fun3d_model.fun3d_aim
 fun3d_aim.set_config_parameter("view:flow", 1)
 fun3d_aim.set_config_parameter("view:struct", 0)
 fun3d_aim.set_config_parameter("symPlane", 0)
+fun3d_aim.set_config_parameter("mirror", 0)
 
 # if comm.rank == 0:
 #    aflr3_aim = mesh_aim.volume_aim.aim
