@@ -31,8 +31,6 @@ a = b * AR
 h = b / args.SR
 nu = 0.3
 
-print(f"{a=} {b=} {h=}")
-
 plate_material = mlb.CompositeMaterial(
     E11=138e9,  # Pa
     E22=138e9, #8.96e9
