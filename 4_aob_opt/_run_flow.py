@@ -17,7 +17,7 @@ wing.register_to(f2f_model)
 
 # make a funtofem scenario
 cruise = Scenario.steady(
-    "cruise", 
+    "cruise_turb", 
     steps=400, 
     forward_coupling_frequency=60, 
     uncoupled_steps=200
