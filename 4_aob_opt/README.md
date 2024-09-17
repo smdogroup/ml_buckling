@@ -1,5 +1,5 @@
 # Structural Optimization of a Benchmark Tutorial Wing
-## By: Sean Engelstad
+## By: Sean Engelstad, Brian Burke
 ## Original source of the benchmark wing: Alasdair Gray
 
 * The closed-form and GP model approaches are compared on the structural optimization of a single stiffened panel. FUNtoFEM and TACS are used to handle the oneway structural optimization (in this case of course with no aero loads at all, just prescribed struct loads).

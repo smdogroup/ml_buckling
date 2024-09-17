@@ -1,0 +1,61 @@
+# Gray Benchmark Model geometry script
+
+cfgpmtr view:flow 1
+cfgpmtr view:struct 0
+
+cfgpmtr view:struct:half 1
+
+cfgpmtr nribs 23
+cfgpmtr nspars 2
+
+cfgpmtr nStations 4
+
+## DESIGN PARAMETERS
+# ---------------------------------
+# General wing and airfoil parameters
+despmtr rootChord 5.0   # Root chord length
+despmtr tipChord 1.5    # Tip chord length
+despmtr halfSpan 14.0   # Half span length (y direction)
+despmtr tipOffset 7.5   # Tip offset in x direction
+
+# Geomtric twist parameters
+despmtr twist1 0.0
+despmtr twist2 0.0
+despmtr twist3 0.0
+despmtr twist4 0.0
+despmtr twist5 0.0
+despmtr twist6 0.0
+despmtr twist7 0.0
+despmtr twist8 0.0
+despmtr twist9 0.0
+
+# ---------------------------------
+
+ifthen view:struct EQ 1
+    ifthen view:struct:half EQ 1
+        # Make half of the structural model (use MELD symmetry)
+        udparg $/wingBoxHalf rootChord rootChord tipChord tipChord halfSpan halfSpan tipOffset tipOffset
+        udparg $/wingBoxHalf nStations nStations
+        udparg $/wingBoxHalf twist1 twist1 twist2 twist2 twist3 twist3 twist4 twist4
+        udprim $/wingBoxHalf twist5 twist5 twist6 twist6 twist7 twist7 twist8 twist8 twist9 twist9
+    else
+        # Make the full structural model
+        udparg $/wingBox rootChord rootChord tipChord tipChord halfSpan halfSpan tipOffset tipOffset
+        udparg $/wingBox nStations nStations
+        udparg $/wingBox twist1 twist1 twist2 twist2 twist3 twist3 twist4 twist4
+        udprim $/wingBox twist5 twist5 twist6 twist6 twist7 twist7 twist8 twist8 twist9 twist9
+    endif
+endif
+
+ifthen view:flow EQ 1
+    # Make the aero model
+    udparg $/wingAero rootChord rootChord tipChord tipChord halfSpan halfSpan tipOffset tipOffset
+    udparg $/wingAero nStations nStations
+    udparg $/wingAero twist1 twist1 twist2 twist2 twist3 twist3 twist4 twist4
+    udprim $/wingAero twist5 twist5 twist6 twist6 twist7 twist7 twist8 twist8 twist9 twist9
+endif
+
+end
+|
+|
+|||

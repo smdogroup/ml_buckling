@@ -43,7 +43,7 @@ else:
 comm = MPI.COMM_WORLD
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-csm_path = os.path.join(base_dir, "geometry", "gbm-half.csm")
+csm_path = os.path.join(base_dir, "geometry", "gbm.csm")
 
 # F2F MODEL and SHAPE MODELS
 # ----------------------------------------

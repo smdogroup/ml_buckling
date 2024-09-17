@@ -93,6 +93,7 @@ if comm.rank == 0:
     print(stiff_analysis)
 # exit()
 
+
 if args.static:
     stiff_analysis.run_static_analysis(write_soln=True)
 
@@ -131,5 +132,5 @@ if args.buckling:
         print(f"Mode type predicted as {mode_type}")
         print(f"\tCF min lambda = {pred_lambda}")
         print(f"\tFEA min lambda = {global_lambda_star}")
-        x_zeta = np.log(1.0 + 1e3 * stiff_analysis.zeta_plate)
+        x_zeta = np.log(1.0+1e3*stiff_analysis.zeta_plate)
         print(f"{x_zeta=}")

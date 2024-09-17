@@ -77,7 +77,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 stiff_analysis.pre_analysis(
     nx_plate=30,
     ny_plate=14,
-    nz_stiff=3,  # 5
+    nz_stiff=3, #3
     nx_stiff_mult=1,
     exx=stiff_analysis.affine_exx,
     # exx = 1e-3,
@@ -92,6 +92,7 @@ comm.Barrier()
 if comm.rank == 0:
     print(stiff_analysis)
 # exit()
+
 
 if args.static:
     stiff_analysis.run_static_analysis(write_soln=True)
