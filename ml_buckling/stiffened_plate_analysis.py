@@ -347,7 +347,7 @@ class StiffenedPlateAnalysis:
         z_cen = E_S * (A_B * _z_base + A_W * _z_wall) * num_stiff / (E_S * A_S * num_stiff + E_P * A_P)
         z_s = E_S * (A_B * _z_base + A_W * _z_wall) / (E_S * A_S) # w/o base this is just h/2
         I_S = (wb ** 3 * tb + tw * hw ** 3) / 12.0
-        z_cen = 0.0 # temp test
+        # z_cen = 0.0 # temp test
         EI_s = E_S * I_S + E_S * A_S * (z_s - z_cen) ** 2 # dominant term should be (z_s - z_cen)^2 due to offset center
         return EI_s / self.geometry.s_p / D11 # TODO : temporarily multiply by n_stiff+1?
 
