@@ -5,6 +5,7 @@ interface tipChord in 1.5
 interface halfSpan in 14.0
 interface tipOffset in 7.5
 interface symPlane in 1
+interface canMirror in 1
 
 interface nStations in 9
 
@@ -44,6 +45,13 @@ else
 endif
 
 restore wingSolid
+
+ifthen canMirror EQ 1
+   mirror 0 -1 0
+   restore wingSolid
+   union
+   #throw 999
+endif
 
 subtract
 
@@ -106,7 +114,7 @@ select add $tagComp1 $lowerSurface
   attribute AFLR4_CMP_ID 2
   attribute AFLR_GBC $-STD_UG3_GBC
 
-ifthen symPlane EQ 0
+ifthen symPlane EQ 0 AND canMirror EQ 0
    select face $tagComp1 $rootSurface
   attribute capsMesh $wingMesh
   attribute capsGroup $wing
@@ -170,8 +178,10 @@ select add $tagEdge $teTip
 select edge $tagEdge $leEdge
   attribute capsMesh $leEdgeMesh
 
-select face $tagComp1 $rootSurface
-  attribute capsMesh $rootMesh
+ifthen canMirror EQ 0
+   select face $tagComp1 $rootSurface
+     attribute capsMesh $rootMesh
+endif
 
 
 select body
@@ -179,12 +189,5 @@ select body
   attribute capsMeshLength 1.0
 
 end
-<<<<<<< HEAD
-<<<<<<< HEAD
-|||||||||
-=======
 
->>>>>>> 05546b4f189cdf26647bc53e7323f6b1c95817c6
-=======
-
->>>>>>> 1fea114b5aec05c2952413d39aa37dae8db326f0
+|||||
