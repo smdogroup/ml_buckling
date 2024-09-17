@@ -20,9 +20,10 @@ parent_parser.add_argument(
     "--clear", default=False, action=argparse.BooleanOptionalAction
 )
 parent_parser.add_argument("--nrho0", type=int, default=3)
-parent_parser.add_argument("--nGamma", type=int, default=10)
+parent_parser.add_argument("--nGamma", type=int, default=20)
 parent_parser.add_argument("--nelems", type=int, default=2000)
 parent_parser.add_argument("--rho0Min", type=float, default=0.2)
+parent_parser.add_argument("--plyAngle", type=float, default=0.0)
 parent_parser.add_argument("--gammaMin", type=float, default=0.05)
 parent_parser.add_argument("--rho0Max", type=float, default=0.24)
 parent_parser.add_argument("--gammaMax", type=float, default=15.0)
@@ -70,7 +71,7 @@ def get_buckling_load(rho0, gamma, solve_buckling=False):
     #     ply_fractions=[1.0],
     #     ref_axis=[1, 0, 0],
     # )
-    plate_material = mlb.CompositeMaterial.solvay5320(ply_angles=[0.0], ply_fractions=[1.0], ref_axis=[1.,0.,0.])
+    plate_material = mlb.CompositeMaterial.solvay5320(ply_angles=[args.plyAngle], ply_fractions=[1.0], ref_axis=[1.,0.,0.])
 
     stiff_material = plate_material
 
@@ -244,7 +245,7 @@ if __name__ == "__main__":
                     "rho_0": [stiff_analysis.affine_aspect_ratio],
                     "xi": [stiff_analysis.xi_plate],
                     "gamma": [stiff_analysis.gamma],
-                    "zeta": [stiff_analysis.zeta_plate],
+                    "zeta": [0.0],
                     "eig_FEA": [np.real(eig_FEA)],
                     "eig_CF": [eig_CF],
                 }
