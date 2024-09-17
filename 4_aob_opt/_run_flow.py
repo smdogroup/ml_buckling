@@ -27,9 +27,9 @@ q_cruise = 10.3166e3
 
 Function.lift().register_to(cruise)
 Function.drag().register_to(cruise)
-pull_up.set_temperature(T_ref=T_cruise, T_inf=T_cruise)
-pull_up.set_flow_ref_vals(qinf=q_cruise)
-pull_up.register_to(f2f_model)
+cruise.set_temperature(T_ref=T_cruise, T_inf=T_cruise)
+cruise.set_flow_ref_vals(qinf=q_cruise)
+cruise.register_to(f2f_model)
 
 
 # DISCIPLINE INTERFACES AND DRIVERS
