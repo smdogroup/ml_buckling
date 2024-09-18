@@ -533,7 +533,7 @@ for j, prefix in enumerate(prefix_lists):
 
     # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
     if sheight_var is not None and sthick_var is not None:
-        max_stiff_AR = sheight_var - 8.0 * sthick_var
+        max_stiff_AR = sheight_var - 20.0 * sthick_var
         max_stiff_AR.set_name(f"{prefix}-maxstiffAR").optimize(
             upper=0.0, scale=1.0, objective=False
         ).setup_sparse_gradient(f2f_model)

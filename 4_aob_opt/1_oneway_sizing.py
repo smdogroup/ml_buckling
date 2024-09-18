@@ -237,7 +237,7 @@ for igroup, comp_group in enumerate(comp_groups):
         ).register_to(f2f_model)
 
         # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
-        max_stiff_AR = sheight_var - 8.0 * sthick_var
+        max_stiff_AR = sheight_var - 20.0 * sthick_var
         max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
             upper=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
