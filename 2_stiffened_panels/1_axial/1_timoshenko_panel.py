@@ -18,6 +18,10 @@ parent_parser.add_argument("--b", type=float, default=1.0)
 parent_parser.add_argument("--rho0", type=float, default=1.5)
 parent_parser.add_argument("--gamma", type=float, default=10.0)
 
+# MAC settings
+parent_parser.add_argument("--minSim", type=float, default=0.7)
+parent_parser.add_argument("--globLocal", type=float, default=0.7)
+
 parent_parser.add_argument("--nelems", type=int, default=2000)
 parent_parser.add_argument("--sigma", type=float, default=5.0)
 args = parent_parser.parse_args()
@@ -136,8 +140,8 @@ stiff_analysis.post_analysis()
 # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 global_lambda_star = stiff_analysis.get_mac_global_mode(
     axial=True,
-    min_similarity=0.7,
-    local_mode_tol=0.7,
+    min_similarity=args.minSim,
+    local_mode_tol=args.globLocal,
 )
 
 # predict the actual eigenvalue
