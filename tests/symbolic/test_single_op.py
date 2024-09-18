@@ -1,6 +1,7 @@
 import ml_buckling as mlb
 import unittest
 
+
 class TestSingleOp(unittest.TestCase):
     def test_constructor(self):
         print("test constructor")
@@ -47,7 +48,8 @@ class TestSingleOp(unittest.TestCase):
         print("test div2")
         print(mlb.Symbol("a", float=2.0) / mlb.Symbol("b", float=1.0))
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     unittest.main()
     # tester = TestSingleOp()
     # tester.test_div2()

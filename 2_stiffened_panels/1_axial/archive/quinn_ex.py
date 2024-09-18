@@ -18,10 +18,15 @@ material with Aluminum 2024-T351 alloy.
 comm = MPI.COMM_WORLD
 
 import argparse
+
 # choose the aspect ratio and gamma values to evaluate on the panel
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument('--static', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--buckling', default=True, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument(
+    "--static", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--buckling", default=True, action=argparse.BooleanOptionalAction
+)
 
 args = parent_parser.parse_args()
 
@@ -33,8 +38,8 @@ nu = 0.33
 # maybe the transverse shear G23, G13 don't copy correctly
 plate_material = mlb.CompositeMaterial(
     E11=E,  # Pa
-    E22=E, #8.96e9
-    G12=E/2.0/(1+nu),
+    E22=E,  # 8.96e9
+    G12=E / 2.0 / (1 + nu),
     nu12=nu,
     ply_angles=[0],
     ply_fractions=[1.0],
@@ -43,8 +48,8 @@ plate_material = mlb.CompositeMaterial(
 
 stiff_material = plate_material
 
-design_mass = 1.959 # kg
-density = 2780 #kg/m^3
+design_mass = 1.959  # kg
+density = 2780  # kg/m^3
 volume = design_mass / density
 stiff_volume = 3 * 0.028 * 0.0028 * 0.590
 panel_volume = volume - stiff_volume
@@ -54,9 +59,9 @@ panel_thick = panel_volume / 0.590 / 0.440
 #     exit()
 
 geometry = mlb.StiffenedPlateGeometry(
-    a=0.590, #m
+    a=0.590,  # m
     b=0.440,
-    h=panel_thick, #computed h = 2.2478e-3 to match overall mass, might be h=2e-3 though?
+    h=panel_thick,  # computed h = 2.2478e-3 to match overall mass, might be h=2e-3 though?
     s_p=0.167,
     h_w=0.028,
     t_w=0.0028,
@@ -73,14 +78,14 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 stiff_analysis.pre_analysis(
     nx_plate=30,
     ny_plate=14,
-    nz_stiff=3, #5
+    nz_stiff=3,  # 5
     nx_stiff_mult=1,
     exx=stiff_analysis.affine_exx,
     exy=0.0,
     clamped=False,
     _make_rbe=False,
     _explicit_poisson_exp=True,
-    side_support=True, # instron not supported on the sides
+    side_support=True,  # instron not supported on the sides
 )
 
 comm.Barrier()
@@ -101,7 +106,9 @@ if args.buckling:
     global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    pred_lambda, mode_type = stiff_analysis.predict_crit_load(
+        exx=stiff_analysis.affine_exx
+    )
 
     if comm.rank == 0:
         stiff_analysis.print_mode_classification()
@@ -115,6 +122,6 @@ if args.buckling:
         print(f"\tFEA min lambda = {global_lambda_star}")
 
     if comm.rank == 0:
-        mass = geometry.get_mass(density=2780) # density here in kg/m^3
+        mass = geometry.get_mass(density=2780)  # density here in kg/m^3
         # mass reported in kg
         print(f"{mass=}")

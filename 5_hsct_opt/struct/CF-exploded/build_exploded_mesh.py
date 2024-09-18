@@ -17,6 +17,7 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 csm_path = os.path.join(base_dir, "..", "..", "geometry", "hsct.csm")
 
 import sys
+
 sys.path.append("../../")
 from _closed_form_callback import closed_form_callback as callback
 
@@ -129,8 +130,8 @@ for prefix in prefix_list:
 if exploded_view == 2:
     rib_groups = ["rib" + comp[6:] for comp in component_groups if "OMLtop" in comp]
     rib_groups += [f"rib20-{ispar}" for ispar in range(35, 41 + 1)]
-    component_groups = rib_groups # overwrite not += so only does ribs
-    
+    component_groups = rib_groups  # overwrite not += so only does ribs
+
 # add spar component groups
 if exploded_view == 2:
     component_groups += [f"LEspar-{iOML}" for iOML in range(1, 19 + 1)]
@@ -175,7 +176,7 @@ if exploded_view == 2:
     component_groups += [f"spar38-{iOML}" for iOML in range(1, 19 + 1)]
     component_groups += [f"spar39-{iOML}" for iOML in range(1, 19 + 1)]
     component_groups += [f"spar40-{iOML}" for iOML in range(1, 19 + 1)]
-    
+
 component_groups = sorted(component_groups)
 
 # print(f"component group 89 = {component_groups[89]}")
@@ -234,7 +235,7 @@ wing.register_to(f2f_model)
 
 f2f_model.read_design_variables_file(comm, "CF-sizing.txt")
 
-#exit()
+# exit()
 
 # INITIAL STRUCTURE MESH, SINCE NO STRUCT SHAPE VARS
 # --------------------------------------------------
@@ -300,7 +301,7 @@ tacs_aim.pre_analysis()
 
 #             # Set up constitutive objects and elements in pyTACS
 #             fea_assembler.initialize(callback)
-            
+
 #             # if panel_length_dv_index is not None:
 #             tacs_panel_dimensions.panel_length_constr = (
 #                 fea_assembler.createPanelLengthConstraint("PanelLengthCon")

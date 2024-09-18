@@ -5,7 +5,8 @@ Local machine optimization for the panel thicknesses using nribs-1 OML panels an
 """
 
 import time
-#from pyoptsparse import SNOPT, Optimization
+
+# from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
 
@@ -14,20 +15,23 @@ from funtofem import *
 from mpi4py import MPI
 from tacs import caps2tacs
 import os, sys
+
 sys.path.append("../")
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=6)
-#parent_parser.add_argument("--hotstart", type=bool, default=False)
+# parent_parser.add_argument("--hotstart", type=bool, default=False)
 parent_parser.add_argument("--useML", type=bool, default=False)
 parent_parser.add_argument("--exploded", type=int, default=1)
 args = parent_parser.parse_args()
 
 if args.useML:
     from _gp_callback import gp_callback_generator
+
     model_name = "ML-oneway"
 else:
     from _closed_form_callback import closed_form_callback as callback
+
     model_name = "CF-oneway"
 
 
@@ -67,7 +71,7 @@ tacs_aim.set_config_parameter("exploded", args.exploded)
 
 egads_aim = tacs_model.mesh_aim
 
-if comm.rank == 0 and args.exploded in [1,3]:
+if comm.rank == 0 and args.exploded in [1, 3]:
     aim = egads_aim.aim
     aim.input.Mesh_Sizing = {
         "chord": {"numEdgePoints": 20},
@@ -77,10 +81,9 @@ if comm.rank == 0 and args.exploded in [2]:
     aim = egads_aim.aim
     aim.input.Mesh_Sizing = {
         "chord": {"numEdgePoints": 20},
-        "span": {"numEdgePoints" : 10},
+        "span": {"numEdgePoints": 10},
         "vert": {"numEdgePoints": 10},
     }
-
 
 
 # BODIES AND STRUCT DVs
@@ -97,13 +100,13 @@ null_material = caps2tacs.Orthotropic.null().register_to(tacs_model)
 # create the design variables by components now
 # since this mirrors the way TACS creates design variables
 if args.exploded == 1:
-   component_groups = [f"uOML{iOML}" for iOML in range(1, nOML+1)]
+    component_groups = [f"uOML{iOML}" for iOML in range(1, nOML + 1)]
 elif args.exploded == 2:
-   component_groups = [f"rib{irib}" for irib in range(1, nribs + 1)]
-   for prefix in ["spLE", "spTE"]:
-       component_groups += [f"{prefix}{iOML}" for iOML in range(1, nOML + 1)]
+    component_groups = [f"rib{irib}" for irib in range(1, nribs + 1)]
+    for prefix in ["spLE", "spTE"]:
+        component_groups += [f"{prefix}{iOML}" for iOML in range(1, nOML + 1)]
 elif args.exploded == 3:
-    component_groups = [f"lOML{iOML}" for iOML in range(1, nOML+1)]
+    component_groups = [f"lOML{iOML}" for iOML in range(1, nOML + 1)]
 
 component_groups = sorted(component_groups)
 
@@ -124,9 +127,15 @@ for icomp, comp in enumerate(component_groups):
         panel_length = 0.36
     elif "OML" in comp:
         panel_length = 0.65
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.LENGTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0, state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
     # stiffener pitch variable
     Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
@@ -148,12 +157,18 @@ for icomp, comp in enumerate(component_groups):
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0,  state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
 caps2tacs.PinConstraint("root", dof_constraint=246).register_to(tacs_model)
-#caps2tacs.PinConstraint("sob", dof_constraint=13).register_to(tacs_model)
+# caps2tacs.PinConstraint("sob", dof_constraint=13).register_to(tacs_model)
 
 # caps2tacs.PinConstraint("root", dof_constraint=123).register_to(tacs_model)
 
@@ -201,7 +216,9 @@ solvers.structural = TacsSteadyInterface.create_from_bdf(
 )
 
 # read in aero loads
-aero_loads_file = os.path.join(os.getcwd(), "..", "cfd", "loads", "uncoupled_turb_loads.txt")
+aero_loads_file = os.path.join(
+    os.getcwd(), "..", "cfd", "loads", "uncoupled_turb_loads.txt"
+)
 
 transfer_settings = TransferSettings(npts=50, beta=0.1)
 
@@ -247,7 +264,9 @@ if test_derivatives:  # test using the finite difference test
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
+design_out_file = os.path.join(
+    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+)
 
 # reload previous design
 # not needed since we are hot starting

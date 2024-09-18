@@ -15,7 +15,7 @@ comm = MPI.COMM_WORLD
 
 geometry = mlb.StiffenedPlateGeometry(
     a=0.1,
-    b=0.2, # 0.1
+    b=0.2,  # 0.1
     h=5e-3,
     num_stiff=3,
     h_w=1e-4,

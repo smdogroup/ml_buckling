@@ -19,10 +19,12 @@ args = parent_parser.parse_args()
 
 if args.useML:
     from _gp_callback import gp_callback_generator
+
     callback = gp_callback_generator(["panel"])
     model_name = "ML-panel"
 else:
     from _closed_form_callback import closed_form_callback as callback
+
     model_name = "CF-panel"
 
 comm = MPI.COMM_WORLD
@@ -58,14 +60,18 @@ Variable.structural("pthick", value=0.02).set_bounds(
 ).register_to(panel)
 
 # stiffener height
-sheight = Variable.structural("sheight", value=0.05).set_bounds(
-    lower=0.002, upper=0.1, scale=10.0
-).register_to(panel)
+sheight = (
+    Variable.structural("sheight", value=0.05)
+    .set_bounds(lower=0.002, upper=0.1, scale=10.0)
+    .register_to(panel)
+)
 
 # stiffener thickness
-sthick = Variable.structural("sthick", value=0.02).set_bounds(
-    lower=0.002, upper=0.1, scale=100.0
-).register_to(panel)
+sthick = (
+    Variable.structural("sthick", value=0.02)
+    .set_bounds(lower=0.002, upper=0.1, scale=100.0)
+    .register_to(panel)
+)
 
 # panel width variable
 Variable.structural(TacsSteadyInterface.WIDTH_VAR, value=0.5).set_bounds(
@@ -86,16 +92,16 @@ Function.ksfailure(ks_weight=20.0, safety_factor=1.5).optimize(
     scale=1.0, upper=1.0, objective=False, plot=True
 ).register_to(oneway_struct)
 
-Function.mass().optimize(
-    scale=1.0e-3, objective=True, plot=True
-).register_to(oneway_struct)
+Function.mass().optimize(scale=1.0e-3, objective=True, plot=True).register_to(
+    oneway_struct
+)
 
 oneway_struct.register_to(f2f_model)
 
 # COMPOSITE FUNCTIONS
 # ----------------------------------------------------
 # in one design step tends to drop sheight too low too fast and stays there
-# trying out a stiffener AR min constraint, 
+# trying out a stiffener AR min constraint,
 #    don't need max one bc of stiffener crippling
 
 stiffARconstr = sheight - 2 * sthick
@@ -113,7 +119,7 @@ solvers.structural = TacsSteadyInterface.create_from_bdf(
     comm=comm,
     nprocs=args.procs,
     bdf_file="_plate.bdf",
-    prefix="_struct", # baseline file path is current so empty string
+    prefix="_struct",  # baseline file path is current so empty string
     callback=callback,
     panel_length_dv_index=0,
     panel_width_dv_index=5,
@@ -163,7 +169,9 @@ if args.testDeriv:  # test using the finite difference test
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
+design_out_file = os.path.join(
+    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+)
 
 design_folder = os.path.join(base_dir, "design")
 if not os.path.exists(design_folder) and comm.rank == 0:
@@ -181,7 +189,7 @@ manager = OptimizationManager(
     tacs_driver,
     design_out_file=design_out_file,
     hot_start=args.hotstart,
-    debug=True, # having this flag on means error catching is disabled, so you will see any error messages (although they shouldn't happen anyways)
+    debug=True,  # having this flag on means error catching is disabled, so you will see any error messages (although they shouldn't happen anyways)
     hot_start_file=hot_start_file,
     sparse=True,
 )
@@ -204,7 +212,7 @@ snoptimizer = SNOPT(
         "Minor iterations limit": 150000000,
         "Iterations limit": 100000000,
         # "Major step limit": 5e-2,
-        "Nonderivative linesearch": True, # turns off nonderivative linesearches
+        "Nonderivative linesearch": True,  # turns off nonderivative linesearches
         "Linesearch tolerance": 0.9,
         "Difference interval": 1e-6,
         "Function precision": 1e-10,
@@ -231,6 +239,6 @@ if comm.rank == 0:
 
 # print the sheight, sthick and stiffAR constraints and vars
 if comm.rank == 0:
-   print(f"\n\nsheight = {sheight.value}", flush=True)
-   print(f"sthick = {sthick.value}", flush=True)
-   print(f"stiffARconstr = {stiffARconstr.value}", flush=True)
+    print(f"\n\nsheight = {sheight.value}", flush=True)
+    print(f"sthick = {sthick.value}", flush=True)
+    print(f"stiffARconstr = {stiffARconstr.value}", flush=True)

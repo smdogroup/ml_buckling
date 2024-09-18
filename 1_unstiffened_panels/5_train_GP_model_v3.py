@@ -498,7 +498,7 @@ if _plot:
             X_plot_mesh = np.zeros((30, 100))
             X_plot = np.zeros((n_plot, 3))
             ct = 0
-            Dstar_vec = np.log(1.0+np.linspace(0.25, 1.75, 30))
+            Dstar_vec = np.log(1.0 + np.linspace(0.25, 1.75, 30))
             AR_vec = np.log(np.linspace(0.1, 10.0, 100))
             for iDstar in range(30):
                 for iAR in range(100):

@@ -56,12 +56,12 @@ for material in mlb.CompositeMaterial.get_materials()[1:]:
                     for AR in AR_vec[3:4]:
 
                         # temporarily set AR to reasonable value
-                        #AR = 3.0
+                        # AR = 3.0
                         a = AR * b
 
                         # use stiffener height ratio to determine the stiffener height
                         h_w = h * SHR
-                        stiff_AR = 3.0 #1.0
+                        stiff_AR = 3.0  # 1.0
                         t_w = h_w / stiff_AR
 
                         geometry = mlb.StiffenedPlateGeometry(
@@ -90,11 +90,11 @@ for material in mlb.CompositeMaterial.get_materials()[1:]:
                         # choose a number of elements in each direction
                         _nelems = 6000
                         MIN_Y = 20 / geometry.num_local
-                        MIN_Z = 10 #5
+                        MIN_Z = 10  # 5
                         N = geometry.num_local
                         AR_s = geometry.a / geometry.h_w
-                        #print(f"AR = {AR}, AR_s = {AR_s}")
-                        nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
+                        # print(f"AR = {AR}, AR_s = {AR_s}")
+                        nx = np.ceil(np.sqrt(_nelems / (1.0 / AR + (N - 1) / AR_s)))
                         ny = max(np.ceil(nx / AR / N), MIN_Y)
                         nz = max(np.ceil(nx / AR_s), MIN_Z)
                         print(f"Stage 1 : nx {nx}, ny {ny}, nz {nz}")
@@ -103,11 +103,11 @@ for material in mlb.CompositeMaterial.get_materials()[1:]:
                         #     nz = MIN_Z
                         #     nx = np.ceil(AR_s * nz)
                         #     ny = np.ceil(nx / AR / N)
-                        
+
                         # print(f"Stage 2 : nx {nx}, ny {ny}, nz {nz}")
 
-                        check_nelems = N * nx * ny + (N-1) * nx * nz
-                        #print(f"check nelems = {check_nelems}")
+                        check_nelems = N * nx * ny + (N - 1) * nx * nz
+                        # print(f"check nelems = {check_nelems}")
 
                         print(f"check nelems = {check_nelems}")
 
@@ -153,7 +153,7 @@ for material in mlb.CompositeMaterial.get_materials()[1:]:
 
                         # do linear static analysis
                         stresses = stiffened_plate.run_static_analysis(write_soln=True)
-                
+
                         tacs_eigvals, errors = stiffened_plate.run_buckling_analysis(
                             sigma=5.0, num_eig=50, write_soln=True
                         )

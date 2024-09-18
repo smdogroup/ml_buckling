@@ -52,7 +52,7 @@ con = constitutive.GPBladeStiffenedShellConstitutive(
     stiffenerPlyFracs=np.array([0.6, 0.4], dtype=dtype),
     panelWidth=1.0,
     flangeFraction=0.8,
-    CFshearMode = 1,
+    CFshearMode=1,
 )
 # Set the KS weight really low so that all failure modes make a
 # significant contribution to the failure function derivatives
@@ -127,27 +127,32 @@ lam = Y[:, 0]
 
 _image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
 
-#colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
+# colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
 # five color custom color map
-#colors = mlb.five_colors9[::-1] + ["b"]
-colors = mlb.six_colors2#[::-1]
+# colors = mlb.five_colors9[::-1] + ["b"]
+colors = mlb.six_colors2  # [::-1]
 
 # plot only the most slender data
 slender_bin = [0.0, 0.4]
 fig, ax = plt.subplots(figsize=(10, 7))
-slender_mask = np.logical_and(
-    slender_bin[0] <= zeta, zeta <= slender_bin[1]
-)
+slender_mask = np.logical_and(slender_bin[0] <= zeta, zeta <= slender_bin[1])
 
 n = 100
 rho0_vec = np.linspace(0.2, 5.0, n)
 Ncr_vec = np.zeros((n,), dtype=dtype)
 
-plt.text(x=3.6, y=8.7, s=r"$\xi = \frac{D_{12}^p + D_{66}^p}{\sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
+plt.text(
+    x=3.6,
+    y=8.7,
+    s=r"$\xi = \frac{D_{12}^p + D_{66}^p}{\sqrt{D_{11}^p D_{22}^p}}$",
+    fontsize=24,
+)
 
 for ixi, xi_bin in enumerate(xi_bins[::-1]):
     # convert from log(xi) to xi here
-    xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
+    xi_mask = np.logical_and(
+        xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1]
+    )
     avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
     mask = np.logical_and(xi_mask, slender_mask)
@@ -176,7 +181,7 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
         "o",
         color=colors[ixi],
         label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
-        markersize=6.5
+        markersize=6.5,
     )
 
 plt.legend(fontsize=20, loc="upper right")
@@ -188,7 +193,7 @@ plt.xticks(fontsize=18)
 #     plt.ylabel(r"$N_{12,cr}^* = N_{12,cr} \cdot \frac{b^2}{\pi^2 \sqrt[4]{D_{11}^p (D_{22}^p)^3}}$", fontsize=24)
 if args.load == "Nx":
     plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
-else: # "Nxy"
+else:  # "Nxy"
     plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
 plt.yticks(fontsize=18)
 plt.margins(x=0.02, y=0.02)
@@ -196,6 +201,10 @@ plt.xlim(0.0, 5.0)
 # plt.xlim(0.0, 10.0)
 plt.ylim(0.0, 20.0)
 # plt.show()
-plt.savefig(os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.svg"), dpi=400)
-plt.savefig(os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.png"), dpi=400)
+plt.savefig(
+    os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.svg"), dpi=400
+)
+plt.savefig(
+    os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.png"), dpi=400
+)
 plt.close("all")

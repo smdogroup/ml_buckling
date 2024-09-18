@@ -65,7 +65,7 @@ for i in range(materials.shape[0]):
     ply_angle = ply_angles[i]
     h = 1.0
     b = (
-        h * X[i,2]
+        h * X[i, 2]
     )  # verified that different b values don't influence non-dim buckling load
     AR = 1.0
     a = b * AR
@@ -278,10 +278,10 @@ print(f"num outliers = {np.sum(global_outlier_mask)}")
 # exit()
 
 # replace X[0] xi with log(1+xi)
-X[:,0] += 1.0
+X[:, 0] += 1.0
 
 # replace X[2] the b/h slenderness column with zeta
-X[:,2] = 1.0 + 1000.0 * zeta[:]
+X[:, 2] = 1.0 + 1000.0 * zeta[:]
 
 # remove the outliers from the dataset
 keep_mask = np.logical_not(global_outlier_mask)
@@ -290,7 +290,7 @@ Y = Y[keep_mask, :]
 
 # double the shear raw data since it was wrong eps_12 vs gamma_12
 if args.load == "Nxy":
-    Y[:,:] *= 2.0
+    Y[:, :] *= 2.0
 
 # convert xi, a0/b0, b/h and kmin to log space
 X[:, :] = np.log(X[:, :])

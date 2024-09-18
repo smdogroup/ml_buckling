@@ -64,10 +64,12 @@ for material in mlb.CompositeMaterial.get_materials()[0:1]:
 
             for SHR in SHR_vec:
 
-                #SHR = 1.2
+                # SHR = 1.2
 
-                #for num_stiff in [1, 3, 5]:
-                for num_stiff in [3]: # different number of stiffeners introduces too much noise in the data
+                # for num_stiff in [1, 3, 5]:
+                for num_stiff in [
+                    3
+                ]:  # different number of stiffeners introduces too much noise in the data
 
                     log_AR_vec = np.linspace(np.log(0.2), np.log(8.0), 15)
                     AR_vec = np.exp(log_AR_vec)
@@ -75,12 +77,12 @@ for material in mlb.CompositeMaterial.get_materials()[0:1]:
                     for AR in AR_vec:
 
                         # temporarily set AR to reasonable value
-                        #AR = 3.0
+                        # AR = 3.0
                         a = AR * b
 
                         # use stiffener height ratio to determine the stiffener height
                         h_w = h * SHR
-                        stiff_AR = 3.0 #1.0
+                        stiff_AR = 3.0  # 1.0
                         t_w = h_w / stiff_AR
 
                         geometry = mlb.StiffenedPlateGeometry(
@@ -109,11 +111,11 @@ for material in mlb.CompositeMaterial.get_materials()[0:1]:
                         # choose a number of elements in each direction
                         _nelems = 6000
                         MIN_Y = 20 / geometry.num_local
-                        MIN_Z = 10 #5
+                        MIN_Z = 10  # 5
                         N = geometry.num_local
                         AR_s = geometry.a / geometry.h_w
-                        #print(f"AR = {AR}, AR_s = {AR_s}")
-                        nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
+                        # print(f"AR = {AR}, AR_s = {AR_s}")
+                        nx = np.ceil(np.sqrt(_nelems / (1.0 / AR + (N - 1) / AR_s)))
                         ny = max(np.ceil(nx / AR / N), MIN_Y)
                         nz = max(np.ceil(nx / AR_s), MIN_Z)
                         print(f"Stage 1 : nx {nx}, ny {ny}, nz {nz}")
@@ -122,11 +124,11 @@ for material in mlb.CompositeMaterial.get_materials()[0:1]:
                         #     nz = MIN_Z
                         #     nx = np.ceil(AR_s * nz)
                         #     ny = np.ceil(nx / AR / N)
-                        
+
                         # print(f"Stage 2 : nx {nx}, ny {ny}, nz {nz}")
 
-                        check_nelems = N * nx * ny + (N-1) * nx * nz
-                        #print(f"check nelems = {check_nelems}")
+                        check_nelems = N * nx * ny + (N - 1) * nx * nz
+                        # print(f"check nelems = {check_nelems}")
 
                         print(f"check nelems = {check_nelems}")
 
@@ -200,8 +202,8 @@ for material in mlb.CompositeMaterial.get_materials()[0:1]:
                             "zeta": [stiffened_plate.zeta_plate],
                             "lambda_star": [np.real(global_lambda_star)],
                             "pred_lam": [lam_min],
-                            "pred_type" : [mode_type],
-                            "pred_lam_old" : [lam_min2],
+                            "pred_type": [mode_type],
+                            "pred_lam_old": [lam_min2],
                         }
 
                         # write to the training csv file
@@ -229,7 +231,7 @@ for material in mlb.CompositeMaterial.get_materials()[0:1]:
                         data_dict["SAR"] = [stiff_AR]
                         data_dict["delta"] = [stiffened_plate.delta]
                         data_dict["n_stiff"] = [num_stiff]
-                        data_dict["elem_list"] = [[int(nx),int(ny),int(nz)]]
+                        data_dict["elem_list"] = [[int(nx), int(ny), int(nz)]]
                         data_dict["nelem"] = [int(check_nelems)]
 
                         # write to the csv file for raw data

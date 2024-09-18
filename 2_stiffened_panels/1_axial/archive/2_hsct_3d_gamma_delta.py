@@ -22,9 +22,15 @@ parent_parser.add_argument("--rho0Min", type=float, default=0.3)
 parent_parser.add_argument("--gammaMin", type=float, default=0.01)
 parent_parser.add_argument("--rho0Max", type=float, default=5.0)
 parent_parser.add_argument("--gammaMax", type=float, default=100.0)
-parent_parser.add_argument('--debug', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--lamCorr', default=False, action=argparse.BooleanOptionalAction)
-parent_parser.add_argument('--clear', default=False, action=argparse.BooleanOptionalAction)
+parent_parser.add_argument(
+    "--debug", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--lamCorr", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--clear", default=False, action=argparse.BooleanOptionalAction
+)
 
 args = parent_parser.parse_args()
 
@@ -33,10 +39,11 @@ if args.debug:
 
 comm = MPI.COMM_WORLD
 
+
 def get_buckling_load(rho_0, gamma):
 
     # compute the appropriate a,b,h_w,t_w values to achieve rho_0, gamma
-    AR = rho_0 # since isotropic
+    AR = rho_0  # since isotropic
     b = 0.1
     a = b * AR
     stiffAR = 1.0
@@ -45,11 +52,11 @@ def get_buckling_load(rho_0, gamma):
 
     plate_material = mlb.CompositeMaterial(
         E11=138e9,  # Pa
-        E22=138e9, #8.96e9
-        G12=138e9/2.0/(1+nu),
+        E22=138e9,  # 8.96e9
+        G12=138e9 / 2.0 / (1 + nu),
         nu12=nu,
         ply_angles=[0, 90, 0, 90],
-        ply_fractions=[0.25]*4,
+        ply_fractions=[0.25] * 4,
         ref_axis=[1, 0, 0],
     )
 
@@ -57,7 +64,7 @@ def get_buckling_load(rho_0, gamma):
 
     def gamma_resid(x):
         _geometry = mlb.StiffenedPlateGeometry(
-            a=a, b=b, h=h, num_stiff=3, h_w=stiffAR*x, t_w=x
+            a=a, b=b, h=h, num_stiff=3, h_w=stiffAR * x, t_w=x
         )
         stiff_analysis = mlb.StiffenedPlateAnalysis(
             comm=comm,
@@ -68,43 +75,41 @@ def get_buckling_load(rho_0, gamma):
         return gamma - stiff_analysis.gamma
 
     # approximate the h_w,t_w for gamma
-    s_p = b / 4 # num_local = num_stiff + 1
-    x_guess = np.power(gamma*s_p*h**3 / (1-nu**2), 0.25)
+    s_p = b / 4  # num_local = num_stiff + 1
+    x_guess = np.power(gamma * s_p * h ** 3 / (1 - nu ** 2), 0.25)
     xopt = sopt.fsolve(func=gamma_resid, x0=x_guess)
     # print(f"x = {xopt}")
 
     t_w = xopt[0]
     h_w = t_w * stiffAR
 
-    geometry = mlb.StiffenedPlateGeometry(
-        a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w
-    )
+    geometry = mlb.StiffenedPlateGeometry(a=a, b=b, h=h, num_stiff=3, h_w=h_w, t_w=t_w)
     stiff_analysis = mlb.StiffenedPlateAnalysis(
         comm=comm,
         geometry=geometry,
         stiffener_material=stiff_material,
         plate_material=plate_material,
     )
-    
+
     _nelems = args.nelems
-    MIN_Y = 20 / geometry.num_local # 20
-    MIN_Z = 5 #5
+    MIN_Y = 20 / geometry.num_local  # 20
+    MIN_Z = 5  # 5
     N = geometry.num_local
     AR_s = geometry.a / geometry.h_w
-    #print(f"AR = {AR}, AR_s = {AR_s}")
-    nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
+    # print(f"AR = {AR}, AR_s = {AR_s}")
+    nx = np.ceil(np.sqrt(_nelems / (1.0 / AR + (N - 1) / AR_s)))
     ny = max(np.ceil(nx / AR / N), MIN_Y)
     nz = max(np.ceil(nx / AR_s), MIN_Z)
 
     stiff_analysis.pre_analysis(
-        nx_plate=int(nx), #90
-        ny_plate=int(ny), #30
-        nz_stiff=int(nz), #5
+        nx_plate=int(nx),  # 90
+        ny_plate=int(ny),  # 30
+        nz_stiff=int(nz),  # 5
         nx_stiff_mult=3,
         exx=stiff_analysis.affine_exx,
         exy=0.0,
         clamped=False,
-        _make_rbe=True,  
+        _make_rbe=True,
     )
 
     comm.Barrier()
@@ -112,25 +117,27 @@ def get_buckling_load(rho_0, gamma):
     if comm.rank == 0:
         print(stiff_analysis)
 
-
     tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
         sigma=5.0, num_eig=50, write_soln=False
     )
 
     if args.lamCorr:
         avg_stresses = stiff_analysis.run_static_analysis(write_soln=True)
-        lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(in_plane_loads=avg_stresses, axial=True)
+        lam_corr_fact = stiff_analysis.eigenvalue_correction_factor(
+            in_plane_loads=avg_stresses, axial=True
+        )
         # exit()
 
     stiff_analysis.post_analysis()
-
 
     global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
     if args.lamCorr:
         global_lambda_star *= lam_corr_fact
 
     # predict the actual eigenvalue
-    pred_lambda,mode_type = stiff_analysis.predict_crit_load(exx=stiff_analysis.affine_exx)
+    pred_lambda, mode_type = stiff_analysis.predict_crit_load(
+        exx=stiff_analysis.affine_exx
+    )
 
     if comm.rank == 0:
         stiff_analysis.print_mode_classification()
@@ -142,7 +149,7 @@ def get_buckling_load(rho_0, gamma):
 
     if args.lamCorr:
         global_lambda_star *= lam_corr_fact
-        if comm.rank == 0: 
+        if comm.rank == 0:
             print(f"{avg_stresses=}")
             print(f"{lam_corr_fact=}")
 
@@ -157,18 +164,21 @@ def get_buckling_load(rho_0, gamma):
     # returns (CF_eig, FEA_eig) as follows:
     return pred_lambda, global_lambda_star
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     # import argparse
     import matplotlib.pyplot as plt
     from matplotlib import cm
 
-    # now make side-by-side contour plots comparing the stiffened 
+    # now make side-by-side contour plots comparing the stiffened
     # panel buckling loads btw CF and FEA
 
     if args.debug:
-        # args.npts = 2; 
-        args.rho0Min = 0.5; args.rho0Max = 2.0
-        args.gammaMin = 0.01; args.gammaMax = 100.0
+        # args.npts = 2;
+        args.rho0Min = 0.5
+        args.rho0Max = 2.0
+        args.gammaMin = 0.01
+        args.gammaMax = 100.0
 
     # rho0_vec = np.geomspace(0.1, 10.0, n)
     rho0_vec = np.geomspace(args.rho0Min, args.rho0Max, args.nrho0)
@@ -183,28 +193,34 @@ if __name__=="__main__":
         print(f"{gamma_vec=}")
     # exit()
 
-    CF = np.zeros((args.nGamma,args.nrho0)); FEA = np.zeros((args.nGamma,args.nrho0))
-    for igamma,gamma in enumerate(gamma_vec):
-        for irho0,rho0 in enumerate(rho0_vec):
+    CF = np.zeros((args.nGamma, args.nrho0))
+    FEA = np.zeros((args.nGamma, args.nrho0))
+    for igamma, gamma in enumerate(gamma_vec):
+        for irho0, rho0 in enumerate(rho0_vec):
             eig_CF, eig_FEA = get_buckling_load(rho_0=rho0, gamma=gamma)
             if comm.rank == 0:
                 print(f"{eig_CF=}, {eig_FEA=}")
-            if eig_FEA is None: eig_FEA = np.nan # just leave value as almost zero..
-            CF[igamma,irho0] = eig_CF
-            FEA[igamma,irho0] = eig_FEA
+            if eig_FEA is None:
+                eig_FEA = np.nan  # just leave value as almost zero..
+            CF[igamma, irho0] = eig_CF
+            FEA[igamma, irho0] = eig_FEA
 
             # write out as you go so you can see the progress and if run gets killed you don't lose it all
             if comm.rank == 0:
                 df_dict = {
-                    "log(rho0)" : np.array([np.log(rho0)]),
-                    "log(1+gamma)" : np.array([np.log(1.0+gamma)]),
-                    "log(N11-CF)" : np.array([np.log(eig_CF)]),
-                    "log(N11-FEA)" : np.array([np.log(eig_FEA)]),
+                    "log(rho0)": np.array([np.log(rho0)]),
+                    "log(1+gamma)": np.array([np.log(1.0 + gamma)]),
+                    "log(N11-CF)": np.array([np.log(eig_CF)]),
+                    "log(N11-FEA)": np.array([np.log(eig_FEA)]),
                 }
                 df = pd.DataFrame(df_dict)
                 first_write = igamma == 0 and irho0 == 0
                 first_write = first_write and args.clear
-                df.to_csv("2-hsct-axial.csv", mode="w" if first_write else "a", header=first_write)
+                df.to_csv(
+                    "2-hsct-axial.csv",
+                    mode="w" if first_write else "a",
+                    header=first_write,
+                )
 
     LOG_RHO0 = np.log(RHO0)
     LOG_GAMMA = np.log(1.0 + GAMMA)
@@ -235,11 +251,23 @@ if __name__=="__main__":
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 
         # Plot the surface.
-        surf1 = ax.plot_surface(LOG_RHO0, LOG_GAMMA, LOG_CF, cmap=cm.coolwarm,
-                            linewidth=0, antialiased=False)
+        surf1 = ax.plot_surface(
+            LOG_RHO0,
+            LOG_GAMMA,
+            LOG_CF,
+            cmap=cm.coolwarm,
+            linewidth=0,
+            antialiased=False,
+        )
         mynorm = surf1.norm
-        surf2 = ax.plot_surface(LOG_RHO0, LOG_GAMMA, LOG_FEA, cmap=cm.coolwarm,
-                            linewidth=0, antialiased=False)
+        surf2 = ax.plot_surface(
+            LOG_RHO0,
+            LOG_GAMMA,
+            LOG_FEA,
+            cmap=cm.coolwarm,
+            linewidth=0,
+            antialiased=False,
+        )
         surf2.set_norm(mynorm)
 
         fig.colorbar(surf1, shrink=0.5, aspect=5)
@@ -247,12 +275,8 @@ if __name__=="__main__":
         plt.show()
 
         # also plot the difference in eigenvalues and make a colorplot
-        fig2, ax2 = plt.subplots(layout='constrained')
+        fig2, ax2 = plt.subplots(layout="constrained")
         cs = ax2.contourf(LOG_RHO0, LOG_GAMMA, LOG_FEA - LOG_CF)
         # plt.colorbar()
         fig2.colorbar(cs, ax=ax2, shrink=0.9)
         plt.show()
-
-
-    
-    

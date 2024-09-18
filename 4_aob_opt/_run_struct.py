@@ -5,7 +5,8 @@ Local machine optimization for the panel thicknesses using nribs-1 OML panels an
 """
 
 import time
-#from pyoptsparse import SNOPT, Optimization
+
+# from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
 
@@ -17,15 +18,19 @@ import os
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=6)
-#parent_parser.add_argument("--hotstart", type=bool, default=False)
-parent_parser.add_argument("--useML", type=bool, default=False)
+parent_parser.add_argument(
+    "--useML", default=False, action=argparse.BooleanOptionalAction
+)
+
 args = parent_parser.parse_args()
 
 if args.useML:
     from _gp_callback import gp_callback_generator
+
     model_name = "ML-oneway"
 else:
     from _closed_form_callback import closed_form_callback as callback
+
     model_name = "CF-oneway"
 
 
@@ -107,9 +112,15 @@ for icomp, comp in enumerate(component_groups):
         panel_length = 0.36
     elif "OML" in comp:
         panel_length = 0.65
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.LENGTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0, state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
     # stiffener pitch variable
     Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
@@ -131,9 +142,15 @@ for icomp, comp in enumerate(component_groups):
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0,  state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
 caps2tacs.PinConstraint("root", dof_constraint=246).register_to(tacs_model)
 caps2tacs.PinConstraint("sob", dof_constraint=13).register_to(tacs_model)
@@ -215,7 +232,7 @@ for igroup, comp_group in enumerate(comp_groups):
         # minimum stiffener AR
         min_stiff_AR = sheight_var - 2.0 * sthick_var
         min_stiff_AR.set_name(f"{comp_group}{icomp}-stiffAR").optimize(
-                lower=0.0, scale=1.0, objective=False
+            lower=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
 # DISCIPLINE INTERFACES AND DRIVERS
@@ -281,7 +298,14 @@ if test_derivatives:  # test using the finite difference test
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
+# design_out_file = os.path.join(
+#     base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+# )
+
+# temp just load CF-sizing.txt to compare ML and CF
+design_out_file = os.path.join(
+    base_dir, "design", "CF-sizing.txt"
+)
 
 # reload previous design
 # not needed since we are hot starting
@@ -289,3 +313,8 @@ f2f_model.read_design_variables_file(comm, design_out_file)
 
 # run a forward struct analysis
 tacs_driver.solve_forward()
+
+# print out the function values
+if comm.rank == 0:
+    for func in f2f_model.get_functions(optim=True):
+        print(f"func {func.name} = {func.value.real}")

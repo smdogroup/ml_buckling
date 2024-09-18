@@ -17,11 +17,11 @@ flat_plate = mlb.UnstiffenedPlateAnalysis.solvay5320(
     a=0.1 * AR,
     b=0.1,
     h=0.005,
-    ply_angle=45, # so that D11 = D22 and rho0 = rho
+    ply_angle=45,  # so that D11 = D22 and rho0 = rho
 )
 
 flat_plate.generate_bdf(
-    nx=int(30*AR),
+    nx=int(30 * AR),
     ny=30,
     exx=1e-3,
     eyy=0.0,

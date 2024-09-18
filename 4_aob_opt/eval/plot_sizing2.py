@@ -13,10 +13,8 @@ plotter = PlotManager.from_hist_file(
 )
 
 # MAKE EACH PLOT FOR A DIFFERENT MODE
-togw = Function.plot("mass").optimize(scale=1.0e-3*9.81).register_to(plotter)
-ksfailure = Function.plot("ksfailure").optimize(scale=1.0).register_to(
-    plotter
-)
+togw = Function.plot("mass").optimize(scale=1.0e-3 * 9.81).register_to(plotter)
+ksfailure = Function.plot("ksfailure").optimize(scale=1.0).register_to(plotter)
 
 # three color schemes from color scheme website https://coolors.co/palettes/popular/3%20colors
 colors1 = ["#2b2d42", "#8d99ae", "#edf2f4"]
@@ -34,24 +32,40 @@ six_colors = ["#264653", "#287271", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51"]
 
 plt.figure("case1")
 plt.style.use(niceplots.get_style())
-fig, ax1 = plt.subplots(figsize=(8,6))
+fig, ax1 = plt.subplots(figsize=(8, 6))
 # my_colors = niceplots.get_colors_list() #colors11
-my_colors = colors3 #colors3, colors5
+my_colors = colors3  # colors3, colors5
 grey_colors = plt.cm.Greys(np.linspace(1.0, 0.5, 2))
 plt.margins(x=0.05, y=0.05)
-ax1.set_xlabel('Iterations')
-ax1.set_ylabel('Wing Weight (kN)', color=my_colors[0])
-ax1.tick_params(axis='y', labelcolor=my_colors[0])
-ax1.plot(plotter.iterations, plotter.get_hist_array(togw), "-", color=my_colors[0], label="Weight")
+ax1.set_xlabel("Iterations")
+ax1.set_ylabel("Wing Weight (kN)", color=my_colors[0])
+ax1.tick_params(axis="y", labelcolor=my_colors[0])
+ax1.plot(
+    plotter.iterations,
+    plotter.get_hist_array(togw),
+    "-",
+    color=my_colors[0],
+    label="Weight",
+)
 
 ax2 = ax1.twinx()
 
 niter = len(plotter.iterations)
-ax2.plot(plotter.iterations, np.ones((niter,)), color=grey_colors[0], linestyle="dashed")
-ax2.plot(plotter.iterations, np.zeros((niter,)), color=grey_colors[1], linestyle="dashed")
-ax2.plot(plotter.iterations, plotter.get_hist_array(ksfailure), "-", color=my_colors[1], label="KSfailure")
+ax2.plot(
+    plotter.iterations, np.ones((niter,)), color=grey_colors[0], linestyle="dashed"
+)
+ax2.plot(
+    plotter.iterations, np.zeros((niter,)), color=grey_colors[1], linestyle="dashed"
+)
+ax2.plot(
+    plotter.iterations,
+    plotter.get_hist_array(ksfailure),
+    "-",
+    color=my_colors[1],
+    label="KSfailure",
+)
 ax2.set_ylabel("KSFailure", color=my_colors[1])
-ax2.tick_params(axis='y', labelcolor='k')
+ax2.tick_params(axis="y", labelcolor="k")
 ax2.set_yscale("log")
 ax2.set_ylim(1e-1, 20)
 plt.text(x=1000, y=1.2, s="ks-constr", color=grey_colors[0])
@@ -63,6 +77,6 @@ plt.text(x=1000, y=1.2, s="ks-constr", color=grey_colors[0])
 
 # plot the constraints
 plt.margins(x=0.02, y=0.02)
-#plt.legend()
+# plt.legend()
 plt.savefig("CF-opt-hist.png" if m_case == "CF" else "ML-opt-hist.png", dpi=400)
 plt.close("case1")

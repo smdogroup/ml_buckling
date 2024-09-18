@@ -1,9 +1,16 @@
 """
 Paths to archived models
 """
-__all__ = ["axialGP_csv", "shearGP_csv", "cripplingGP_csv", "axial_theta_csv", "shear_theta_csv"]
+__all__ = [
+    "axialGP_csv",
+    "shearGP_csv",
+    "cripplingGP_csv",
+    "axial_theta_csv",
+    "shear_theta_csv",
+]
 
 import os
+
 base_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(base_dir)
 model_dir = os.path.join(root_dir, "archived_models")

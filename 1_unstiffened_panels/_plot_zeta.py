@@ -91,36 +91,38 @@ lam = Y[:, 0]
 # colors = plt.cm.jet(np.linspace(0, 1, len(slender_bins)))
 colors = mlb.four_colors6
 
-zeta_bins = zeta_bins#[::-1]
+zeta_bins = zeta_bins  # [::-1]
 
 # now plot by xi
 for ixi, xi_bin in enumerate(xi_bins):
     fig, ax = plt.subplots(figsize=(10, 7))
-    xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
+    xi_mask = np.logical_and(
+        xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1]
+    )
 
     # plt.arrow(x=1.4, y=14, dx=0, dy=-6, facecolor="b", width=0.01)
     # plt.text(x=1.4, y=14.5, s="Mode#", horizontalalignment="center")
 
     # for iAR in range(1, 4):
-        # plt.arrow(x=iAR, y=7, dx=0, dy=-1.8, facecolor="k", width=0.01)
-        # plt.text(
-        #     x=iAR, y=14, s=r"$\rho = " + str(iAR) + r"$", horizontalalignment="center"
-        # )
-        # for imode in range(1, 4):
-            # _image = image.imread(f"images/NxSS-{iAR}_{imode}.png")
+    # plt.arrow(x=iAR, y=7, dx=0, dy=-1.8, facecolor="k", width=0.01)
+    # plt.text(
+    #     x=iAR, y=14, s=r"$\rho = " + str(iAR) + r"$", horizontalalignment="center"
+    # )
+    # for imode in range(1, 4):
+    # _image = image.imread(f"images/NxSS-{iAR}_{imode}.png")
 
-            # # plt.text(2+dx, 18+dy, text, horizontalalignment="center")
-            # zoom = 0.05
-            # if iAR == 3:
-            #     zoom = 0.1
-            # imagebox = OffsetImage(
-            #     _image, zoom=zoom
-            # )  # Annotation box for solar pv logo
-            # # Container for the imagebox referring to a specific position *xy*.
-            # ab = AnnotationBbox(
-            #     imagebox, (iAR, 8 + 4.6 - 2.4 * (imode - 1)), frameon=False
-            # )
-            # ax.add_artist(ab)
+    # # plt.text(2+dx, 18+dy, text, horizontalalignment="center")
+    # zoom = 0.05
+    # if iAR == 3:
+    #     zoom = 0.1
+    # imagebox = OffsetImage(
+    #     _image, zoom=zoom
+    # )  # Annotation box for solar pv logo
+    # # Container for the imagebox referring to a specific position *xy*.
+    # ab = AnnotationBbox(
+    #     imagebox, (iAR, 8 + 4.6 - 2.4 * (imode - 1)), frameon=False
+    # )
+    # ax.add_artist(ab)
 
     # get xy coords of point at rho0 = 1.0
     mask1 = np.logical_and(np.log(1.4) <= xi, xi <= np.log(1.7))
@@ -132,9 +134,7 @@ for ixi, xi_bin in enumerate(xi_bins):
     # plt.arrow(x=2+dx, y=13+dy, dx=-1.0-dx, dy=lam_near - 13-dy, width=0.01, facecolor="k")
 
     for izeta, zeta_bin in enumerate(zeta_bins):
-        zeta_mask = np.logical_and(
-            zeta_bin[0] <= zeta, zeta <= zeta_bin[1]
-        )
+        zeta_mask = np.logical_and(zeta_bin[0] <= zeta, zeta <= zeta_bin[1])
 
         mask = np.logical_and(xi_mask, zeta_mask)
         if np.sum(mask) == 0:
@@ -146,15 +146,17 @@ for ixi, xi_bin in enumerate(xi_bins):
             "o",
             color=colors[izeta],
             zorder=len(zeta_bins) - izeta,
-            label=r"$\log(1+10^3\zeta)\ in\ [" + f"{zeta_bin[0]:.1f},{zeta_bin[1]:.1f}" + r"]$",
+            label=r"$\log(1+10^3\zeta)\ in\ ["
+            + f"{zeta_bin[0]:.1f},{zeta_bin[1]:.1f}"
+            + r"]$",
         )
 
-    plt.legend(fontsize=18, loc='upper right')
+    plt.legend(fontsize=18, loc="upper right")
     plt.xlabel(r"$\rho_0 = \frac{a}{b} \sqrt[4]{D_{22}/D_{11}}$", fontsize=24)
     plt.xticks(fontsize=18)
     if args.load == "Nx":
         plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
-    else: # "Nxy"
+    else:  # "Nxy"
         plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
     plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)

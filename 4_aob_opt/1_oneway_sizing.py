@@ -17,15 +17,21 @@ import os
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=6)
-parent_parser.add_argument("--hotstart", type=bool, default=False)
-parent_parser.add_argument("--useML", type=bool, default=False)
+parent_parser.add_argument(
+    "--hotstart", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--useML", default=False, action=argparse.BooleanOptionalAction
+)
 args = parent_parser.parse_args()
 
 if args.useML:
     from _gp_callback import gp_callback_generator
+
     model_name = "ML-oneway"
 else:
     from _closed_form_callback import closed_form_callback as callback
+
     model_name = "CF-oneway"
 
 
@@ -107,9 +113,15 @@ for icomp, comp in enumerate(component_groups):
         panel_length = 0.36
     elif "OML" in comp:
         panel_length = 0.65
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.LENGTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0, state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
     # stiffener pitch variable
     Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
@@ -131,9 +143,15 @@ for icomp, comp in enumerate(component_groups):
         lower=0.002, upper=0.1, scale=100.0
     ).register_to(wing)
 
-    Variable.structural(f"{comp}-"+TacsSteadyInterface.WIDTH_VAR, value=panel_length).set_bounds(
-        lower=0.0, scale=1.0,  state=True, # need the length & width to be state variables
-    ).register_to(wing)
+    Variable.structural(
+        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
+    ).set_bounds(
+        lower=0.0,
+        scale=1.0,
+        state=True,  # need the length & width to be state variables
+    ).register_to(
+        wing
+    )
 
 caps2tacs.PinConstraint("root", dof_constraint=246).register_to(tacs_model)
 caps2tacs.PinConstraint("sob", dof_constraint=13).register_to(tacs_model)
@@ -215,13 +233,13 @@ for igroup, comp_group in enumerate(comp_groups):
         # minimum stiffener AR
         min_stiff_AR = sheight_var - 2.0 * sthick_var
         min_stiff_AR.set_name(f"{comp_group}{icomp}-minstiffAR").optimize(
-                lower=0.0, scale=1.0, objective=False
+            lower=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
         # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
-        max_stiff_AR = sheight_var - 8.0 * sthick_var
+        max_stiff_AR = sheight_var - 20.0 * sthick_var
         max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
-                upper=0.0, scale=1.0, objective=False
+            upper=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
 # DISCIPLINE INTERFACES AND DRIVERS
@@ -287,12 +305,16 @@ if test_derivatives:  # test using the finite difference test
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-design_out_file = os.path.join(base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt")
+design_out_file = os.path.join(
+    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+)
 
 design_folder = os.path.join(base_dir, "design")
 if not os.path.exists(design_folder) and comm.rank == 0:
     os.mkdir(design_folder)
-history_file = os.path.join(design_folder, "ML-sizing.hst" if args.useML else "CF-sizing.hst")
+history_file = os.path.join(
+    design_folder, "ML-sizing.hst" if args.useML else "CF-sizing.hst"
+)
 
 # reload previous design
 # not needed since we are hot starting
@@ -325,12 +347,12 @@ snoptimizer = SNOPT(
         "Minor iterations limit": 150000000,
         "Iterations limit": 100000000,
         # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
-        "Nonderivative linesearch": True, # turns off derivative linesearch
+        "Nonderivative linesearch": True,  # turns off derivative linesearch
         "Linesearch tolerance": 0.9,
         "Difference interval": 1e-6,
         "Function precision": 1e-10,
         "New superbasics limit": 2000,
-        "Penalty parameter": 1.0, # had this off for faster opt in the single panel case
+        "Penalty parameter": 1.0,  # had this off for faster opt in the single panel case
         # however ksfailure becomes too large with this off. W/ on merit function goes down too slowly though
         # try intermediate value btw 0 and 1 (smaller penalty)
         # this may be the most important switch to change for opt performance w/ ksfailure in the opt
@@ -346,7 +368,7 @@ snoptimizer = SNOPT(
 sol = snoptimizer(
     opt_problem,
     sens=manager.eval_gradients,
-    storeHistory=history_file, #None
+    storeHistory=history_file,  # None
     hotStart=history_file if args.hotstart else None,
 )
 

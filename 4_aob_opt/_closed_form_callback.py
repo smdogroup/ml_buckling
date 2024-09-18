@@ -19,6 +19,7 @@ dtype = TACS.dtype
 # Element callback function
 # ==============================================================================
 
+
 def closed_form_callback(
     dvNum, compID, compDescript, elemDescripts, specialDVs, **kwargs
 ):
@@ -26,11 +27,11 @@ def closed_form_callback(
     # Create the orthotropic layup
     ortho_prop = constitutive.MaterialProperties(
         rho=1.55e3,  # density kg/m^3
-        E1=117.9e9, # Young's modulus in 11 direction (Pa)
-        E2=9.7e9, # Young's modulus in 22 direction (Pa)
-        G12=4.8e9, # in-plane 1-2 shear modulus (Pa)
-        G13=4.8e9, # Transverse 1-3 shear modulus (Pa)
-        G23=4.8e9, # Transverse 2-3 shear modulus (Pa)
+        E1=117.9e9,  # Young's modulus in 11 direction (Pa)
+        E2=9.7e9,  # Young's modulus in 22 direction (Pa)
+        G12=4.8e9,  # in-plane 1-2 shear modulus (Pa)
+        G13=4.8e9,  # Transverse 1-3 shear modulus (Pa)
+        G23=4.8e9,  # Transverse 2-3 shear modulus (Pa)
         nu12=0.35,  # 1-2 poisson's ratio
         T1=1648e6,  # Tensile strength in 1 direction (Pa)
         C1=1034e6,  # Compressive strength in 1 direction (Pa)
@@ -62,12 +63,12 @@ def closed_form_callback(
 
     # create the design variable scales array
     DVscales = [
-        1.0, # panel length
-        1.0, # stiffener pitch
-        100.0, # panel thickness
-        10.0, # stiffener height
-        100.0, # stiffener thickness
-        1.0, # panel width
+        1.0,  # panel length
+        1.0,  # stiffener pitch
+        100.0,  # panel thickness
+        10.0,  # stiffener height
+        100.0,  # stiffener thickness
+        1.0,  # panel width
     ]
     # TBD can add panel and stifener ply fractions to the DVs
 
@@ -75,7 +76,7 @@ def closed_form_callback(
     con = constitutive.GPBladeStiffenedShellConstitutive(
         panelPly=ortho_ply,
         stiffenerPly=ortho_ply,
-        panelLength=0.5, # choose wrong initial value first to check if it corrects in FUNtoFEM
+        panelLength=0.5,  # choose wrong initial value first to check if it corrects in FUNtoFEM
         stiffenerPitch=0.2,
         panelThick=1.5e-2,
         panelPlyAngles=plyAngles,
@@ -84,18 +85,19 @@ def closed_form_callback(
         stiffenerThick=1e-2,
         stiffenerPlyAngles=plyAngles,
         stiffenerPlyFracs=np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0,
-        panelWidth=0.5, # choose wrong initial value first to check if it corrects in FUNtoFEM
+        panelWidth=0.5,  # choose wrong initial value first to check if it corrects in FUNtoFEM
         flangeFraction=0.8,
         panelLengthNum=dvNum,
-        stiffenerPitchNum=dvNum+1,
-        panelThickNum=dvNum+2,
-        stiffenerHeightNum=dvNum+3,
-        stiffenerThickNum=dvNum+4,
-        panelWidthNum=dvNum+5,
+        stiffenerPitchNum=dvNum + 1,
+        panelThickNum=dvNum + 2,
+        stiffenerHeightNum=dvNum + 3,
+        stiffenerThickNum=dvNum + 4,
+        panelWidthNum=dvNum + 5,
     )
     # Set the KS weight really low so that all failure modes make a
     # significant contribution to the failure function derivatives
-    con.setKSWeight(20.0)
+    con.setKSWeight(100.0)
+    # con.setWriteDVMode(0)
 
     con.setStiffenerPitchBounds(0.05, 0.5)
     con.setPanelThicknessBounds(0.002, 0.1)

@@ -27,8 +27,8 @@ geometry = mlb.StiffenedPlateGeometry(
     b=1.0,
     h=1e-2,
     num_stiff=3,
-    h_w=7e-2, #1e-1 worked here
-    t_w=4e-3, #1e-2 but then crippling happened
+    h_w=7e-2,  # 1e-1 worked here
+    t_w=4e-3,  # 1e-2 but then crippling happened
 )
 
 material = mlb.CompositeMaterial.solvay5320(ref_axis=np.array([1, 0, 0]))
@@ -43,7 +43,7 @@ stiff_analysis = mlb.StiffenedPlateAnalysis(
 stiff_analysis.pre_analysis(
     global_mesh_size=0.03,
     exx=stiff_analysis.affine_exx,
-    exy=0.0, # stiff_analysis.affine_exy, #0.0
+    exy=0.0,  # stiff_analysis.affine_exy, #0.0
     clamped=False,
     edge_pt_min=5,
     edge_pt_max=40,

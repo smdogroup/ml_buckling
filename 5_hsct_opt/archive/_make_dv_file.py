@@ -22,8 +22,8 @@ dict_parts = last_dv_line.split(",")
 # print(dict_parts)
 dict_names = [chunk.split(":")[0][2:-1] for chunk in dict_parts]
 dict_values = [float(chunk.split(":")[1].strip()) for chunk in dict_parts]
-#print(dict_names[-10:])
-#print(dict_values[:10])
+# print(dict_names[-10:])
+# print(dict_values[:10])
 
 # now write the new file
 dv_file_hdl = open("CF-sizing.txt", "w")

@@ -28,15 +28,19 @@ def gp_callback_generator(tacs_component_names):
     """
 
     # build one Axial and Shear GP model to be used for all const objects (no duplication)
-    axialGP = constitutive.AxialGP.from_csv(csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv)
-    shearGP = constitutive.ShearGP.from_csv(csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv)
+    axialGP = constitutive.AxialGP.from_csv(
+        csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv
+    )
+    shearGP = constitutive.ShearGP.from_csv(
+        csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv
+    )
 
     # now build a dictionary of PanelGP objects which manage the GP for each tacs component/panel
-    panelGP_dict = constitutive.PanelGPs.component_dict(tacs_component_names, axialGP=axialGP, shearGP=shearGP)
+    panelGP_dict = constitutive.PanelGPs.component_dict(
+        tacs_component_names, axialGP=axialGP, shearGP=shearGP
+    )
 
-    def GP_callback(
-        dvNum, compID, compDescript, elemDescripts, specialDVs, **kwargs
-    ):
+    def GP_callback(dvNum, compID, compDescript, elemDescripts, specialDVs, **kwargs):
 
         # make the panelGPs object for the panel that this constitutive object belongs to
         panelGPs = panelGP_dict[compDescript]
@@ -45,7 +49,7 @@ def gp_callback_generator(tacs_component_names):
         ortho_prop = constitutive.MaterialProperties(
             rho=1550,
             specific_heat=921.096,
-            E1=54e3, # replace these values with more realistic
+            E1=54e3,  # replace these values with more realistic
             # these values came from unittest script
             E2=18e3,
             nu12=0.25,
@@ -74,36 +78,38 @@ def gp_callback_generator(tacs_component_names):
 
         # create the design variable scales array
         DVscales = [
-            1.0, # panel length
-            1.0, # stiffener pitch
-            100.0, # panel thickness
-            10.0, # stiffener height
-            100.0, # stiffener thickness
-            1.0, # panel width
+            1.0,  # panel length
+            1.0,  # stiffener pitch
+            100.0,  # panel thickness
+            10.0,  # stiffener height
+            100.0,  # stiffener thickness
+            1.0,  # panel width
         ]
         # TBD can add panel and stifener ply fractions to the DVs
 
         con = constitutive.GPBladeStiffenedShellConstitutive(
             panelPly=ortho_ply,
             stiffenerPly=ortho_ply,
-            panelLength=0.5, # choose wrong initial value first to check if it corrects in FUNtoFEM
+            panelLength=0.5,  # choose wrong initial value first to check if it corrects in FUNtoFEM
             stiffenerPitch=0.2,
             panelThick=1.5e-2,
             panelPlyAngles=np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype)),
             panelPlyFracs=np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0,
             stiffenerHeight=0.075,
             stiffenerThick=1e-2,
-            stiffenerPlyAngles=np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype)),
+            stiffenerPlyAngles=np.deg2rad(
+                np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype)
+            ),
             stiffenerPlyFracs=np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0,
-            panelWidth=0.5, # choose wrong initial value first to check if it corrects in FUNtoFEM
+            panelWidth=0.5,  # choose wrong initial value first to check if it corrects in FUNtoFEM
             flangeFraction=0.8,
             panelLengthNum=dvNum,
-            stiffenerPitchNum=dvNum+1,
-            panelThickNum=dvNum+2,
-            stiffenerHeightNum=dvNum+3,
-            stiffenerThickNum=dvNum+4,
-            panelWidthNum=dvNum+5,
-            panelGPs=panelGPs
+            stiffenerPitchNum=dvNum + 1,
+            panelThickNum=dvNum + 2,
+            stiffenerHeightNum=dvNum + 3,
+            stiffenerThickNum=dvNum + 4,
+            panelWidthNum=dvNum + 5,
+            panelGPs=panelGPs,
         )
         # Set the KS weight really low so that all failure modes make a
         # significant contribution to the failure function derivatives
@@ -127,4 +133,5 @@ def gp_callback_generator(tacs_component_names):
             elem = elements.Quad16Shell(transform, con)
 
         return elem, DVscales
+
     return GP_callback

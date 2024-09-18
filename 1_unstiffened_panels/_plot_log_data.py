@@ -95,17 +95,15 @@ lam = Y[:, 0]
 
 # _image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
 
-#colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
+# colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
 # five color custom color map
-#colors = mlb.five_colors9[::-1] + ["b"]
-colors = mlb.six_colors2#[::-1]
+# colors = mlb.five_colors9[::-1] + ["b"]
+colors = mlb.six_colors2  # [::-1]
 
 for islender, slender_bin in enumerate(slender_bins):
     fig, ax = plt.subplots(figsize=(10, 7))
-    zeta = slenderness # slightly deprecated names here
-    slender_mask = np.logical_and(
-        slender_bin[0] <= zeta, zeta <= slender_bin[1]
-    )
+    zeta = slenderness  # slightly deprecated names here
+    slender_mask = np.logical_and(slender_bin[0] <= zeta, zeta <= slender_bin[1])
 
     # text = "Axial" if args.load == "Nx" else "Shear"
     # text += ", "
@@ -142,7 +140,9 @@ for islender, slender_bin in enumerate(slender_bins):
 
     for ixi, xi_bin in enumerate(xi_bins[::-1]):
         # slightly deprecated code in some areas
-        xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
+        xi_mask = np.logical_and(
+            xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1]
+        )
 
         mask = np.logical_and(xi_mask, slender_mask)
         if np.sum(mask) == 0:
@@ -154,7 +154,7 @@ for islender, slender_bin in enumerate(slender_bins):
             "o",
             color=colors[ixi],
             label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
-            markersize=6.5
+            markersize=6.5,
         )
 
     # plt.legend(fontsize=20) # label xi values in the plots
@@ -162,7 +162,7 @@ for islender, slender_bin in enumerate(slender_bins):
     plt.xticks(fontsize=18)
     if args.load == "Nx":
         plt.ylabel(r"$\log(N_{11,cr}^*)$", fontsize=24)
-    else: # "Nxy"
+    else:  # "Nxy"
         plt.ylabel(r"$\log(N_{12,cr}^*)$", fontsize=24)
     plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)

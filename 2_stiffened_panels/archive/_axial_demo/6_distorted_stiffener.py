@@ -37,7 +37,7 @@ stiff_analysis.pre_analysis(
     ny_plate=10,
     nz_stiff=10,
     exx=stiff_analysis.affine_exx,
-    exy=0.0,    #  stiff_analysis.affine_exy,     #0.0
+    exy=0.0,  #  stiff_analysis.affine_exy,     #0.0
     clamped=False,
 )
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(

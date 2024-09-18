@@ -115,18 +115,18 @@ for ifolder, folder in enumerate(
         os.mkdir(folder)
 
 plt.style.use(niceplots.get_style())
-xi = np.exp(X[:,0]) - 1.0
-rho0 = np.exp(X[:,1])
+xi = np.exp(X[:, 0]) - 1.0
+rho0 = np.exp(X[:, 1])
 gamma = xi * 0.0
 zeta = (np.exp(X[:, 2]) - 1.0) / 1000.0
 lam = np.exp(Y[:, 0])
 
-#_image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
+# _image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
 
-#colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
+# colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
 # five color custom color map
-#colors = mlb.five_colors9[::-1] + ["b"]
-colors = mlb.six_colors2#[::-1]
+# colors = mlb.five_colors9[::-1] + ["b"]
+colors = mlb.six_colors2  # [::-1]
 
 # plot only the most slender data
 slender_bin = [0.0, 0.4]
@@ -137,7 +137,7 @@ rho0_vec = np.linspace(0.2, 5.0, n)
 Ncr_vec = np.zeros((n,), dtype=dtype)
 
 
-# train the shear surrogate model with 
+# train the shear surrogate model with
 gamma_mask = gamma < 0.01
 zeta_mask = zeta < 1e-3
 rho0_mask = rho0 > 0.5
@@ -150,23 +150,28 @@ zeta1 = zeta[mask]
 lam1 = lam[mask]
 npts = lam1.shape[0]
 
-Xlinear = np.zeros((npts,4))
-Ylinear = (lam1 - 0.5 * gamma1).reshape((npts,1))
+Xlinear = np.zeros((npts, 4))
+Ylinear = (lam1 - 0.5 * gamma1).reshape((npts, 1))
 # least-squares fit now
-Xlinear[:,0] = 1.0
-Xlinear[:,1] = np.power(rho01, -2.0)
-#Xlinear[:,2] = np.power(rho0, -4.0)
-Xlinear[:,2] = xi1
-Xlinear[:,3] = xi1 * np.power(rho01, -2.0)
+Xlinear[:, 0] = 1.0
+Xlinear[:, 1] = np.power(rho01, -2.0)
+# Xlinear[:,2] = np.power(rho0, -4.0)
+Xlinear[:, 2] = xi1
+Xlinear[:, 3] = xi1 * np.power(rho01, -2.0)
 print(f"Ylinear = {Ylinear}")
 print(f"Xlinear = {Xlinear}")
-wLS = np.linalg.solve(Xlinear.T @ Xlinear, Xlinear.T @ Ylinear)[:,0]
+wLS = np.linalg.solve(Xlinear.T @ Xlinear, Xlinear.T @ Ylinear)[:, 0]
 print(f"wLS = {wLS}")
-#exit()
+# exit()
 
 slender_mask = zeta < 1e-3
 
-plt.text(x=3.6, y=8.7, s=r"$\xi = \frac{D_{12}^p + D_{66}^p}{\sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
+plt.text(
+    x=3.6,
+    y=8.7,
+    s=r"$\xi = \frac{D_{12}^p + D_{66}^p}{\sqrt{D_{11}^p D_{22}^p}}$",
+    fontsize=24,
+)
 
 for ixi, xi_bin in enumerate(xi_bins[::-1]):
     # convert from log(xi) to xi here
@@ -179,14 +184,20 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
         continue
 
     # plot the closed-form solution
-    #if args.load == "Nx":
+    # if args.load == "Nx":
     #    for i, _rho0 in enumerate(rho0_vec):
     #        Ncr_vec[i] = con.nondimCriticalGlobalAxialLoad(_rho0, avg_xi, 0.0)
-    #else:
+    # else:
     #    for i, _rho0 in enumerate(rho0_vec):
     #        Ncr_vec[i] = con.nondimCriticalGlobalShearLoad(_rho0, avg_xi, 0.0)
     for i, _rho0 in enumerate(rho0_vec):
-        Ncr_vec[i] = wLS[0] + wLS[1] * _rho0**(-2.0) + wLS[2] * avg_xi + 0.5 * 0.0 + wLS[3] * avg_xi * _rho0**(-2.0)
+        Ncr_vec[i] = (
+            wLS[0]
+            + wLS[1] * _rho0 ** (-2.0)
+            + wLS[2] * avg_xi
+            + 0.5 * 0.0
+            + wLS[3] * avg_xi * _rho0 ** (-2.0)
+        )
 
     plt.plot(
         rho0_vec,
@@ -202,7 +213,7 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
         "o",
         color=colors[ixi],
         label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
-        markersize=6.5
+        markersize=6.5,
     )
 
 plt.legend(fontsize=20, loc="upper right")
@@ -214,7 +225,7 @@ plt.xticks(fontsize=18)
 #     plt.ylabel(r"$N_{12,cr}^* = N_{12,cr} \cdot \frac{b^2}{\pi^2 \sqrt[4]{D_{11}^p (D_{22}^p)^3}}$", fontsize=24)
 if args.load == "Nx":
     plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
-else: # "Nxy"
+else:  # "Nxy"
     plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
 plt.yticks(fontsize=18)
 plt.margins(x=0.02, y=0.02)

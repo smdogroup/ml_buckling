@@ -129,17 +129,15 @@ lam = Y[:, 0]
 
 _image = image.imread(f"images/{load_prefix}-{BC}-mode.png")
 
-#colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
+# colors = plt.cm.jet(np.linspace(0, 1, len(xi_bins)))
 # five color custom color map
-#colors = mlb.five_colors9[::-1] + ["b"]
-colors = mlb.six_colors2#[::-1]
+# colors = mlb.five_colors9[::-1] + ["b"]
+colors = mlb.six_colors2  # [::-1]
 
 # plot only the most slender data
 slender_bin = [0.0, 0.4]
 fig, ax = plt.subplots(figsize=(10, 7))
-slender_mask = np.logical_and(
-    slender_bin[0] <= zeta, zeta <= slender_bin[1]
-)
+slender_mask = np.logical_and(slender_bin[0] <= zeta, zeta <= slender_bin[1])
 
 n = 100
 rho0_vec = np.linspace(0.1, 10.0, n)
@@ -150,7 +148,7 @@ Ncr_vec = np.zeros((n,), dtype=dtype)
 # # also plot the analytic shear surrogate
 # if args.load == "Nxy":
 #     con.setCFShearMode(1)
-    
+
 #     for ixi, xi_bin in enumerate(xi_bins[::-1]):
 #         # convert from log(xi) to xi here
 #         xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
@@ -176,7 +174,9 @@ Ncr_vec = np.zeros((n,), dtype=dtype)
 
 for ixi, xi_bin in enumerate(xi_bins[::-1]):
     # convert from log(xi) to xi here
-    xi_mask = np.logical_and(xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1])
+    xi_mask = np.logical_and(
+        xi_bin[0] <= np.exp(xi) - 1.0, np.exp(xi) - 1.0 <= xi_bin[1]
+    )
     avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
     mask = np.logical_and(xi_mask, slender_mask)
@@ -213,7 +213,7 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
             "o",
             color=colors[ixi],
             label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
-            markersize=6.5 #6.5
+            markersize=6.5,  # 6.5
         )
     else:
         plt.plot(
@@ -222,16 +222,15 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
             "o",
             color=colors[ixi],
             label=r"$\xi\ in\ [" + f"{xi_bin[0]},{xi_bin[1]}" + r"]$",
-            markersize=5 #6.5
+            markersize=5,  # 6.5
         )
-
-
-
 
 
 legend1 = plt.legend(fontsize=20, loc="upper right")
 if not plot_log:
-    plt.xlabel(r"$\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p /D_{11}^p}$", fontsize=24)
+    plt.xlabel(
+        r"$\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p /D_{11}^p}$", fontsize=24
+    )
 else:
     plt.xlabel(r"$\log(\rho_0)$", fontsize=24)
 plt.xticks(fontsize=18)
@@ -242,12 +241,12 @@ plt.xticks(fontsize=18)
 if not plot_log:
     if args.load == "Nx":
         plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
-    else: # "Nxy"
+    else:  # "Nxy"
         plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
 else:
     if args.load == "Nx":
         plt.ylabel(r"$\log(N_{11,cr}^*)$", fontsize=24)
-    else: # "Nxy"
+    else:  # "Nxy"
         plt.ylabel(r"$\log(N_{12,cr}^*)$", fontsize=24)
 plt.yticks(fontsize=18)
 plt.margins(x=0.02, y=0.02)
@@ -266,20 +265,26 @@ else:
 # plot black dots out of axis limits
 do_this = True
 if do_this:
-    l1, = plt.plot(np.nan, 0, "ko", label="FEA model")
+    (l1,) = plt.plot(np.nan, 0, "ko", label="FEA model")
     # l2, = plt.plot([-1e4, -1e4+1], [0,0], "k--", label="analytic-surrogate")
-    l3, = plt.plot([np.nan, np.nan], [1,1], "k-", label="closed-form")
+    (l3,) = plt.plot([np.nan, np.nan], [1, 1], "k-", label="closed-form")
     plot_lines = [l1, l3]
     # plt.hold(True)
     # legend2 = plt.legend(plot_lines, ["FEA model", "least-squares", "closed-form"])#, loc="best", bbox_to_anchor=(3.0, 18.0))
-    legend2 = plt.legend(plot_lines, ["FEA model", "closed-form"])#, loc="best", bbox_to_anchor=(3.0, 18.0))
+    legend2 = plt.legend(
+        plot_lines, ["FEA model", "closed-form"]
+    )  # , loc="best", bbox_to_anchor=(3.0, 18.0))
     # plt.gca().add_artist(legend1)
 
 # if plot_log:
-    # plt.xscale('log')
-    # plt.yscale('log')
+# plt.xscale('log')
+# plt.yscale('log')
 
 # plt.show()
-plt.savefig(os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.svg"), dpi=400)
-plt.savefig(os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.png"), dpi=400)
+plt.savefig(
+    os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.svg"), dpi=400
+)
+plt.savefig(
+    os.path.join(sub_sub_data_folder, f"{args.load}-vs-closed-form.png"), dpi=400
+)
 plt.close("all")

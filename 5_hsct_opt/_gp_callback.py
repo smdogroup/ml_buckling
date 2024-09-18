@@ -25,8 +25,12 @@ def gp_callback_generator(tacs_component_names):
     """
 
     # build one Axial and Shear GP model to be used for all const objects (no duplication)
-    axialGP = constitutive.AxialGP.from_csv(csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv)
-    shearGP = constitutive.ShearGP.from_csv(csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv)
+    axialGP = constitutive.AxialGP.from_csv(
+        csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv
+    )
+    shearGP = constitutive.ShearGP.from_csv(
+        csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv
+    )
 
     # now build a dictionary of PanelGP objects which manage the GP for each tacs component/panel
     panelGP_dict = constitutive.PanelGPs.component_dict(
@@ -113,7 +117,7 @@ def gp_callback_generator(tacs_component_names):
         # Set the KS weight really low so that all failure modes make a
         # significant contribution to the failure function derivatives
         con.setKSWeight(100.0)  # 20.0
-        # con.setWriteDVMode(0)# 0 - regular DVs, 1 - nondim params, 2 - failure indices
+        # con.setWriteDVMode(1)# 0 - regular DVs, 1 - nondim params, 2 - failure indices
 
         con.setStiffenerPitchBounds(0.05, 0.5)
         con.setPanelThicknessBounds(0.002, 0.1)

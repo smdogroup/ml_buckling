@@ -25,7 +25,7 @@ geometry = mlb.StiffenedPlateGeometry(
 material = mlb.CompositeMaterial.solvay5320(
     ply_angles=[0],
     ply_fractions=[1.0],
-    ref_axis=[1,0,0],
+    ref_axis=[1, 0, 0],
 )
 
 stiff_analysis = mlb.StiffenedPlateAnalysis(

@@ -47,25 +47,25 @@ N_data = X.shape[0]
 
 # n_train = int(0.9 * N_data)
 n_train = 3000
-n_test = N_data-n_train
+n_test = N_data - n_train
 
 print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
 
 # print bounds of the data
-xi = X[:,0]
+xi = X[:, 0]
 # print(f"\txi or x0: min {np.min(xi)}, max {np.max(xi)}")
-rho0 = X[:,1]
+rho0 = X[:, 1]
 # print(f"\trho0 or x1: min {np.min(rho0)}, max {np.max(rho0)}")
-zeta = X[:,2]
+zeta = X[:, 2]
 # print(f"\tzeta or x2: min {np.min(zeta)}, max {np.max(zeta)}")
-gamma = X[:,3]
+gamma = X[:, 3]
 # print(f"\tgamma or x3: min {np.min(gamma)}, max {np.max(gamma)}")
 
 # bins for the data (in log space)
 xi_bins = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1.0]]
 rho0_bins = [[-2.5, -1.0], [-1.0, 0.0], [0.0, 1.0], [1.0, 2.5]]
 zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.5]]
-gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0] ]
+gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0]]
 
 # randomly permute the arrays
 rand_perm = np.random.permutation(N_data)
@@ -81,7 +81,7 @@ assert n_test > 100
 # reorder the data
 indices = [_ for _ in range(n_total)]
 train_indices = np.random.choice(indices, size=n_train)
-test_indices = [_ for _ in range(n_total) if not(_ in train_indices)]
+test_indices = [_ for _ in range(n_total) if not (_ in train_indices)]
 
 X_train = X[train_indices, :]
 X_test = X[test_indices[:n_test], :]
@@ -112,7 +112,7 @@ alpha = np.reshape(alpha, (alpha.shape[0], 1))
 
 # flip the indices of Xtrain matrix
 # otherwise gamma, zeta values are flipped
-Xtrain_mat = Xtrain_mat[:, [0,1,3,2]]
+Xtrain_mat = Xtrain_mat[:, [0, 1, 3, 2]]
 n_train = alpha.shape[0]
 # no longer need to do this as fixed the order
 
@@ -148,8 +148,12 @@ ortho_ply = constitutive.OrthotropicPly(1e-3, ortho_prop)
 
 # build the axial GP object (which is the main ML object we are testing for this example)
 # however it is used inside of the constitutive object so we need to build that too
-axialGP = constitutive.AxialGP.from_csv(csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv)
-shearGP = constitutive.ShearGP.from_csv(csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv)
+axialGP = constitutive.AxialGP.from_csv(
+    csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv
+)
+shearGP = constitutive.ShearGP.from_csv(
+    csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv
+)
 panelGP = constitutive.PanelGPs(axialGP=axialGP, shearGP=shearGP)
 
 # don't put in any GP models (so using closed-form solutions rn)
@@ -179,7 +183,7 @@ c_Xtest = np.random.rand(4).astype(TACS.dtype)
 mlb_kernel_res = kernel(c_Xtrain, c_Xtest, theta_opt)
 tacs_kernel_res = axialGP.kernel(c_Xtrain, c_Xtest)
 print(f"{mlb_kernel_res=}")
-print(F"{tacs_kernel_res=}")
+print(f"{tacs_kernel_res=}")
 # exit()
 
 # now also compare it again for prescribed xi, rho_0, gamma, zeta
@@ -189,12 +193,16 @@ gamma = 0.0
 zeta = 0.0
 
 # predictions for MLB model
-c_Xtest = np.array([np.log(1.0+xi), np.log(rho_0), np.log(1.0+1000.0*zeta), np.log(1.0+gamma)])
-K_cross = np.array([kernel(Xtrain_mat[i, :], c_Xtest, theta_opt) for i in range(n_train)])
+c_Xtest = np.array(
+    [np.log(1.0 + xi), np.log(rho_0), np.log(1.0 + 1000.0 * zeta), np.log(1.0 + gamma)]
+)
+K_cross = np.array(
+    [kernel(Xtrain_mat[i, :], c_Xtest, theta_opt) for i in range(n_train)]
+)
 K_cross = np.reshape(K_cross, (1, K_cross.shape[0]))
 print(f"{K_cross=} {K_cross.shape}")
 print(f"alpha shape {alpha.shape}")
-pred_log_load = (K_cross @ alpha)[0,0]
+pred_log_load = (K_cross @ alpha)[0, 0]
 mlb_buckling_load = np.exp(pred_log_load)
 if args.load == "Nx":
     tacs_buckling_load = con.nondimCriticalGlobalAxialLoad(rho_0, xi, gamma, zeta)
@@ -213,10 +221,7 @@ print(f"{tacs_buckling_load=}")
 # predict and report the relative error on the test dataset
 K_test_cross = np.array(
     [
-        [
-            kernel(Xtrain_mat[i, :], X_test[j, :], theta_opt)
-            for i in range(n_train)
-        ]
+        [kernel(Xtrain_mat[i, :], X_test[j, :], theta_opt) for i in range(n_train)]
         for j in range(n_test)
     ]
 )
@@ -227,23 +232,29 @@ Y_test_pred_mlb = np.exp(Y_test_pred_mlb_log)
 # -----------------------------------------------------------
 
 if args.load == "Nx":
-    Y_test_pred_tacs = np.array([
-        con.nondimCriticalGlobalAxialLoad(
-            rho_0=np.exp(X_test[itest, 1]), 
-            xi=np.exp(X_test[itest,0])-1.0, 
-            gamma=np.exp(X_test[itest,3])-1, 
-            zeta=(np.exp(X_test[itest,2])-1.0)/1000,
-        ) for itest in range(X_test.shape[0])
-    ])
+    Y_test_pred_tacs = np.array(
+        [
+            con.nondimCriticalGlobalAxialLoad(
+                rho_0=np.exp(X_test[itest, 1]),
+                xi=np.exp(X_test[itest, 0]) - 1.0,
+                gamma=np.exp(X_test[itest, 3]) - 1,
+                zeta=(np.exp(X_test[itest, 2]) - 1.0) / 1000,
+            )
+            for itest in range(X_test.shape[0])
+        ]
+    )
 else:
-    Y_test_pred_tacs = np.array([
-        con.nondimCriticalGlobalShearLoad(
-            rho_0=np.exp(X_test[itest, 1]), 
-            xi=np.exp(X_test[itest,0])-1.0, 
-            gamma=np.exp(X_test[itest,3])-1, 
-            zeta=(np.exp(X_test[itest,2])-1.0)/1000,
-        ) for itest in range(X_test.shape[0])
-    ])
+    Y_test_pred_tacs = np.array(
+        [
+            con.nondimCriticalGlobalShearLoad(
+                rho_0=np.exp(X_test[itest, 1]),
+                xi=np.exp(X_test[itest, 0]) - 1.0,
+                gamma=np.exp(X_test[itest, 3]) - 1,
+                zeta=(np.exp(X_test[itest, 2]) - 1.0) / 1000,
+            )
+            for itest in range(X_test.shape[0])
+        ]
+    )
 
 
 # COMPARE THE PREDICTIONS (should match well)
@@ -259,10 +270,11 @@ print(f"{max_rel_err=}")
 
 # plot the comparison
 import matplotlib.pyplot as plt
+
 # import niceplots
 
 # two parameters chosen as constant for plot comparison
-xi = 1.0 # 0.4
+xi = 1.0  # 0.4
 zeta = 0.0
 
 # get the axial loads in nondimensional space w.r.t. rho_0
@@ -279,23 +291,44 @@ for igamma, gamma in enumerate([0.05, 0.64, 6.4, 53.0]):
     for irho0, rho0 in enumerate(rho0_vec):
         print(f"{igamma=},{irho0=}/{n}")
         # plot predictions for MLB model
-        c_Xtest = np.array([np.log(1.0+xi), np.log(rho0), np.log(1.0+1000.0*zeta), np.log(1.0+gamma)])
-        K_cross = np.array([kernel(Xtrain_mat[i, :], c_Xtest, theta_opt) for i in range(n_train)])
+        c_Xtest = np.array(
+            [
+                np.log(1.0 + xi),
+                np.log(rho0),
+                np.log(1.0 + 1000.0 * zeta),
+                np.log(1.0 + gamma),
+            ]
+        )
+        K_cross = np.array(
+            [kernel(Xtrain_mat[i, :], c_Xtest, theta_opt) for i in range(n_train)]
+        )
         K_cross = np.reshape(K_cross, (1, K_cross.shape[0]))
         # print(f"{K_cross=}")
-        pred_log_load = (K_cross @ alpha)[0,0]
+        pred_log_load = (K_cross @ alpha)[0, 0]
         N11cr_mlb[irho0] = np.exp(pred_log_load)
         if args.load == "Nx":
             N11cr_tacs[irho0] = con.nondimCriticalGlobalAxialLoad(rho0, xi, gamma, zeta)
         else:
             N11cr_tacs[irho0] = con.nondimCriticalGlobalShearLoad(rho0, xi, gamma, zeta)
-        
 
-    plt.plot(rho0_vec, N11cr_mlb, "-", label=f"MLB-gamma={gamma:.2f}", color=colors[2*igamma], linewidth=2)
-    plt.plot(rho0_vec, N11cr_tacs, "--", label=f"TACS-gamma={gamma:.2f}", color=colors[2*igamma+1])
+    plt.plot(
+        rho0_vec,
+        N11cr_mlb,
+        "-",
+        label=f"MLB-gamma={gamma:.2f}",
+        color=colors[2 * igamma],
+        linewidth=2,
+    )
+    plt.plot(
+        rho0_vec,
+        N11cr_tacs,
+        "--",
+        label=f"TACS-gamma={gamma:.2f}",
+        color=colors[2 * igamma + 1],
+    )
 
-plt.xscale('log')
-plt.yscale('log')
+plt.xscale("log")
+plt.yscale("log")
 # plot it
 plt.margins(x=0.05, y=0.05)
 plt.xlabel(r"$\rho_0$")

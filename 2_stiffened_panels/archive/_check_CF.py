@@ -42,8 +42,10 @@ comm.Barrier()
 
 inner_ct = 0
 
-for material in [mlb.CompositeMaterial.solvay5320]: #mlb.CompositeMaterial.get_materials()
-    for ply_angle in [0.0]: #np.linspace(0.0, 90.0, 8)
+for material in [
+    mlb.CompositeMaterial.solvay5320
+]:  # mlb.CompositeMaterial.get_materials()
+    for ply_angle in [0.0]:  # np.linspace(0.0, 90.0, 8)
         plate_material = material(
             ply_angles=[ply_angle], ply_fractions=[1.0], ref_axis=[1, 0, 0]
         )
@@ -72,12 +74,12 @@ for material in [mlb.CompositeMaterial.solvay5320]: #mlb.CompositeMaterial.get_m
                     for AR in AR_vec:
 
                         # temporarily set AR to reasonable value
-                        #AR = 3.0
+                        # AR = 3.0
                         a = AR * b
 
                         # use stiffener height ratio to determine the stiffener height
                         h_w = h * SHR
-                        stiff_AR = 3.0 #1.0
+                        stiff_AR = 3.0  # 1.0
                         t_w = h_w / stiff_AR
 
                         geometry = mlb.StiffenedPlateGeometry(
@@ -106,11 +108,11 @@ for material in [mlb.CompositeMaterial.solvay5320]: #mlb.CompositeMaterial.get_m
                         # choose a number of elements in each direction
                         _nelems = 8000
                         MIN_Y = 30 / geometry.num_local
-                        MIN_Z = 15 #5
+                        MIN_Z = 15  # 5
                         N = geometry.num_local
                         AR_s = geometry.a / geometry.h_w
-                        #print(f"AR = {AR}, AR_s = {AR_s}")
-                        nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
+                        # print(f"AR = {AR}, AR_s = {AR_s}")
+                        nx = np.ceil(np.sqrt(_nelems / (1.0 / AR + (N - 1) / AR_s)))
                         ny = max(np.ceil(nx / AR / N), MIN_Y)
                         nz = max(np.ceil(nx / AR_s), MIN_Z)
                         print(f"Stage 1 : nx {nx}, ny {ny}, nz {nz}")
@@ -119,11 +121,11 @@ for material in [mlb.CompositeMaterial.solvay5320]: #mlb.CompositeMaterial.get_m
                         #     nz = MIN_Z
                         #     nx = np.ceil(AR_s * nz)
                         #     ny = np.ceil(nx / AR / N)
-                        
+
                         # print(f"Stage 2 : nx {nx}, ny {ny}, nz {nz}")
 
-                        check_nelems = N * nx * ny + (N-1) * nx * nz
-                        #print(f"check nelems = {check_nelems}")
+                        check_nelems = N * nx * ny + (N - 1) * nx * nz
+                        # print(f"check nelems = {check_nelems}")
 
                         print(f"check nelems = {check_nelems}")
 
@@ -197,8 +199,8 @@ for material in [mlb.CompositeMaterial.solvay5320]: #mlb.CompositeMaterial.get_m
                             "zeta": [stiffened_plate.zeta_plate],
                             "lambda_star": [np.real(global_lambda_star)],
                             "pred_lam": [lam_min],
-                            "pred_type" : [mode_type],
-                            "pred_lam_old" : [lam_min2],
+                            "pred_type": [mode_type],
+                            "pred_lam_old": [lam_min2],
                         }
 
                         # write to the training csv file
@@ -226,7 +228,7 @@ for material in [mlb.CompositeMaterial.solvay5320]: #mlb.CompositeMaterial.get_m
                         data_dict["SAR"] = [stiff_AR]
                         data_dict["delta"] = [stiffened_plate.delta]
                         data_dict["n_stiff"] = [num_stiff]
-                        data_dict["elem_list"] = [[int(nx),int(ny),int(nz)]]
+                        data_dict["elem_list"] = [[int(nx), int(ny), int(nz)]]
                         data_dict["nelem"] = [int(check_nelems)]
 
                         # write to the csv file for raw data

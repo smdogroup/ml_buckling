@@ -50,7 +50,5 @@ fun3d_driver = OnewayAeroDriver(
 fun3d_driver.solve_forward()
 
 # write an aero loads file
-aero_loads_file = os.path.join(
-    os.getcwd(), "cfd", "loads", "cruise_turb_loads.txt"
-)
+aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "cruise_turb_loads.txt")
 f2f_model.write_aero_loads(comm, aero_loads_file)

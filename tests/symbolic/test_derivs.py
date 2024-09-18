@@ -1,6 +1,7 @@
 import ml_buckling as mlb
 import unittest
 
+
 class TestDerivative(unittest.TestCase):
     def test_deriv1(self):
         expr = mlb.Symbol("a", float=2.0, exponent=3.0)
@@ -28,14 +29,17 @@ class TestDerivative(unittest.TestCase):
 
     def test_sine2(self):
         print("\ntest sine 2")
-        expr = mlb.Sin(mlb.Symbol("a") * mlb.Float(3.0)) + mlb.Cos(mlb.Symbol("b", float=2.0) + mlb.Symbol("a", float=-1.0)) * mlb.Symbol("a", exponent=2.0)
+        expr = mlb.Sin(mlb.Symbol("a") * mlb.Float(3.0)) + mlb.Cos(
+            mlb.Symbol("b", float=2.0) + mlb.Symbol("a", float=-1.0)
+        ) * mlb.Symbol("a", exponent=2.0)
         deriv = expr.derivative("a").simplify
         print(f"d({expr})/da = {deriv}")
         # expr2 = mlb.Float(3.0) * mlb.Cos(mlb.Float(3.0) * mlb.Symbol("a"))
         # print(f"expr2 = {expr2}")
         # assert deriv == expr2
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     unittest.main()
     # tester = TestDerivative()
     # tester.test_sine()

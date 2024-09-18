@@ -62,25 +62,23 @@ stiffened_plate = mlb.StiffenedPlateAnalysis(
 _nelems = 4000
 N = geometry.num_local
 AR_s = geometry.a / geometry.h_w
-#print(f"AR = {AR}, AR_s = {AR_s}")
-nx = np.ceil(np.sqrt(_nelems / (1.0/AR + (N-1) / AR_s)))
+# print(f"AR = {AR}, AR_s = {AR_s}")
+nx = np.ceil(np.sqrt(_nelems / (1.0 / AR + (N - 1) / AR_s)))
 ny = np.ceil(nx / AR / N)
-nz = max(np.ceil(nx / AR_s),5)
-if nz < 5: # need at least this many elements through the stiffener for good aspect ratio
+nz = max(np.ceil(nx / AR_s), 5)
+if (
+    nz < 5
+):  # need at least this many elements through the stiffener for good aspect ratio
     nz = 5
     nx = np.ceil(AR_s * nz)
     ny = np.ceil(nx / AR / N)
 
-#check_nelems = N * nx * ny + (N-1) * nx * nz
-#print(f"check nelems = {check_nelems}")
+# check_nelems = N * nx * ny + (N-1) * nx * nz
+# print(f"check nelems = {check_nelems}")
 
 stiffened_plate.pre_analysis(
-    exx=stiffened_plate.affine_exx
-    if args.load == "Nx"
-    else 0.0,
-    exy=stiffened_plate.affine_exy
-    if args.load == "Nxy"
-    else 0.0,
+    exx=stiffened_plate.affine_exx if args.load == "Nx" else 0.0,
+    exy=stiffened_plate.affine_exy if args.load == "Nxy" else 0.0,
     clamped=False,
     nx_plate=int(nx),
     ny_plate=int(ny),
@@ -95,21 +93,13 @@ print(stiffened_plate)
 # exit()
 
 lam_min, mode_type = stiffened_plate.predict_crit_load(
-    exx=stiffened_plate.affine_exx
-    if args.load == "Nx"
-    else 0.0,
-    exy=stiffened_plate.affine_exy
-    if args.load == "Nxy"
-    else 0.0,
+    exx=stiffened_plate.affine_exx if args.load == "Nx" else 0.0,
+    exy=stiffened_plate.affine_exy if args.load == "Nxy" else 0.0,
     output_global=True,
 )
 lam_min2 = stiffened_plate.predict_crit_load_old(
-    exx=stiffened_plate.affine_exx
-    if args.load == "Nx"
-    else 0.0,
-    exy=stiffened_plate.affine_exy
-    if args.load == "Nxy"
-    else 0.0,
+    exx=stiffened_plate.affine_exx if args.load == "Nx" else 0.0,
+    exy=stiffened_plate.affine_exy if args.load == "Nxy" else 0.0,
     output_global=True,
 )
 
@@ -135,8 +125,8 @@ data_dict = {
     "zeta": [stiffened_plate.zeta_plate],
     "lambda_star": [np.real(global_lambda_star)],
     "pred_lam": [lam_min],
-    "pred_type" : [mode_type],
-    "pred_lam_old" : [lam_min2],
+    "pred_type": [mode_type],
+    "pred_lam_old": [lam_min2],
 }
 
 # add raw data section
