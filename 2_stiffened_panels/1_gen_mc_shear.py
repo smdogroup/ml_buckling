@@ -225,9 +225,9 @@ if __name__ == "__main__":
 
             # for first 2 irho0 if eig_FEA doesn't exist
             # add CF values in its place to help the ML model training in this regime
-            # will result in conservative training in this low rho0 regime
-            if irho0 < 2 and gamma >= 1.0 and eig_FEA is None:
-                eig_FEA = eig_CF
+            # # will result in conservative training in this low rho0 regime
+            # if irho0 < 2 and gamma >= 1.0 and eig_FEA is None:
+            #     eig_FEA = eig_CF
 
             if eig_FEA is None:
                 eig_FEA = np.nan  # just leave value as almost zero..
