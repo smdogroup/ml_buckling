@@ -20,7 +20,7 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 args = parent_parser.parse_args()
 
 
-def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
+def axial_load(rho0, gamma, nstiff, xi, solve_buckling=True, first=False):
 
     # # iterate on the number of stiffeners until we find a global mode eigenvalue
     # for nstiff in range(1, 6+1):
@@ -35,14 +35,10 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
     # t_w = h_w / stiff_AR # 0.005
     _nstiff = nstiff if gamma > 0 else 0
 
-    plate_material = mlb.CompositeMaterial(
-        E11=E,  # Pa
-        E22=E,
-        G12=G,
-        nu12=nu,
-        ply_angles=[0],
-        ply_fractions=[1.0],
-        ref_axis=[1, 0, 0],
+    plate_material = mlb.CompositeMaterial.solvay5320(
+        ply_angles=[0.0], 
+        ply_fractions=[1], 
+        ref_axis=[1.0, 0.0, 0.0],
     )
 
     stiff_material = plate_material
@@ -72,10 +68,72 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
     AR = xopt[1]
     a = b * AR
 
-    # make a new plate geometry
+    # updated plate geometry
     geometry = mlb.StiffenedPlateGeometry(
         a=a, b=b, h=h, num_stiff=_nstiff, h_w=h_w, t_w=h_w / stiff_AR
     )
+
+    stiff_analysis = mlb.StiffenedPlateAnalysis(
+        comm=comm,
+        geometry=geometry,
+        stiffener_material=stiff_material,
+        plate_material=plate_material,
+    )
+    print(stiff_analysis.gamma)
+    print(stiff_analysis.affine_aspect_ratio)
+
+    def xi_resid(x):
+        h_w = x[0]
+        AR = x[1]
+        ply_angle = x[2] * 10.0
+        t_w = h_w / stiff_AR
+
+        a = AR * b
+
+        geometry = mlb.StiffenedPlateGeometry(
+            a=a, b=b, h=h, num_stiff=_nstiff, h_w=h_w, t_w=t_w
+        )
+
+        ply_angle = x[0]
+
+        plate_material = mlb.CompositeMaterial.solvay5320(
+            ply_angles=[ply_angle], 
+            ply_fractions=[1], 
+            ref_axis=[1.0, 0.0, 0.0],
+        )
+        stiff_material = plate_material
+
+        stiff_analysis = mlb.StiffenedPlateAnalysis(
+            comm=comm,
+            geometry=geometry,
+            stiffener_material=stiff_material,
+            plate_material=plate_material,
+        )
+
+        return [rho0 - stiff_analysis.affine_aspect_ratio,
+                gamma - stiff_analysis.gamma,
+                xi - stiff_analysis.xi_plate]
+
+    xopt2 = sopt.fsolve(func=xi_resid, x0=(xopt[0], xopt[1], 0.0))
+    ply_angle = (xopt2[2] * 10.0) % 90.0
+
+    h_w = xopt2[0]
+    AR = xopt2[1]
+    a = b * AR
+
+    # updated plate geometry
+    geometry = mlb.StiffenedPlateGeometry(
+        a=a, b=b, h=h, num_stiff=_nstiff, h_w=h_w, t_w=h_w / stiff_AR
+    )
+
+    plate_material = mlb.CompositeMaterial.solvay5320(
+        ply_angles=[ply_angle], 
+        ply_fractions=[1], 
+        ref_axis=[1.0, 0.0, 0.0],
+    )
+    stiff_material = plate_material
+
+    # make the updated stiffener analysis object
     stiff_analysis = mlb.StiffenedPlateAnalysis(
         comm=comm,
         geometry=geometry,
@@ -131,26 +189,12 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
         # stiff_analysis.run_static_analysis(write_soln=True)
         stiff_analysis.post_analysis()
 
-        mode = None
-
         global_lambda_star = stiff_analysis.get_mac_global_mode(
             axial=True,
             min_similarity=0.7,  # 0.5
             local_mode_tol=0.7,
         )
         # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
-
-        if global_lambda_star is not None:
-            mode = "global"
-
-        else:
-            mode = "local"
-            # need some way to do mode tracking backwards with rho0 across different meshes..
-            # global_lambda_star = stiff_analysis.get_mac_global_mode(
-            #     axial=True,
-            #     min_similarity=0.2,
-            #     local_mode_tol=0.2
-            # )
 
         # if global_lambda_star is None:
         #     global_lambda_star = np.nan
@@ -181,16 +225,6 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
         if temp < timosh_crit:
             timosh_crit = temp
 
-    # adjust the values for different xi plate
-    # had another script that tried to adaptively select ply_angle to achieve certain xi,gamma,rho0 but scipy.optimize.fsolve
-    # kept not converging..
-    
-    # first adjust N11_CF by xi diff
-    pred_lambda += 2*(1.0 - stiff_analysis.xi_plate)
-    # second adjust FEA by xi diff
-    if solve_buckling and global_lambda_star is not None:
-        global_lambda_star += 2*(1.0 - stiff_analysis.xi_plate)
-
     # min_eigval = tacs_eigvals[0]
     # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
     if comm.rank == 0 and solve_buckling:
@@ -204,7 +238,6 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
         # write the data to csv  after each buckling solve
         my_df_dict = {
             "nstiff" : [nstiff],
-            "mode" : [mode],
             "rho0": [rho0],
             "gamma": [gamma],
             "eig_CF": [pred_lambda],
@@ -234,6 +267,8 @@ if __name__ == "__main__":
     gamma_vec = [2.0]
     # gamma_vec = [0.0]
 
+    xi = 1.0
+
     # plt.style.use(niceplots.get_style())
 
     # plt.figure("this")
@@ -246,8 +281,21 @@ if __name__ == "__main__":
             n_CF = n_FEA
             rho0_CF = np.geomspace(rho0_min, rho0_max, n_CF)
             N11_CF = np.array(
-                [axial_load(rho0, gamma=gamma, nstiff=nstiff, solve_buckling=False)[1] for rho0 in rho0_CF]
+                [axial_load(rho0, gamma=gamma, nstiff=nstiff, xi=1.0, solve_buckling=False)[1] for rho0 in rho0_CF]
             )
+
+            if comm.rank == 0:
+                # label="closed-form"
+                plt.plot(rho0_CF, N11_CF, "-", label=None, color=colors[igamma])
+                # plt.show()
+
+            # rho0_CFT = np.geomspace(rho0_min, rho0_max, 100)
+            # N11_CFT = np.array([
+            #     axial_load(rho0, gamma=1.0, solve_buckling=False)[2] for rho0 in rho0_CFT
+            # ])
+
+            # if comm.rank == 0:
+            #     plt.plot(rho0_CFT, N11_CFT, "-", label="timosh")
 
             if comm.rank == 0:
                 print("done with closed-form timoshenko")
@@ -256,7 +304,7 @@ if __name__ == "__main__":
             rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
             N11_FEA = np.array(
                 [
-                    axial_load(rho0, gamma=gamma, nstiff=nstiff, first=igamma == 0 and irho0 == 0 and nstiff==1)[0]
+                    axial_load(rho0, gamma=gamma, nstiff=nstiff, xi=1.0, first=igamma == 0 and irho0 == 0 and nstiff==1)[0]
                     for irho0, rho0 in enumerate(rho0_FEA)
                 ]
             )
