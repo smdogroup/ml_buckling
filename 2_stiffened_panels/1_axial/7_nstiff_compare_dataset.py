@@ -20,7 +20,7 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 args = parent_parser.parse_args()
 
 
-def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
+def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=False):
 
     # # iterate on the number of stiffeners until we find a global mode eigenvalue
     # for nstiff in range(1, 6+1):
@@ -133,27 +133,26 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
 
         mode = None
 
-        global_lambda_star = stiff_analysis.get_mac_global_mode(
-            axial=True,
-            min_similarity=0.7,  # 0.5
-            local_mode_tol=0.7,
-        )
-        # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
-
-        if global_lambda_star is not None:
-            mode = "global"
+        global_lambda_star = None
+        rho0 = stiff_analysis.rho0
+        gamma = stiff_analysis.gamma
+        rho0_star = rho0 / (1.0 + gamma)**0.25
+        # only do rho0^* < 1.5 the mode tracking since then we are in the regime of (1,1) mode distortion
+        if prev_dict is not None and rho0_star < 1.5:
+            if comm.rank == 0:
+                global_lambda_star = stiff_analysis.get_matching_global_mode(
+                    prev_dict["nondimX"],
+                    prev_dict["phi"],
+                    min_similarity=0.6
+                )
 
         else:
-            mode = "local"
-            # need some way to do mode tracking backwards with rho0 across different meshes..
-            # global_lambda_star = stiff_analysis.get_mac_global_mode(
-            #     axial=True,
-            #     min_similarity=0.2,
-            #     local_mode_tol=0.2
-            # )
-
-        # if global_lambda_star is None:
-        #     global_lambda_star = np.nan
+            global_lambda_star = stiff_analysis.get_mac_global_mode(
+                axial=True,
+                min_similarity=0.7,  # 0.5
+                local_mode_tol=0.7,
+            )
+        # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
         if comm.rank == 0:
             stiff_analysis.print_mode_classification()
@@ -181,6 +180,7 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
         if temp < timosh_crit:
             timosh_crit = temp
 
+
     # adjust the values for different xi plate
     # had another script that tried to adaptively select ply_angle to achieve certain xi,gamma,rho0 but scipy.optimize.fsolve
     # kept not converging..
@@ -195,6 +195,9 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
     # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
     if comm.rank == 0 and solve_buckling:
         print(f"{stiff_analysis.intended_Nxx}")
+
+        if global_lambda_star is not None:
+            global_lambda_star = global_lambda_star.real
 
         print(f"Mode type predicted as {mode_type}")
         print(f"\ttimoshenko CF lambda = {timosh_crit}")
@@ -215,20 +218,25 @@ def axial_load(rho0, gamma, nstiff, solve_buckling=True, first=False):
 
     comm.Barrier()
 
-    # exit()
+    eig_dict = None
+    if solve_buckling and comm.rank == 0:
+        eig_dict = {
+            "nondimX" : stiff_analysis.nondim_X,
+            "phi" : stiff_analysis.min_global_eigmode,
+        }
 
-    return [global_lambda_star, pred_lambda, timosh_crit]
+    if global_lambda_star is not None:
+        global_lambda_star = global_lambda_star.real
 
+    return [global_lambda_star, pred_lambda, timosh_crit, eig_dict]
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     rho0_min = 0.2
     rho0_max = 10.0
-    # n_FEA = 50  # 50 (should be 50 in order to not plot as densely..)
-    n_FEA = 5
-
-    # TODO : make it so we can set gamma here also and adaptively select hw
+    n_FEA = 50  # 50 (should be 50 in order to not plot as densely..)
+    # n_FEA = 5
 
     # gamma_vec = [0.0, 0.5, 1.0, 2.0, 3.0]
     gamma_vec = [2.0]
@@ -246,7 +254,7 @@ if __name__ == "__main__":
             n_CF = n_FEA
             rho0_CF = np.geomspace(rho0_min, rho0_max, n_CF)
             N11_CF = np.array(
-                [axial_load(rho0, gamma=gamma, nstiff=nstiff, solve_buckling=False)[1] for rho0 in rho0_CF]
+                [axial_load(rho0, gamma=gamma, nstiff=nstiff, prev_dict=None, solve_buckling=False)[1] for rho0 in rho0_CF]
             )
 
             if comm.rank == 0:
@@ -254,33 +262,26 @@ if __name__ == "__main__":
                 # exit()
 
             rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
-            N11_FEA = np.array(
-                [
-                    axial_load(rho0, gamma=gamma, nstiff=nstiff, first=igamma == 0 and irho0 == 0 and nstiff==1)[0]
-                    for irho0, rho0 in enumerate(rho0_FEA)
-                ]
-            )
+            N11_FEA = rho0_FEA * 0.0
+            eig_dict = None
+            for irho0, rho0 in enumerate(rho0_FEA[::-1]):
+                # seed previous eigendict going backwards in rho0 to track the mode
+                _N11_FEA,_,_,eig_dict = axial_load(
+                    rho0=rho0, gamma=gamma, nstiff=nstiff,
+                    prev_dict=eig_dict,
+                    first=igamma==0 and irho0 == 0 and nstiff == 1,
+                    solve_buckling=True
+                )
 
-            # if comm.rank == 0:
-            #     # FEA
-            #     plt.plot(
-            #         rho0_FEA,
-            #         N11_FEA,
-            #         "o",
-            #         label=r"$\gamma = " + f"{gamma:.1f}" + r"$",
-            #         color=colors[igamma],
-            #     )
+                """
+                using the eigdict and my new method get_matching_global_mode()
+                allows me to track the same global mode as it does mode switching
+                """
 
-            # comm.Barrier()
+                # print(f"{eig_dict=}")
+                # exit()
+                if _N11_FEA is not None:
+                    _N11_FEA = _N11_FEA.real
+                N11_FEA[irho0] = _N11_FEA
 
-    # # finish making the plot
-    # if comm.rank == 0:
-    #     plt.legend()
-    #     # plt.title(r"$\gamma = 11.25$")
-    #     plt.xlabel(r"$\rho_0$")
-    #     plt.ylabel(r"$N_{11,cr}^*$")
-    #     plt.xscale("log")
-    #     plt.yscale("log")
-    #     plt.margins(x=0.05, y=0.05)
-    #     # plt.show()
-    #     plt.savefig("axial-CF-vs-FEA-demo.png", dpi=400)
+        
