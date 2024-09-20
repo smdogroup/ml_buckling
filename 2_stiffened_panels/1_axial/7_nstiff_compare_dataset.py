@@ -134,9 +134,18 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
         mode = None
 
         global_lambda_star = None
-        rho0 = stiff_analysis.rho0
+        rho0 = stiff_analysis.affine_aspect_ratio
         gamma = stiff_analysis.gamma
         rho0_star = rho0 / (1.0 + gamma)**0.25
+        
+        global_lambda_star = stiff_analysis.get_mac_global_mode(
+            axial=True,
+            min_similarity=0.7,  # 0.5
+            local_mode_tol=0.7,
+        )
+
+        mode = "global" if global_lambda_star is not None else "local"
+
         # only do rho0^* < 1.5 the mode tracking since then we are in the regime of (1,1) mode distortion
         if prev_dict is not None and rho0_star < 1.5:
             if comm.rank == 0:
@@ -145,13 +154,7 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
                     prev_dict["phi"],
                     min_similarity=0.6
                 )
-
-        else:
-            global_lambda_star = stiff_analysis.get_mac_global_mode(
-                axial=True,
-                min_similarity=0.7,  # 0.5
-                local_mode_tol=0.7,
-            )
+            
         # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
         if comm.rank == 0:
@@ -236,6 +239,11 @@ if __name__ == "__main__":
     rho0_min = 0.2
     rho0_max = 10.0
     n_FEA = 50  # 50 (should be 50 in order to not plot as densely..)
+
+    # rho0_min = 0.1
+    # rho0_max = 0.65
+    # n_FEA = 10
+
     # n_FEA = 5
 
     # gamma_vec = [0.0, 0.5, 1.0, 2.0, 3.0]
@@ -247,7 +255,7 @@ if __name__ == "__main__":
     # plt.figure("this")
     colors = mlb.six_colors2[:4][::-1]
 
-    for nstiff in range(1, 5+1):
+    for nstiff in range(2, 5+1):
 
         for igamma, gamma in enumerate(gamma_vec[::-1]):
 

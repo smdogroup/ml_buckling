@@ -1745,8 +1745,8 @@ class StiffenedPlateAnalysis:
             phi2 = self._eigenvectors[imode][2::6].astype(np.double) # w component
 
             # get meshgrid format of new mesh
-            xi2_unique = np.unique(np.round(xi2, 3))
-            eta2_unique = np.unique(np.round(eta2, 3))
+            xi2_unique = np.unique(np.round(xi2, 4))
+            eta2_unique = np.unique(np.round(eta2, 4))
             XI2, ETA2 = np.meshgrid(xi2_unique, eta2_unique)
             PHI2 = np.zeros(XI2.shape)
             nxi = XI2.shape[1]
@@ -1754,8 +1754,8 @@ class StiffenedPlateAnalysis:
             for ixi in range(nxi):
                 for ieta in range(neta):
                     mask = np.logical_and(
-                        np.abs(xi2 - xi2_unique[ixi]) < 1e-2,
-                        np.abs(eta2 - eta2_unique[ieta]) < 1e-2
+                        np.abs(xi2 - xi2_unique[ixi]) < 0.03,
+                        np.abs(eta2 - eta2_unique[ieta]) < 0.03
                     )
                     # print(f"{mask=} {np.sum(mask)=} {mask.shape=}")
                     phi2_val = phi2[mask][0]
