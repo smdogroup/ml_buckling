@@ -1517,17 +1517,28 @@ class StiffenedPlateAnalysis:
                 mask = _mask
             else:
                 mask = np.logical_or(mask, _mask)
+        
+        # check for low relative deflections underneath the stiffeners
         w_stiff = w[mask]
         w_stiff_max = np.max(np.abs(w_stiff))
+        w_max = max([np.max(np.abs(w)), 1e-13]) # in overall plate
+        low_stiff_deflection = w_stiff_max / w_max < local_mode_tol
 
-        # compute max w displacement in overlal plate
-        w_max = max([np.max(np.abs(w)), 1e-13])
+        # also check the middle of the plate in case you have even # stiffeners
+        middle_dist = np.abs(0.5 - self._eta)
+        min_middle_dist = np.min(middle_dist) # sometimes no edge right at the middle
+        middle_plate_mask = np.logical_and(
+            self._in_tol(self._eta, 0.5 + min_middle_dist), self._in_tol(self._zeta, 0.0, tol=1e-5)
+        )
+        w_middle = w[middle_plate_mask]
+        w_middle_max = np.max(np.abs(w_middle))
+        low_middle_deflection = w_middle_max / w_max < local_mode_tol
+
+        
         if just_check_local:
-            return w_stiff_max / w_max < local_mode_tol
+            return low_stiff_deflection or low_middle_deflection
         else:  # also checks for non stiffener crippling modes
-            return (
-                w_stiff_max / w_max < local_mode_tol
-            ) and self.is_non_crippling_mode(imode)
+            return (low_stiff_deflection or low_middle_deflection) and self.is_non_crippling_mode(imode)
 
     def is_global_mode(self, imode, just_check_global=False, local_mode_tol=0.20):
         """check that the mode is global i.e. the max w displacement occurs in the"""
