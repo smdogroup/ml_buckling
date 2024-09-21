@@ -1607,6 +1607,7 @@ class StiffenedPlateAnalysis:
         found_mode = False
         self._min_global_imode = None
         self._min_global_eigval = None
+        self._min_global_mode_shape = None
 
         if self.comm.rank == 0:  # only do this on root proc
 
@@ -1678,6 +1679,7 @@ class StiffenedPlateAnalysis:
                 # now store the max similarity
                 self._min_global_imode = imode
                 self._min_global_eigval = obs_eigval.real
+                self._min_global_mode_shape = max_sim_m
                 self._MAC_msg = f"MAC identified global mode {imode} with shape (m,n)=({max_sim_m},1) and {max_similarity=:.4f}"
                 print(self._MAC_msg)
 
@@ -1720,7 +1722,8 @@ class StiffenedPlateAnalysis:
         self, 
         other_plate_nondim_X:np.ndarray, 
         other_plate_eigmode:np.ndarray,
-        min_similarity:float=0.6,
+        min_similarity:float=0.7,
+        local_mode_tol:float=0.7,
     ):
         """
         use another plate's nondim_X and eigenmode for nearby rho0, gamma solution for mode tracking
@@ -1733,12 +1736,20 @@ class StiffenedPlateAnalysis:
         eta1 = other_plate_nondim_X[:,1].astype(np.double)
         phi1 = other_plate_eigmode[2::6].astype(np.double) # w component
 
+        self._min_global_mode_shape = 1
+
         # now use interp2d to build a 2d function
         interp = NearestNDInterpolator(list(zip(xi1, eta1)), phi1)
 
         matching_imode = None
 
+
+        # first get the most similar mode
+        mode_sim_vec = []
         for imode in range(self.num_modes):
+
+            # not checking local modes here (check after)
+
             # get current eigenmode data
             xi2 = self.nondim_X[:,0].astype(np.double)
             eta2 = self.nondim_X[:,1].astype(np.double)
@@ -1770,17 +1781,23 @@ class StiffenedPlateAnalysis:
 
             # now take element wise dot product of two matrices
             cosine_sim = self.cosine_mode_similarity(phi1_interp_vec, phi2_vec)
-            if cosine_sim > min_similarity:
-                matching_imode = imode
-                if self.comm.rank == 0:
-                    print(f"found mode {imode} to be matching with similarity {cosine_sim}\n")
-                break
+            mode_sim_vec += [cosine_sim]
+
+        # now determine the mode that is the most similar
+        mode_sim_vec = np.array(mode_sim_vec)
+        most_sim_imode = np.argmax(mode_sim_vec)
+        cosine_sim = mode_sim_vec[most_sim_imode]
+        if cosine_sim > min_similarity:
+            matching_imode = most_sim_imode
+            if self.comm.rank == 0:
+                print(f"found mode {imode} to be matching with similarity {cosine_sim}\n")
 
         if matching_imode is not None:
             self._min_global_imode = matching_imode
             self._MAC_msg = f"MAC reverse rho0 tracking successful with sim {cosine_sim}"
             return self._eigenvalues[matching_imode]
         else:
+            self._MAC_msg = f"MAC reverse rho0 tracking unsuccessful no modes similar enough (max sim {cosine_sim})"
             return None
 
 

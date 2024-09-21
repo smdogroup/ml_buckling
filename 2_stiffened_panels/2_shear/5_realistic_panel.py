@@ -15,7 +15,7 @@ parent_parser.add_argument("--stiffAR", type=float, default=5.0)
 parent_parser.add_argument("--nstiff", type=int, default=3)
 parent_parser.add_argument("--SR", type=float, default=100.0)
 parent_parser.add_argument("--b", type=float, default=1.0)
-parent_parser.add_argument("--plyAngle", type=float, default=1.0)
+parent_parser.add_argument("--plyAngle", type=float, default=30.0)
 
 # change this one to change gamma right now, gamma can only go so high usually with single-sided stiffeners (like gamma < 10, 15)
 parent_parser.add_argument("--rho0", type=float, default=1.5)
@@ -38,9 +38,9 @@ h = b / args.SR  # 10 mm
 # h_w = args.hw
 # t_w = h_w / args.stiffAR
 
-# nu = 0.3
-# E = 138e9
-# G = E / 2.0 / (1 + nu)
+nu = 0.3
+E = 138e9
+G = E / 2.0 / (1 + nu)
 
 
 # plate_material = mlb.CompositeMaterial(
@@ -125,8 +125,8 @@ stiff_analysis.pre_analysis(
     ny_plate=int(ny),  # 30
     nz_stiff=int(nz),  # 5
     nx_stiff_mult=2,
-    exx=stiff_analysis.affine_exx,
-    exy=0.0,
+    exy=stiff_analysis.affine_exy,
+    exx=0.0,
     clamped=False,
     # _make_rbe=args.rbe,
     _make_rbe=True,
@@ -148,7 +148,7 @@ stiff_analysis.post_analysis()
 
 # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 global_lambda_star = stiff_analysis.get_mac_global_mode(
-    axial=True,
+    axial=False,
     min_similarity=args.minSim,
     local_mode_tol=args.globLocal,
 )
