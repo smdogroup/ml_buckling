@@ -15,16 +15,10 @@ import scipy.optimize as sopt
 comm = MPI.COMM_WORLD
 
 """
-generate two main datasets
-* 1 stiffener dataset for many rho0 values 0.3 => 15.0 (50 pts)
-     with gamma 0.05 to 15.0 (20 pts)
-     with plyAngle = 30 (near xi = 1) (1 pt)
-     however this dataset fails to get low rho0 values near rho0 = 0.3
-     gamma = 3.0 as the modes become purely local. Thus we use 
-     the 5 stiffener dataset to get more data points in this region.
-* 5 stiffener dataset for rho0 ~ 0.3 and gamma ~ 3.0 (high stiffening regime)
+generate second part of the stiffened panel dataset
+* nstiff=10 stiffener dataset for rho0 ~ 0.3 and gamma ~ 3.0 (high stiffening regime)
      we also recover some data for different plyAngle values (different xi)
-     rho0 from 0.2 to 1.0 (8 pts)
+     rho0 from 0.2 to 3.0 (20 pts)
      gamma from 1.0 to 4.0 (10 pts)
      plyAngle from 0.0 to 45.0 (5 pts)
      stiffAR = 5.0 (makes stiffener crippling happen less often)
@@ -53,8 +47,6 @@ parent_parser.add_argument("--gammaMax", type=float, default=4.0)
 parent_parser.add_argument("--nxi", type=int, default=5)
 parent_parser.add_argument("--plyAngleMin", type=float, default=0.0)
 parent_parser.add_argument("--plyAngleMax", type=float, default=45.0)
-
-parent_parser.add_argument("--nstiff", type=int, default=5) #1
 
 
 args = parent_parser.parse_args()
