@@ -1,5 +1,15 @@
 import numpy as np
 import pandas as pd
+
+# # allow bold math
+# import matplotlib as mpl
+# rc_fonts = {
+#     "text.usetex": True,
+#     'text.latex.preview': True, # Gives correct legend alignment.
+#     'mathtext.default': 'regular',
+#     'text.latex.preamble': [r"""\usepackage{bm}"""],
+# }
+# mpl.rcParams.update(rc_fonts)
 import matplotlib.pyplot as plt
 import niceplots, os
 import argparse
@@ -185,7 +195,7 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
         continue
 
     # plot the closed-form solution
-    if args.load == "Nx":
+    if args.load in ["Nx", "axial"]:
         for i, _rho0 in enumerate(rho0_vec):
             Ncr_vec[i] = con.nondimCriticalGlobalAxialLoad(_rho0, avg_xi, 0.0)
     else:
@@ -229,26 +239,26 @@ for ixi, xi_bin in enumerate(xi_bins[::-1]):
 legend1 = plt.legend(fontsize=20, loc="upper right")
 if not plot_log:
     plt.xlabel(
-        r"$\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p /D_{11}^p}$", fontsize=24
+        r"$\mathbf{\rho_0}$", fontsize=24, fontweight='bold'
     )
 else:
-    plt.xlabel(r"$\log(\rho_0)$", fontsize=24)
-plt.xticks(fontsize=18)
+    plt.xlabel(r"$\ln( \mathbf{\rho_0} )$", fontsize=28, fontweight='bold')
+# plt.xticks(fontsize=18)
 # if args.load == "Nx":
 #     plt.ylabel(r"$N_{11,cr}^* = N_{11,cr} \cdot \frac{b^2}{\pi^2 \sqrt{D_{11}^p D_{22}^p}}$", fontsize=24)
 # else: # "Nxy"
 #     plt.ylabel(r"$N_{12,cr}^* = N_{12,cr} \cdot \frac{b^2}{\pi^2 \sqrt[4]{D_{11}^p (D_{22}^p)^3}}$", fontsize=24)
 if not plot_log:
-    if args.load == "Nx":
-        plt.ylabel(r"$N_{11,cr}^*$", fontsize=24)
+    if args.load in ["Nx", "axial"]:
+        plt.ylabel(r"$\mathbf{N_{11,cr}^*}$", fontsize=28, fontweight='bold')
     else:  # "Nxy"
-        plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
+        plt.ylabel(r"$N_{12,cr}^*$", fontsize=28, fontweight='bold')
 else:
-    if args.load == "Nx":
-        plt.ylabel(r"$\log(N_{11,cr}^*)$", fontsize=24)
+    if args.load in ["Nx", "axial"]:
+        plt.ylabel(r"$\ln(N_{11,cr}^*)$", fontsize=28, fontweight='bold')
     else:  # "Nxy"
-        plt.ylabel(r"$\log(N_{12,cr}^*)$", fontsize=24)
-plt.yticks(fontsize=18)
+        plt.ylabel(r"$\ln(\mathbf{N_{12,cr}^*} )$", fontsize=28, fontweight='bold')
+# plt.yticks(fontsize=18)
 plt.margins(x=0.02, y=0.02)
 if not plot_log:
     plt.xlim(0.0, 5.0)
@@ -272,13 +282,17 @@ if do_this:
     # plt.hold(True)
     # legend2 = plt.legend(plot_lines, ["FEA model", "least-squares", "closed-form"])#, loc="best", bbox_to_anchor=(3.0, 18.0))
     legend2 = plt.legend(
-        plot_lines, ["FEA model", "closed-form"]
+        plot_lines, ["FEA model", "closed-form"], prop={'size':24, 'weight':'bold'},
     )  # , loc="best", bbox_to_anchor=(3.0, 18.0))
     # plt.gca().add_artist(legend1)
 
 # if plot_log:
 # plt.xscale('log')
 # plt.yscale('log')
+
+plt.xticks(fontsize=24, fontweight='bold')
+plt.yticks(fontsize=24, fontweight='bold')
+
 
 # plt.show()
 plt.savefig(
