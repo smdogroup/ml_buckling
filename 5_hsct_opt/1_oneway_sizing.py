@@ -9,6 +9,8 @@ from pyoptsparse import SNOPT, Optimization
 import gc  # garbage collection
 import psutil, os
 import numpy as np
+import time
+start_time = time.time()
 
 # script inputs
 # hot_start = False
@@ -617,3 +619,7 @@ sol = snoptimizer(
 sol_xdict = sol.xStar
 if comm.rank == 0:
     print(f"Final solution = {sol_xdict}", flush=True)
+end_time = time.time()
+elapsed_time = end_time - start_time
+if comm.rank == 0:
+    print(f"elapsed time = {elapsed_time:.2e} seconds for the {model_name} model", flush=True)
