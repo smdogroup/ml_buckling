@@ -35,24 +35,6 @@ b = args.b
 a = b * AR
 h = b / args.SR  # 10 mm
 
-# h_w = args.hw
-# t_w = h_w / args.stiffAR
-
-# nu = 0.3
-# E = 138e9
-# G = E / 2.0 / (1 + nu)
-
-
-# plate_material = mlb.CompositeMaterial(
-#     E11=E,  # Pa
-#     E22=E,
-#     G12=G,
-#     nu12=nu,
-#     ply_angles=[args.plyAngle],
-#     ply_fractions=[1.0],
-#     ref_axis=[1, 0, 0],
-# )
-
 plate_material = mlb.CompositeMaterial.solvay5320(
     ply_angles=[args.plyAngle], 
     ply_fractions=[1], 
