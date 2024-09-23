@@ -383,4 +383,4 @@ if comm.rank == 0:
 end_time = time.time()
 elapsed_time = end_time - start_time
 if comm.rank == 0:
-    print(f"elapsed time = {elapsed_time:.2e} seconds for the {model_name} model", flush=True)
+    print(f"elapsed time = {elapsed_time:.5e} seconds for the {model_name} model", flush=True)

@@ -16,6 +16,10 @@ parent_parser.add_argument("--nstiff", type=int, default=3)
 parent_parser.add_argument("--SR", type=float, default=100.0)
 parent_parser.add_argument("--b", type=float, default=1.0)
 parent_parser.add_argument("--plyAngle", type=float, default=1.0)
+parent_parser.add_argument(
+    "--orthotropic", default=False, action=argparse.BooleanOptionalAction
+)
+
 
 # change this one to change gamma right now, gamma can only go so high usually with single-sided stiffeners (like gamma < 10, 15)
 parent_parser.add_argument("--rho0", type=float, default=1.5)
@@ -35,11 +39,28 @@ b = args.b
 a = b * AR
 h = b / args.SR  # 10 mm
 
-plate_material = mlb.CompositeMaterial.solvay5320(
-    ply_angles=[args.plyAngle], 
-    ply_fractions=[1], 
-    ref_axis=[1.0, 0.0, 0.0],
-)
+if args.orthotropic:
+    plate_material = mlb.CompositeMaterial.solvay5320(
+        ply_angles=[args.plyAngle], 
+        ply_fractions=[1], 
+        ref_axis=[1.0, 0.0, 0.0],
+    )
+else:
+
+    nu = 0.3
+    E = 138e9
+    G = E / 2.0 / (1 + nu)
+
+
+    plate_material = mlb.CompositeMaterial(
+        E11=E,  # Pa
+        E22=E,
+        G12=G,
+        nu12=nu,
+        ply_angles=[0],
+        ply_fractions=[1.0],
+        ref_axis=[1, 0, 0],
+    )
 
 stiff_material = plate_material
 

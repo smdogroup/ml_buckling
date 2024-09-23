@@ -7,7 +7,7 @@ Local machine optimization for the panel thicknesses using all OML and LE panels
 from funtofem import *
 from pyoptsparse import SNOPT, Optimization
 import gc  # garbage collection
-import psutil, os
+import os #psutil
 import numpy as np
 import time
 start_time = time.time()
@@ -17,15 +17,15 @@ start_time = time.time()
 store_history = True
 
 
-def process_memory():
-    process = psutil.Process(os.getpid())
-    mem_info = process.memory_info()
-    return mem_info.rss / 1e9  # random shared memory
-    # return mem_info.vms # virtual memory storage
+#def process_memory():
+#    process = psutil.Process(os.getpid())
+#    mem_info = process.memory_info()
+#    return mem_info.rss / 1e9  # random shared memory
+#    # return mem_info.vms # virtual memory storage
 
 
-mem1 = process_memory()
-print(f"initial memory = {mem1:.8e} GB")
+#mem1 = process_memory()
+#print(f"initial memory = {mem1:.8e} GB")
 
 # import openmdao.api as om
 from mpi4py import MPI
@@ -321,10 +321,10 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
 
 f2f_model.print_memory_size(comm, root=0, starting_message="After driver")
 
-mem4 = process_memory()
+#mem4 = process_memory()
 # dmem3 = mem4 - mem3
-dmem3 = mem4 - mem1
-print(f"memory added during solvers, drivers = {dmem3} GB, total = {mem4} GB")
+#dmem3 = mem4 - mem1
+#print(f"memory added during solvers, drivers = {dmem3} GB, total = {mem4} GB")
 # exit()
 
 # PYOPTSPARSE OPTMIZATION
@@ -551,11 +551,11 @@ if comm.rank == 0:
 # return to Optimization
 # -------------------------------------
 
-mem5 = process_memory()
-dmem = mem5 - mem4
-print(
-    f"memory added while registering to optimization problem (w/ cfunc clearing) = {dmem} GB, total = {mem5} GB"
-)
+#mem5 = process_memory()
+#dmem = mem5 - mem4
+#print(
+#    f"memory added while registering to optimization problem (w/ cfunc clearing) = {dmem} GB, total = {mem5} GB"
+#)
 # exit()
 
 # this clear call is done inside the optimizer now..
@@ -565,11 +565,11 @@ gc.collect()
 f2f_model.print_memory_size(
     comm, root=0, starting_message="After optimizer, before running"
 )
-mem6 = process_memory()
-dmem = mem6 - mem5
-print(
-    f"memory added while registering to optimization problem (w/ cfunc clearing) = {dmem} GB, total = {mem6} GB"
-)
+#mem6 = process_memory()
+#dmem = mem6 - mem5
+#print(
+#    f"memory added while registering to optimization problem (w/ cfunc clearing) = {dmem} GB, total = {mem6} GB"
+#)
 print("Did it actually clear out that memory for composite functions?")
 # exit()
 
@@ -622,4 +622,4 @@ if comm.rank == 0:
 end_time = time.time()
 elapsed_time = end_time - start_time
 if comm.rank == 0:
-    print(f"elapsed time = {elapsed_time:.2e} seconds for the {model_name} model", flush=True)
+    print(f"elapsed time = {elapsed_time:.5e} seconds for the {model_name} model", flush=True)

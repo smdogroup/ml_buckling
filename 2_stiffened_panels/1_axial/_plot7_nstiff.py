@@ -116,14 +116,21 @@ if __name__ == "__main__":
 
         # rho0_FEA[::2], N11_FEA[::2] (when there were 100 points and wanted only 50 of them)
 
+    small_size = 16
+    large_size = 20
+
     # finish making the plot
-    plt.legend()
+    plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
     # plt.title(r"$\gamma = 11.25$")
-    plt.xlabel(r"$\ln(\rho_0)$")
-    plt.ylabel(r"$\ln(N_{11,cr}^*)$")
+    plt.xlabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=large_size, fontweight='bold')
+    plt.ylabel(r"$\mathbf{\ln(N_{11,cr}^*)}$", fontsize=large_size, fontweight='bold')
     # plt.xscale('log')
     # plt.yscale('log')
+
+    plt.xticks(fontsize=small_size, fontweight='bold')
+    plt.yticks(fontsize=small_size, fontweight='bold')
+
     plt.margins(x=0.05, y=0.05)
-    # plt.show()
+
     plt.savefig("7-nstiff-compare.png", dpi=400)
     plt.savefig("7-nstiff-compare.svg", dpi=400)
