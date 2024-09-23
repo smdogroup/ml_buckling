@@ -1607,6 +1607,7 @@ class StiffenedPlateAnalysis:
         found_mode = False
         self._min_global_imode = None
         self._min_global_eigval = None
+        self._min_global_mode_shape = None
 
         if self.comm.rank == 0:  # only do this on root proc
 
@@ -1678,6 +1679,7 @@ class StiffenedPlateAnalysis:
                 # now store the max similarity
                 self._min_global_imode = imode
                 self._min_global_eigval = obs_eigval.real
+                self._min_global_mode_shape = max_sim_m
                 self._MAC_msg = f"MAC identified global mode {imode} with shape (m,n)=({max_sim_m},1) and {max_similarity=:.4f}"
                 print(self._MAC_msg)
 
@@ -1704,6 +1706,100 @@ class StiffenedPlateAnalysis:
                 print(self._MAC_msg)
 
         return self._min_global_eigval
+
+    @property
+    def min_global_mode_index(self) -> int:
+        return self._min_global_imode
+
+    @property
+    def min_global_eigmode(self) -> np.ndarray:
+        if self.min_global_mode_index is not None:
+            return self._eigenvectors[self.min_global_mode_index].real
+        else:
+            return None
+
+    def get_matching_global_mode(
+        self, 
+        other_plate_nondim_X:np.ndarray, 
+        other_plate_eigmode:np.ndarray,
+        min_similarity:float=0.7,
+        local_mode_tol:float=0.7,
+    ):
+        """
+        use another plate's nondim_X and eigenmode for nearby rho0, gamma solution for mode tracking
+        Have to use interpolation to track across changing meshes
+        """
+        from scipy.interpolate import NearestNDInterpolator
+        import matplotlib.pyplot as plt
+        # print(f"{other_plate_nondim_X=} {other_plate_nondim_X.shape=}")
+        xi1 = other_plate_nondim_X[:,0].astype(np.double)
+        eta1 = other_plate_nondim_X[:,1].astype(np.double)
+        phi1 = other_plate_eigmode[2::6].astype(np.double) # w component
+
+        self._min_global_mode_shape = 1
+
+        # now use interp2d to build a 2d function
+        interp = NearestNDInterpolator(list(zip(xi1, eta1)), phi1)
+
+        matching_imode = None
+
+
+        # first get the most similar mode
+        mode_sim_vec = []
+        for imode in range(self.num_modes):
+
+            # not checking local modes here (check after)
+
+            # get current eigenmode data
+            xi2 = self.nondim_X[:,0].astype(np.double)
+            eta2 = self.nondim_X[:,1].astype(np.double)
+            phi2 = self._eigenvectors[imode][2::6].astype(np.double) # w component
+
+            # get meshgrid format of new mesh
+            xi2_unique = np.unique(np.round(xi2, 4))
+            eta2_unique = np.unique(np.round(eta2, 4))
+            XI2, ETA2 = np.meshgrid(xi2_unique, eta2_unique)
+            PHI2 = np.zeros(XI2.shape)
+            nxi = XI2.shape[1]
+            neta = XI2.shape[0]
+            for ixi in range(nxi):
+                for ieta in range(neta):
+                    mask = np.logical_and(
+                        np.abs(xi2 - xi2_unique[ixi]) < 0.03,
+                        np.abs(eta2 - eta2_unique[ieta]) < 0.03
+                    )
+                    # print(f"{mask=} {np.sum(mask)=} {mask.shape=}")
+                    phi2_val = phi2[mask][0]
+                    PHI2[ieta, ixi] = phi2_val
+
+            # now interpolate phi1 onto new mesh
+            PHI1_interp = interp(XI2, ETA2)
+
+            # flatten both and make unit vectors
+            phi2_vec = PHI2.flatten()
+            phi1_interp_vec = PHI1_interp.flatten()
+
+            # now take element wise dot product of two matrices
+            cosine_sim = self.cosine_mode_similarity(phi1_interp_vec, phi2_vec)
+            mode_sim_vec += [cosine_sim]
+
+        # now determine the mode that is the most similar
+        mode_sim_vec = np.array(mode_sim_vec)
+        most_sim_imode = np.argmax(mode_sim_vec)
+        cosine_sim = mode_sim_vec[most_sim_imode]
+        if cosine_sim > min_similarity:
+            matching_imode = most_sim_imode
+            if self.comm.rank == 0:
+                print(f"found mode {imode} to be matching with similarity {cosine_sim}\n")
+
+        if matching_imode is not None:
+            self._min_global_imode = matching_imode
+            self._MAC_msg = f"MAC reverse rho0 tracking successful with sim {cosine_sim}"
+            return self._eigenvalues[matching_imode]
+        else:
+            self._MAC_msg = f"MAC reverse rho0 tracking unsuccessful no modes similar enough (max sim {cosine_sim})"
+            return None
+
 
     def N11_plate(self, exx) -> float:
         """axial load carried by plate, need to account for composite lamiante  case with E_eff"""

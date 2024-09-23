@@ -63,13 +63,20 @@ if __name__ == "__main__":
         )
         # rho0_FEA[::2], N11_FEA[::2] (when there were 100 points and wanted only 50 of them)
 
+    small_size = 16
+    large_size = 20
+
     # finish making the plot
-    plt.legend()
+    plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
     # plt.title(r"$\gamma = 11.25$")
-    plt.xlabel(r"$\log(\rho_0)$")
-    plt.ylabel(r"$\log(N_{12,cr}^*)$")
+    plt.xlabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=large_size, fontweight='bold')
+    plt.ylabel(r"$\mathbf{\ln(N_{12,cr}^*)}$", fontsize=large_size, fontweight='bold')
     # plt.xscale('log')
     # plt.yscale('log')
+
+    plt.xticks(fontsize=small_size, fontweight='bold')
+    plt.yticks(fontsize=small_size, fontweight='bold')
+
     plt.margins(x=0.05, y=0.05)
     # plt.show()
     plt.savefig("shear-CF-vs-FEA.png", dpi=400)

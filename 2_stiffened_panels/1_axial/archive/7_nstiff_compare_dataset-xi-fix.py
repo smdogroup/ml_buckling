@@ -20,7 +20,7 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 args = parent_parser.parse_args()
 
 
-def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=False):
+def axial_load(rho0, gamma, nstiff, xi, solve_buckling=True, first=False):
 
     # # iterate on the number of stiffeners until we find a global mode eigenvalue
     # for nstiff in range(1, 6+1):
@@ -35,14 +35,10 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
     # t_w = h_w / stiff_AR # 0.005
     _nstiff = nstiff if gamma > 0 else 0
 
-    plate_material = mlb.CompositeMaterial(
-        E11=E,  # Pa
-        E22=E,
-        G12=G,
-        nu12=nu,
-        ply_angles=[0],
-        ply_fractions=[1.0],
-        ref_axis=[1, 0, 0],
+    plate_material = mlb.CompositeMaterial.solvay5320(
+        ply_angles=[0.0], 
+        ply_fractions=[1], 
+        ref_axis=[1.0, 0.0, 0.0],
     )
 
     stiff_material = plate_material
@@ -72,10 +68,72 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
     AR = xopt[1]
     a = b * AR
 
-    # make a new plate geometry
+    # updated plate geometry
     geometry = mlb.StiffenedPlateGeometry(
         a=a, b=b, h=h, num_stiff=_nstiff, h_w=h_w, t_w=h_w / stiff_AR
     )
+
+    stiff_analysis = mlb.StiffenedPlateAnalysis(
+        comm=comm,
+        geometry=geometry,
+        stiffener_material=stiff_material,
+        plate_material=plate_material,
+    )
+    print(stiff_analysis.gamma)
+    print(stiff_analysis.affine_aspect_ratio)
+
+    def xi_resid(x):
+        h_w = x[0]
+        AR = x[1]
+        ply_angle = x[2] * 10.0
+        t_w = h_w / stiff_AR
+
+        a = AR * b
+
+        geometry = mlb.StiffenedPlateGeometry(
+            a=a, b=b, h=h, num_stiff=_nstiff, h_w=h_w, t_w=t_w
+        )
+
+        ply_angle = x[0]
+
+        plate_material = mlb.CompositeMaterial.solvay5320(
+            ply_angles=[ply_angle], 
+            ply_fractions=[1], 
+            ref_axis=[1.0, 0.0, 0.0],
+        )
+        stiff_material = plate_material
+
+        stiff_analysis = mlb.StiffenedPlateAnalysis(
+            comm=comm,
+            geometry=geometry,
+            stiffener_material=stiff_material,
+            plate_material=plate_material,
+        )
+
+        return [rho0 - stiff_analysis.affine_aspect_ratio,
+                gamma - stiff_analysis.gamma,
+                xi - stiff_analysis.xi_plate]
+
+    xopt2 = sopt.fsolve(func=xi_resid, x0=(xopt[0], xopt[1], 0.0))
+    ply_angle = (xopt2[2] * 10.0) % 90.0
+
+    h_w = xopt2[0]
+    AR = xopt2[1]
+    a = b * AR
+
+    # updated plate geometry
+    geometry = mlb.StiffenedPlateGeometry(
+        a=a, b=b, h=h, num_stiff=_nstiff, h_w=h_w, t_w=h_w / stiff_AR
+    )
+
+    plate_material = mlb.CompositeMaterial.solvay5320(
+        ply_angles=[ply_angle], 
+        ply_fractions=[1], 
+        ref_axis=[1.0, 0.0, 0.0],
+    )
+    stiff_material = plate_material
+
+    # make the updated stiffener analysis object
     stiff_analysis = mlb.StiffenedPlateAnalysis(
         comm=comm,
         geometry=geometry,
@@ -124,55 +182,22 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
     if solve_buckling:
 
         tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-            sigma=10.0, num_eig=50, write_soln=True  # 50, 100
+            sigma=5.0, num_eig=50, write_soln=True  # 50, 100
         )
 
         # if args.static:
         # stiff_analysis.run_static_analysis(write_soln=True)
         stiff_analysis.post_analysis()
 
-        mode = None
-
-        global_lambda_star = None
-        rho0 = stiff_analysis.affine_aspect_ratio
-        gamma = stiff_analysis.gamma
-        rho0_star = rho0 / (1.0 + gamma)**0.25
-        
-        
-        # only do rho0^* < 1.5 the mode tracking since then we are in the regime of (1,1) mode distortion
-        if prev_dict is not None and prev_dict["shape"] == 1:
-            if comm.rank == 0:
-                global_lambda_star = stiff_analysis.get_matching_global_mode(
-                    prev_dict["nondimX"],
-                    prev_dict["phi"],
-                    min_similarity=0.6
-                )
-
-                if global_lambda_star is not None:
-                    is_global = stiff_analysis.is_global_mode(
-                        imode=stiff_analysis.min_global_mode_index,
-                        local_mode_tol=0.75
-                    )
-                    # if not(is_global):
-                    #     global_lambda_star = None
-                    #     print(f"mode {imode} was tracked but it is a local mode..")
-            
-        else: # just use heuristic
-            global_lambda_star = stiff_analysis.get_mac_global_mode(
-                axial=True,
-                min_similarity=0.7,  # 0.5
-                local_mode_tol=0.7,
-            )
-
-            is_global = global_lambda_star is not None
-
-        # if global_lambda_star is not None:
-        #     if np.abs(errors[stiff_analysis.min_global_mode_index]) > 1e-8:
-        #         global_lambda_star = None
-
-        mode = "global" if is_global else "local"
-
+        global_lambda_star = stiff_analysis.get_mac_global_mode(
+            axial=True,
+            min_similarity=0.7,  # 0.5
+            local_mode_tol=0.7,
+        )
         # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
+
+        # if global_lambda_star is None:
+        #     global_lambda_star = np.nan
 
         if comm.rank == 0:
             stiff_analysis.print_mode_classification()
@@ -200,24 +225,10 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
         if temp < timosh_crit:
             timosh_crit = temp
 
-
-    # adjust the values for different xi plate
-    # had another script that tried to adaptively select ply_angle to achieve certain xi,gamma,rho0 but scipy.optimize.fsolve
-    # kept not converging..
-    
-    # first adjust N11_CF by xi diff
-    pred_lambda += 2*(1.0 - stiff_analysis.xi_plate)
-    # second adjust FEA by xi diff
-    if solve_buckling and global_lambda_star is not None:
-        global_lambda_star += 2*(1.0 - stiff_analysis.xi_plate)
-
     # min_eigval = tacs_eigvals[0]
     # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
     if comm.rank == 0 and solve_buckling:
         print(f"{stiff_analysis.intended_Nxx}")
-
-        if global_lambda_star is not None:
-            global_lambda_star = global_lambda_star.real
 
         print(f"Mode type predicted as {mode_type}")
         print(f"\ttimoshenko CF lambda = {timosh_crit}")
@@ -227,7 +238,6 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
         # write the data to csv  after each buckling solve
         my_df_dict = {
             "nstiff" : [nstiff],
-            "mode" : [mode],
             "rho0": [rho0],
             "gamma": [gamma],
             "eig_CF": [pred_lambda],
@@ -238,68 +248,87 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
 
     comm.Barrier()
 
-    eig_dict = None
-    if solve_buckling and comm.rank == 0:
-        eig_dict = {
-            "nondimX" : stiff_analysis.nondim_X,
-            "phi" : stiff_analysis.min_global_eigmode,
-            "shape" : stiff_analysis._min_global_mode_shape
-        }
+    # exit()
 
-    if global_lambda_star is not None:
-        global_lambda_star = global_lambda_star.real
+    return [global_lambda_star, pred_lambda, timosh_crit]
 
-    return [global_lambda_star, pred_lambda, timosh_crit, eig_dict]
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     rho0_min = 0.2
     rho0_max = 10.0
-    n_FEA = 50  # 50 (should be 50 in order to not plot as densely..)
+    # n_FEA = 50  # 50 (should be 50 in order to not plot as densely..)
+    n_FEA = 5
 
-    # original dataset was with gamma = 3.0, but then 
-    gamma_vec = [3.0] 
+    # TODO : make it so we can set gamma here also and adaptively select hw
+
+    # gamma_vec = [0.0, 0.5, 1.0, 2.0, 3.0]
+    gamma_vec = [2.0]
+    # gamma_vec = [0.0]
+
+    xi = 1.0
+
+    # plt.style.use(niceplots.get_style())
 
     # plt.figure("this")
     colors = mlb.six_colors2[:4][::-1]
 
-    # 1, 5+1
-    for nstiff in range(4, 5+1):
+    for nstiff in range(1, 5+1):
 
-        for igamma, gamma in enumerate(gamma_vec):
+        for igamma, gamma in enumerate(gamma_vec[::-1]):
 
             n_CF = n_FEA
             rho0_CF = np.geomspace(rho0_min, rho0_max, n_CF)
             N11_CF = np.array(
-                [axial_load(rho0, gamma=gamma, nstiff=nstiff, prev_dict=None, solve_buckling=False)[1] for rho0 in rho0_CF]
+                [axial_load(rho0, gamma=gamma, nstiff=nstiff, xi=1.0, solve_buckling=False)[1] for rho0 in rho0_CF]
             )
+
+            if comm.rank == 0:
+                # label="closed-form"
+                plt.plot(rho0_CF, N11_CF, "-", label=None, color=colors[igamma])
+                # plt.show()
+
+            # rho0_CFT = np.geomspace(rho0_min, rho0_max, 100)
+            # N11_CFT = np.array([
+            #     axial_load(rho0, gamma=1.0, solve_buckling=False)[2] for rho0 in rho0_CFT
+            # ])
+
+            # if comm.rank == 0:
+            #     plt.plot(rho0_CFT, N11_CFT, "-", label="timosh")
 
             if comm.rank == 0:
                 print("done with closed-form timoshenko")
                 # exit()
 
             rho0_FEA = np.geomspace(rho0_min, rho0_max, n_FEA)
-            N11_FEA = rho0_FEA * 0.0
-            eig_dict = None
-            for irho0, rho0 in enumerate(rho0_FEA[::-1]):
-                # seed previous eigendict going backwards in rho0 to track the mode
-                _N11_FEA,_,_,eig_dict = axial_load(
-                    rho0=rho0, gamma=gamma, nstiff=nstiff,
-                    prev_dict=eig_dict,
-                    first=igamma==0 and irho0 == 0 and nstiff == 1,
-                    solve_buckling=True
-                )
+            N11_FEA = np.array(
+                [
+                    axial_load(rho0, gamma=gamma, nstiff=nstiff, xi=1.0, first=igamma == 0 and irho0 == 0 and nstiff==1)[0]
+                    for irho0, rho0 in enumerate(rho0_FEA)
+                ]
+            )
 
-                """
-                using the eigdict and my new method get_matching_global_mode()
-                allows me to track the same global mode as it does mode switching
-                """
+            # if comm.rank == 0:
+            #     # FEA
+            #     plt.plot(
+            #         rho0_FEA,
+            #         N11_FEA,
+            #         "o",
+            #         label=r"$\gamma = " + f"{gamma:.1f}" + r"$",
+            #         color=colors[igamma],
+            #     )
 
-                # print(f"{eig_dict=}")
-                # exit()
-                if _N11_FEA is not None:
-                    _N11_FEA = _N11_FEA.real
-                N11_FEA[irho0] = _N11_FEA
+            # comm.Barrier()
 
-        
+    # # finish making the plot
+    # if comm.rank == 0:
+    #     plt.legend()
+    #     # plt.title(r"$\gamma = 11.25$")
+    #     plt.xlabel(r"$\rho_0$")
+    #     plt.ylabel(r"$N_{11,cr}^*$")
+    #     plt.xscale("log")
+    #     plt.yscale("log")
+    #     plt.margins(x=0.05, y=0.05)
+    #     # plt.show()
+    #     plt.savefig("axial-CF-vs-FEA-demo.png", dpi=400)

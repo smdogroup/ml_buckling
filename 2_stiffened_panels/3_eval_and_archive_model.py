@@ -941,7 +941,7 @@ if args.plotmodel3d:
     if _plot_3d_gamma:
 
         # 3d plot of rho_0, gamma, lam_star for a particular xi and zeta range
-        xi_bin = [0.6, 0.7]
+        xi_bin = [0.5, 0.7]
         xi_mask = np.logical_and(xi_bin[0] <= X[:, 0], X[:, 0] <= xi_bin[1])
         avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
