@@ -49,10 +49,13 @@ ax.plot(
 )  # , label=f"D*-[{Dstar_bin[0]},{Dstar_bin[1]}]""
 
 # outside of for loop save the plot
-plt.xlabel(r"$\log(\rho_0)$")
+plt.xlabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=18, fontweight='bold')
 # plt.xlabel(r"$\log(\rho_0)|\rho_0 = \frac{a}{b} \cdot \sqrt[4]{D_{22}^p/D_{11}^p}$")
-plt.ylabel(r"$\log(N_{11,cr}^*)$")
-plt.legend()
+plt.ylabel(r"$\mathbf{\ln(N_{11,cr}^*)}$", fontsize=18, fontweight='bold')
+plt.legend(prop={'size' : 14})
+
+plt.xticks(fontsize=14, fontweight='bold')
+plt.yticks(fontsize=14, fontweight='bold')
 # plt.xlim(np.log(0.1), np.log(20.0))
 # plt.ylim(np.log(2.0), np.log(20.0))
 plt.savefig(f"slender{islender}-model-fit.svg", dpi=400)

@@ -84,7 +84,8 @@ print(f"\tgamma or x3: min {np.min(gamma)}, max {np.max(gamma)}")
 xi_bins = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1.05]]
 rho0_bins = [[-2.5, -1.0], [-1.0, 0.0], [0.0, 1.0], [1.0, 2.5]]
 zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.5]]
-gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0]]
+# gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0]]
+gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 2.0], [2.0, 3.0]]
 
 # randomly permute the arrays
 rand_perm = np.random.permutation(N_data)
@@ -1078,17 +1079,21 @@ if args.plotmodel3d:
         )
 
         # save the figure
-        ax.set_xlabel(r"$ln(1+\gamma)$")
-        ax.set_ylabel(r"$ln(\rho_0)$")
+        ax.set_xlabel(r"$\mathbf{\ln(1+\gamma)}$", fontsize=18, fontweight='bold')
+        ax.set_ylabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=18, fontweight='bold')
         if args.load == "Nx":
-            ax.set_zlabel(r"$ln(N_{11,cr}^*)$")
+            ax.set_zlabel(r"$\mathbf{\ln(N_{11,cr}^*)}$", fontsize=18, fontweight='bold')
         else:
-            ax.set_zlabel(r"$ln(N_{12,cr}^*)$")
+            ax.set_zlabel(r"$\mathbf{\ln(N_{12,cr}^*)}$", fontsize=18, fontweight='bold')
         ax.set_ylim3d(np.log(0.3), np.log(10.0))
         # ax.set_zlim3d(0.0, np.log(50.0))
         # ax.set_zlim3d(1.0, 3.0)
         ax.view_init(elev=20, azim=20, roll=0)
         plt.gca().invert_xaxis()
+
+        ax.xaxis.set_tick_params(labelsize=14)
+        ax.yaxis.set_tick_params(labelsize=14)
+        ax.zaxis.set_tick_params(labelsize=14)
         # plt.title(f"")
         # plt.show()
         if args.show:
@@ -1237,17 +1242,21 @@ if args.plotmodel3d:
         )
 
         # save the figure
-        ax.set_xlabel(r"$ln(1+\xi)$")
-        ax.set_ylabel(r"$ln(\rho_0)$")
+        ax.set_xlabel(r"$\mathbf{\ln(1+\xi)}$", fontsize=18, fontweight='bold')
+        ax.set_ylabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=18, fontweight='bold')
         if args.load == "Nx":
-            ax.set_zlabel(r"$ln(N_{11,cr}^*)$")
+            ax.set_zlabel(r"$\mathbf{\ln(N_{11,cr}^*)}$", fontsize=18, fontweight='bold')
         else:
-            ax.set_zlabel(r"$ln(N_{12,cr}^*)$")
+            ax.set_zlabel(r"$\mathbf{\ln(N_{12,cr}^*)}$", fontsize=18, fontweight='bold')
         ax.set_ylim3d(np.log(0.3), np.log(10.0))
         # ax.set_zlim3d(0.0, np.log(50.0))
         # ax.set_zlim3d(1.0, 3.0)
         ax.view_init(elev=20, azim=20, roll=0)
         plt.gca().invert_xaxis()
+
+        ax.xaxis.set_tick_params(labelsize=14)
+        ax.yaxis.set_tick_params(labelsize=14)
+        ax.zaxis.set_tick_params(labelsize=14)
         # plt.title(f"")
         # plt.show()
         if args.show:
