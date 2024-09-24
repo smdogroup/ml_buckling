@@ -124,7 +124,7 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
     if solve_buckling:
 
         tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-            sigma=5.0, num_eig=50, write_soln=True  # 50, 100
+            sigma=10.0, num_eig=50, write_soln=True  # 50, 100
         )
 
         # if args.static:
@@ -138,23 +138,40 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
         gamma = stiff_analysis.gamma
         rho0_star = rho0 / (1.0 + gamma)**0.25
         
-        global_lambda_star = stiff_analysis.get_mac_global_mode(
-            axial=True,
-            min_similarity=0.7,  # 0.5
-            local_mode_tol=0.7,
-        )
-
-        mode = "global" if global_lambda_star is not None else "local"
-
+        
         # only do rho0^* < 1.5 the mode tracking since then we are in the regime of (1,1) mode distortion
-        if prev_dict is not None and rho0_star < 1.5:
+        if prev_dict is not None and prev_dict["shape"] == 1:
             if comm.rank == 0:
                 global_lambda_star = stiff_analysis.get_matching_global_mode(
                     prev_dict["nondimX"],
                     prev_dict["phi"],
                     min_similarity=0.6
                 )
+
+                if global_lambda_star is not None:
+                    is_global = stiff_analysis.is_global_mode(
+                        imode=stiff_analysis.min_global_mode_index,
+                        local_mode_tol=0.75
+                    )
+                    # if not(is_global):
+                    #     global_lambda_star = None
+                    #     print(f"mode {imode} was tracked but it is a local mode..")
             
+        else: # just use heuristic
+            global_lambda_star = stiff_analysis.get_mac_global_mode(
+                axial=True,
+                min_similarity=0.7,  # 0.5
+                local_mode_tol=0.7,
+            )
+
+            is_global = global_lambda_star is not None
+
+        # if global_lambda_star is not None:
+        #     if np.abs(errors[stiff_analysis.min_global_mode_index]) > 1e-8:
+        #         global_lambda_star = None
+
+        mode = "global" if is_global else "local"
+
         # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 
         if comm.rank == 0:
@@ -226,6 +243,7 @@ def axial_load(rho0, gamma, nstiff, prev_dict=None, solve_buckling=True, first=F
         eig_dict = {
             "nondimX" : stiff_analysis.nondim_X,
             "phi" : stiff_analysis.min_global_eigmode,
+            "shape" : stiff_analysis._min_global_mode_shape
         }
 
     if global_lambda_star is not None:
@@ -240,24 +258,16 @@ if __name__ == "__main__":
     rho0_max = 10.0
     n_FEA = 50  # 50 (should be 50 in order to not plot as densely..)
 
-    # rho0_min = 0.1
-    # rho0_max = 0.65
-    # n_FEA = 10
-
-    # n_FEA = 5
-
-    # gamma_vec = [0.0, 0.5, 1.0, 2.0, 3.0]
-    gamma_vec = [2.0]
-    # gamma_vec = [0.0]
-
-    # plt.style.use(niceplots.get_style())
+    # original dataset was with gamma = 3.0, but then 
+    gamma_vec = [3.0] 
 
     # plt.figure("this")
     colors = mlb.six_colors2[:4][::-1]
 
-    for nstiff in range(2, 5+1):
+    # 1, 5+1
+    for nstiff in range(4, 5+1):
 
-        for igamma, gamma in enumerate(gamma_vec[::-1]):
+        for igamma, gamma in enumerate(gamma_vec):
 
             n_CF = n_FEA
             rho0_CF = np.geomspace(rho0_min, rho0_max, n_CF)

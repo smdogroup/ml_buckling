@@ -9,11 +9,14 @@ import time
 from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
+import time
+start_time = time.time()
 
 # import openmdao.api as om
 from mpi4py import MPI
 from tacs import caps2tacs
 import os
+
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=6)
@@ -376,3 +379,8 @@ sol = snoptimizer(
 sol_xdict = sol.xStar
 if comm.rank == 0:
     print(f"Final solution = {sol_xdict}", flush=True)
+
+end_time = time.time()
+elapsed_time = end_time - start_time
+if comm.rank == 0:
+    print(f"elapsed time = {elapsed_time:.5e} seconds for the {model_name} model", flush=True)

@@ -27,25 +27,64 @@ if __name__ == "__main__":
     plt.style.use(niceplots.get_style())
 
     plt.figure("this")
-    colors = mlb.six_colors2[0:] #[::-1]
+    colors = mlb.six_colors2 #[::-1]
 
-    for istiff, nstiff_val in enumerate(nstiff_unique):
+    nvals = nstiff_unique.shape[0]
+    for istiff, nstiff_val in enumerate(nstiff_unique[::-1]):
 
         nstiff_mask = nstiff == nstiff_val
-        print(f"{nstiff_mask=}")
+        # print(f"{nstiff_mask=}")
 
-        # plot the FEA
-        # rho0_FEA = rho0[gamma_mask]
-        # N11_FEA = eig_FEA[gamma_mask]
-        # plt.plot(rho0_FEA, N11_FEA, "o", label=r"$\gamma = " + f"{gamma_val:.1f}" + r"$", color=colors[igamma], alpha=0.9)
+        # # plot the FEA global modes
+        global_mask = np.logical_and(
+            nstiff_mask,
+            mode == "global"
+        )
+        rho0_FEA = rho0[global_mask].astype(np.double)
+        N11_FEA = eig_FEA[global_mask].astype(np.double)
+        # plot every other point for now when there were 100 per line (50 per line is a good density where can see points and line separately)
+        if np.sum(global_mask) > 0:
+            plt.plot(
+                np.log(rho0_FEA),
+                np.log(N11_FEA),
+                linestyle='-',
+                marker="o",
+                label=r"$N_s= " + f"{int(nstiff_val):d}" + r"$",
+                color=colors[istiff],
+                alpha=1.0,
+                markersize=5.0,
+                zorder=nstiff_val
+                # markersize=6.0 - 1.0 *  istiff,
+            )
+
+        # # plot the FEA local modes
+        local_mask = np.logical_and(
+            nstiff_mask,
+            mode == "local"
+        )
+        rho0_FEA = rho0[local_mask].astype(np.double)
+        N11_FEA = eig_FEA[local_mask].astype(np.double)
+        if np.sum(local_mask) > 0:
+            plt.plot(
+                np.log(rho0_FEA),
+                np.log(N11_FEA),
+                linestyle='None',
+                marker='^',
+                label=None,
+                color=colors[istiff],
+                alpha=1.0,
+                markersize=6.0,
+                zorder=nstiff_val
+                #markersize=6.0 - 1.0 *  istiff,
+            )
 
         # plot the closed-form
-        if nstiff_val == 1:
+        if istiff == nvals-1:
             rho0_min = np.min(rho0)
             rho0_max = np.max(rho0)
             rho0_CF = np.geomspace(rho0_min, rho0_max, 300)
             N11_CF = 0.0 * rho0_CF
-            gamma = 2.0
+            gamma = 3.0
 
             for irho0, rho0_val in enumerate(rho0_CF):
                 lam_star_global = min(
@@ -68,61 +107,30 @@ if __name__ == "__main__":
                 np.log(rho0_CF),
                 np.log(N11_CF),
                 "-",
-                label=None,
+                label="closed-form",
                 color='k',
                 linewidth=2.5,
-            )
-
-        # # plot the FEA global modes
-        global_mask = np.logical_and(
-            nstiff_mask,
-            mode == "global"
-        )
-        rho0_FEA = rho0[global_mask].astype(np.double)
-        N11_FEA = eig_FEA[global_mask].astype(np.double)
-        # plot every other point for now when there were 100 per line (50 per line is a good density where can see points and line separately)
-        if np.sum(global_mask) > 0:
-            plt.plot(
-                np.log(rho0_FEA),
-                np.log(N11_FEA),
-                "o",
-                label=r"$N_s= " + f"{int(nstiff_val):d}" + r"$",
-                color=colors[istiff],
-                alpha=1.0,
-                markersize=5.0
-                # markersize=6.0 - 1.0 *  istiff,
-            )
-
-        # # plot the FEA local modes
-        local_mask = np.logical_and(
-            nstiff_mask,
-            mode == "local"
-        )
-        rho0_FEA = rho0[local_mask].astype(np.double)
-        N11_FEA = eig_FEA[local_mask].astype(np.double)
-        if np.sum(local_mask) > 0:
-            plt.plot(
-                np.log(rho0_FEA),
-                np.log(N11_FEA),
-                "s",
-                label=None,
-                color=colors[istiff],
-                alpha=1.0,
-                markersize=5.0,
-                #markersize=6.0 - 1.0 *  istiff,
+                zorder=0
             )
 
 
         # rho0_FEA[::2], N11_FEA[::2] (when there were 100 points and wanted only 50 of them)
 
+    small_size = 16
+    large_size = 20
+
     # finish making the plot
-    plt.legend()
+    plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
     # plt.title(r"$\gamma = 11.25$")
-    plt.xlabel(r"$\ln(\rho_0)$")
-    plt.ylabel(r"$\ln(N_{11,cr}^*)$")
+    plt.xlabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=large_size, fontweight='bold')
+    plt.ylabel(r"$\mathbf{\ln(N_{11,cr}^*)}$", fontsize=large_size, fontweight='bold')
     # plt.xscale('log')
     # plt.yscale('log')
+
+    plt.xticks(fontsize=small_size, fontweight='bold')
+    plt.yticks(fontsize=small_size, fontweight='bold')
+
     plt.margins(x=0.05, y=0.05)
-    # plt.show()
+
     plt.savefig("7-nstiff-compare.png", dpi=400)
     plt.savefig("7-nstiff-compare.svg", dpi=400)

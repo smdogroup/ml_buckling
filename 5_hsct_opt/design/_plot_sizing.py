@@ -1,9 +1,17 @@
 from funtofem import *
 import matplotlib.pyplot as plt, niceplots
 
+import argparse
+
+parent_parser = argparse.ArgumentParser(add_help=False)
+parent_parser.add_argument(
+    "--useML", default=False, action=argparse.BooleanOptionalAction
+)
+args = parent_parser.parse_args()
+
 # 1 : plot 1_sizing_opt_local.py results
 # ---------------------------------------------------------------------------
-m_case = "CF"
+m_case = "ML" if args.useML else "CF"
 scenario_name = "climb-turb"
 plotter = PlotManager.from_hist_file(
     "CF-oneway_design.txt" if m_case == "CF" else "ML-oneway_design.txt",
