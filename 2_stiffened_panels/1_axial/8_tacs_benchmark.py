@@ -15,7 +15,6 @@ parent_parser.add_argument("--stiffAR", type=float, default=5.0)
 parent_parser.add_argument("--nstiff", type=int, default=3)
 parent_parser.add_argument("--SR", type=float, default=100.0)
 parent_parser.add_argument("--b", type=float, default=1.0)
-parent_parser.add_argument("--plyAngle", type=float, default=0.0)
 
 # change this one to change gamma right now, gamma can only go so high usually with single-sided stiffeners (like gamma < 10, 15)
 parent_parser.add_argument("--rho0", type=float, default=1.5)
@@ -25,6 +24,9 @@ parent_parser.add_argument("--gamma", type=float, default=5.0)
 parent_parser.add_argument("--minSim", type=float, default=0.7)
 parent_parser.add_argument("--globLocal", type=float, default=0.7)
 
+parent_parser.add_argument(
+    "--axial", default=True, action=argparse.BooleanOptionalAction
+)
 parent_parser.add_argument("--nelems", type=int, default=2000)
 parent_parser.add_argument("--sigma", type=float, default=5.0)
 args = parent_parser.parse_args()
@@ -38,26 +40,26 @@ h = b / args.SR  # 10 mm
 # h_w = args.hw
 # t_w = h_w / args.stiffAR
 
-# nu = 0.3
-# E = 138e9
-# G = E / 2.0 / (1 + nu)
+nu = 0.3
+E = 138e9
+G = E / 2.0 / (1 + nu)
 
 
-# plate_material = mlb.CompositeMaterial(
-#     E11=E,  # Pa
-#     E22=E,
-#     G12=G,
-#     nu12=nu,
-#     ply_angles=[args.plyAngle],
-#     ply_fractions=[1.0],
-#     ref_axis=[1, 0, 0],
-# )
-
-plate_material = mlb.CompositeMaterial.solvay5320(
-    ply_angles=[args.plyAngle], 
-    ply_fractions=[1], 
-    ref_axis=[1.0, 0.0, 0.0],
+plate_material = mlb.CompositeMaterial(
+    E11=E,  # Pa
+    E22=E,
+    G12=G,
+    nu12=nu,
+    ply_angles=[0.0],
+    ply_fractions=[1.0],
+    ref_axis=[1, 0, 0],
 )
+
+# plate_material = mlb.CompositeMaterial.solvay5320(
+#     ply_angles=[0.0, 45.0], 
+#     ply_fractions=[0.7, 0.3], 
+#     ref_axis=[1.0, 0.0, 0.0],
+# )
 
 stiff_material = plate_material
 
@@ -125,8 +127,8 @@ stiff_analysis.pre_analysis(
     ny_plate=int(ny),  # 30
     nz_stiff=int(nz),  # 5
     nx_stiff_mult=2,
-    exx=stiff_analysis.affine_exx,
-    exy=0.0,
+    exx=stiff_analysis.affine_exx if args.axial else 0.0,
+    exy=stiff_analysis.affine_exy if not(args.axial) else 0.0,
     clamped=False,
     # _make_rbe=args.rbe,
     _make_rbe=True,
@@ -148,13 +150,13 @@ stiff_analysis.post_analysis()
 
 # global_lambda_star = stiff_analysis.min_global_mode_eigenvalue
 global_lambda_star = stiff_analysis.get_mac_global_mode(
-    axial=True,
+    axial=args.axial,
     min_similarity=args.minSim,
     local_mode_tol=args.globLocal,
 )
 
 # predict the actual eigenvalue
-pred_lambda, mode_type = stiff_analysis.predict_crit_load(axial=True)
+pred_lambda, mode_type = stiff_analysis.predict_crit_load(axial=args.axial)
 
 if comm.rank == 0:
     stiff_analysis.print_mode_classification()

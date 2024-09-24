@@ -245,9 +245,9 @@ if not plot_log:
         plt.ylabel(r"$N_{12,cr}^*$", fontsize=24)
 else:
     if args.load == "Nx":
-        plt.ylabel(r"$\log(N_{11,cr}^*)$", fontsize=24)
+        plt.ylabel(r"$\ln(N_{11,cr}^*)$", fontsize=24)
     else:  # "Nxy"
-        plt.ylabel(r"$\log(N_{12,cr}^*)$", fontsize=24)
+        plt.ylabel(r"$\ln(N_{12,cr}^*)$", fontsize=24)
 plt.yticks(fontsize=18)
 plt.margins(x=0.02, y=0.02)
 if not plot_log:
