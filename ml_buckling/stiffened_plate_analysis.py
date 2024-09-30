@@ -1207,7 +1207,7 @@ class StiffenedPlateAnalysis:
                 self._eta = np.concatenate(eta_list) / self.geometry.b
 
                 zeta_list = [zeta for zeta in all_zeta if zeta is not None]
-                self._zeta = np.concatenate(zeta_list) / self.geometry.h_w
+                self._zeta = np.concatenate(zeta_list) / (self.geometry.h_w if self.geometry.num_stiff > 0 else 1.0)
 
                 self.num_nodes = sum(
                     [num_nodes for num_nodes in all_num_nodes if num_nodes is not None]
@@ -1799,6 +1799,53 @@ class StiffenedPlateAnalysis:
         else:
             self._MAC_msg = f"MAC reverse rho0 tracking unsuccessful no modes similar enough (max sim {cosine_sim})"
             return None
+
+    def get_nondim_slopes(self, imode:int, xedge:bool=True, m=1, n=1):
+        """
+        get nondim slopes for axial buckling mode shapes at x and y edges to see if solution is close to clamped BC or not
+        this happens if gamma is high enough that the slopes at +x and -x go smaller
+        """
+        eigvec = self._eigenvectors[imode]
+        w_eigvec = eigvec[2::6]
+        wmax = np.max(np.abs(w_eigvec))
+
+        yedge = not(xedge)
+        if xedge: # get slopes at xedge ocmpared to SS slope sin(m*pi*x/a) is m*pi/a max slope at middle
+            # but do so in nondim xi coords so sin(m*pi*xi)
+            SS_slope = m * np.pi
+            
+            # get points in panel nearest x = 0 but not 0
+            xvals_in_panel = self._xi[np.abs(self._zeta) < 1e-7]
+            unique_xvals = np.unique(xvals_in_panel)
+            dxi = np.diff(unique_xvals)[0]
+
+            # get closest point to middle at (dx,1/2) in xi,eta space
+            dist = np.abs(self._xi - dxi) + np.abs(self._eta - 0.5) + np.abs(self._zeta)
+            ind = np.argmin(dist)
+
+            act_slope = np.abs(w_eigvec[ind] / wmax / dxi)
+
+        if yedge: # get slopes at xedge ocmpared to SS slope sin(n*pi*x/b) is n*pi/b max slope at middle
+            # but do so in nondim eta coords so sin(n*pi*xi)
+            SS_slope = n * np.pi
+            
+            # get points in panel nearest y = 0 but not 0
+            yvals_in_panel = self._eta[np.abs(self._zeta) < 1e-7]
+            deta = np.diff(np.unique(yvals_in_panel))[0]
+            # get closest point to middle at (1/2,deta) in xi,eta space
+            dist = np.abs(self._xi - 0.5) + np.abs(self._eta - deta) + np.abs(self._zeta)
+            ind = np.argmin(dist)
+
+            act_slope = np.abs(w_eigvec[ind] / wmax / deta)
+
+        nd_slope = act_slope / SS_slope
+        nd_slope = nd_slope.real
+        if self.comm.rank == 0:
+            edge_type = "xedge" if xedge else "yedge"
+            print(f"{edge_type}: ND_slope={nd_slope} with equiv 1.0 SS, 0.0 ~clamped")
+
+        return act_slope / SS_slope
+
 
 
     def N11_plate(self, exx) -> float:

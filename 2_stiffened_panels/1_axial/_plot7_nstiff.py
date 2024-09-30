@@ -6,7 +6,7 @@ import numpy as np
 
 """
 plotting script for previously saved data from the script
-3_timoshenko_dataset.py
+7_nstiff_compare_dataset.py
 """
 
 if __name__ == "__main__":

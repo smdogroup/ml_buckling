@@ -163,6 +163,14 @@ if comm.rank == 0:
     stiff_analysis.print_mode_classification()
     print(stiff_analysis)
 
+# also get SS slopes
+if comm.rank == 0:
+    imode = stiff_analysis._min_global_imode
+    for xedge in [True, False]:
+        stiff_analysis.get_nondim_slopes(
+            imode, xedge=xedge, m=1, n=1
+        )
+
 # min_eigval = tacs_eigvals[0]
 # rel_err = (pred_lambda - global_lambda_star) / pred_lambda
 if comm.rank == 0:
