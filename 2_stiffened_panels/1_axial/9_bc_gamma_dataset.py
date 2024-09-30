@@ -240,14 +240,15 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     # original dataset was with gamma = 3.0, but then 
-    n_gamma = 50
+    n_gamma = 30
     gamma_vec = np.geomspace(1 + 0.0, 1 + 5.0, n_gamma) - 1.0
+    # gamma_vec = np.linspace(0.0, 5.0, n_gamma)
 
     for igamma, gamma in enumerate(gamma_vec):
 
         # just call the buckling load and it will write to csv
         axial_load(
-            rho0=0.5, gamma=gamma, nstiff=9 if gamma > 0 else 0,
+            rho0=0.5, gamma=gamma, nstiff=5 if gamma > 0 else 0,
             first=igamma==0,
             solve_buckling=True
         )
