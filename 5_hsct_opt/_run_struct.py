@@ -289,7 +289,7 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
     init_transfer=True,
 )
 
-f2f_model.read_design_variables_file(comm, "design/CF-sizing.txt")
+f2f_model.read_design_variables_file(comm, "design/ML-sizing.txt" if args.useML else "design/CF-sizing.txt")
 
 tacs_driver.solve_forward()
 
