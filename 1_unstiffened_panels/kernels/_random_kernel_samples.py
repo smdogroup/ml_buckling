@@ -43,7 +43,7 @@ elif args.case == 5:
             np.exp(-0.5 * (x - xp) ** 2 / 0.2 ** 2)
             * relu(1 - abs(x))
             * relu(1 - abs(xp))
-            + 1
+            + 1.0
             + 1.0 * relu(-x) * relu(-xp)
         )
 
@@ -55,7 +55,7 @@ elif args.case == 6:
 elif args.case == 7:
 
     def kernel(x, xp):
-        return 1 + 0.2 * relu(-x) * relu(-xp)
+        return 1.0 + 1.0 * relu(-x) * relu(-xp)
 
 elif args.case == 8:
 
@@ -67,7 +67,7 @@ elif args.case == 8:
             np.exp(-0.5 * (x - xp) ** 2 / 0.2 ** 2)
             * soft_relu(1 - abs(x))
             * soft_relu(1 - abs(xp))
-            + 1
+            + 0.5
             + 1.0 * soft_relu(-x) * soft_relu(-xp)
         )
 
@@ -81,7 +81,13 @@ covar = np.array([[kernel(xvec[i], xvec[j]) for i in range(n)] for j in range(n)
 nsamples = 100
 samples = np.random.multivariate_normal(mean, covar, size=nsamples)
 
-colors = plt.cm.Blues(np.linspace(0, 1, nsamples))
+if args.case == 7:
+    colors = plt.cm.Greens(np.linspace(0, 1, nsamples))
+elif args.case == 5:
+    greens = plt.cm.Greens(np.linspace(0, 1, nsamples))
+    blues = plt.cm.Blues(np.linspace(0, 1, nsamples))
+else:
+    colors = plt.cm.Blues(np.linspace(0, 1, nsamples))
 
 fig, ax = plt.subplots()
 plt.style.use(niceplots.get_style())
@@ -96,14 +102,19 @@ if args.case in [5, 8]:
 
 for isample, sample in enumerate(samples):
     # ax.plot(xvec, sample,color="b", alpha=0.3, linewidth=1)
-    ax.plot(xvec, sample, color=colors[isample], alpha=0.5, linewidth=1)
+    if args.case == 5:
+        ax.plot(xvec[np.abs(xvec) < 1], sample[np.abs(xvec) < 1], color=blues[isample], alpha=0.5, linewidth=2)
+        ax.plot(xvec[xvec <= -1], sample[xvec <= -1], color=greens[isample], alpha=0.5, linewidth=2)
+        ax.plot(xvec[xvec >= 1], sample[xvec >= 1], color=greens[isample], alpha=0.5, linewidth=2)
+    else:
+        ax.plot(xvec, sample, color=colors[isample], alpha=0.5, linewidth=2)
 # ax.set_axis_off(
 
 fontsize = 20
 
 if args.case == 1:
     plt.title(
-        r"$k(x,x\prime) = exp(-\frac{(x-x\prime)^2}{2 \cdot 1^2})$",
+        r"$\mathbf{k(x,x^{\prime}) = exp(-\frac{(x-x^{\prime})^2}{2 \cdot 1^2})}$",
         fontsize=fontsize,
         pad=15,
     )
@@ -125,15 +136,15 @@ if args.case == 4:
     )
 if args.case == 5:
     plt.title(
-        r"$k(x,x\prime) = exp(-\frac{(x-x\prime)^2}{2 \cdot 0.2^2}) \cdot relu(1-|x|) \cdot relu(1 - |x\prime|) + 1.0 + 1.0 \cdot relu(-x) \cdot relu(-x\prime)$",
-        fontsize=10,
+        r"$\mathbf{k(x,x^{\prime}) = exp(-\frac{(x-x^{\prime})^2}{2 \cdot 0.2^2}) \cdot k_{window} + 1.0 + relu(-x) \cdot relu(-x^{\prime})}$",
+        fontsize=12,
         pad=15,
     )
 if args.case == 6:
     plt.title(r"$k(x,x\prime) = 1.0$", fontsize=fontsize, pad=15)
 if args.case == 7:
     plt.title(
-        r"$k(x,x\prime) = 1 + 0.2 * relu(-x) * relu(-x\prime)$",
+        r"$\mathbf{k(x,x^{\prime}) = 1.0 + relu(-x) * relu(-x^{\prime})}$",
         fontsize=fontsize,
         pad=15,
     )
@@ -146,6 +157,9 @@ if args.case == 8:
 
 if args.case in [5, 8]:
     plt.ylim(-7, 7)
+
+plt.xticks(fontsize=16, fontweight='bold')
+plt.yticks(fontsize=16, fontweight='bold')
 
 plt.savefig(
     f"kernel-demo{args.case}.svg", dpi=400, bbox_inches="tight", pad_inches=0.02

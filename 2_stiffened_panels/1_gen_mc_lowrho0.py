@@ -260,7 +260,7 @@ if __name__ == "__main__":
                     rho0=rho0, 
                     gamma=gamma, 
                     plyAngle=plyAngle, 
-                    _nstiff=10, # want a large # of stiffeners so that the modes are more global at low rho0
+                    _nstiff=9, # want a large # of stiffeners so that the modes are more global at low rho0
                     prev_dict=eig_dict
                 )
 
