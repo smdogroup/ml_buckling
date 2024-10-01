@@ -24,31 +24,37 @@ def closed_form_callback(
     dvNum, compID, compDescript, elemDescripts, specialDVs, **kwargs
 ):
 
+    # Aluminum alloy Al-MS89
+    E = 90e9
+    nu = 0.3
+    G = E / 2.0 / (1+nu)
+    strength = 420e6
+
     # Create the orthotropic layup
     ortho_prop = constitutive.MaterialProperties(
-        rho=1.55e3,  # density kg/m^3
-        E1=117.9e9,  # Young's modulus in 11 direction (Pa)
-        E2=9.7e9,  # Young's modulus in 22 direction (Pa)
-        G12=4.8e9,  # in-plane 1-2 shear modulus (Pa)
-        G13=4.8e9,  # Transverse 1-3 shear modulus (Pa)
-        G23=4.8e9,  # Transverse 2-3 shear modulus (Pa)
-        nu12=0.35,  # 1-2 poisson's ratio
-        T1=1648e6,  # Tensile strength in 1 direction (Pa)
-        C1=1034e6,  # Compressive strength in 1 direction (Pa)
-        T2=64e6,  # Tensile strength in 2 direction (Pa)
-        C2=228e6,  # Compressive strength in 2 direction (Pa)
-        S12=71e6,  # Shear strength direction (Pa)
+        rho=2.69e3,  # density kg/m^3
+        E1=E,  # Young's modulus in 11 direction (Pa)
+        E2=E,  # Young's modulus in 22 direction (Pa)
+        G12=G,  # in-plane 1-2 shear modulus (Pa)
+        G13=G,  # Transverse 1-3 shear modulus (Pa)
+        G23=G,  # Transverse 2-3 shear modulus (Pa)
+        nu12=nu,  # 1-2 poisson's ratio
+        T1=strength,  # Tensile strength in 1 direction (Pa)
+        C1=strength,  # Compressive strength in 1 direction (Pa)
+        T2=strength,  # Tensile strength in 2 direction (Pa)
+        C2=strength,  # Compressive strength in 2 direction (Pa)
+        S12=0.6 * strength,  # Shear strength direction (Pa)
     )
     ortho_ply = constitutive.OrthotropicPly(1.0, ortho_prop)
 
     # case by case initial ply angles
     if "OML" in compDescript:
-        plyAngles = np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype))
-        panelPlyFractions = np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0
+        plyAngles = np.deg2rad(np.array([0.0], dtype=dtype))
+        panelPlyFractions = np.array([1.0], dtype=dtype)
         refAxis = np.array([0.34968083, 0.93686889, 0.0])
     else:
-        plyAngles = np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype))
-        panelPlyFractions = np.array([10.0, 35.0, 35.0, 20.0], dtype=dtype) / 100.0
+        plyAngles = np.deg2rad(np.array([0.0], dtype=dtype))
+        panelPlyFractions = np.array([1.0], dtype=dtype)
         refAxis = np.array([0.0, 0.0, 1.0])
 
     # The ordering of the DVs used by the GPBladeStiffenedShell model is:
@@ -84,7 +90,7 @@ def closed_form_callback(
         stiffenerHeight=0.075,
         stiffenerThick=1e-2,
         stiffenerPlyAngles=plyAngles,
-        stiffenerPlyFracs=np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0,
+        stiffenerPlyFracs=np.array([1.0], dtype=dtype),
         panelWidth=0.5,  # choose wrong initial value first to check if it corrects in FUNtoFEM
         flangeFraction=0.8,
         panelLengthNum=dvNum,
