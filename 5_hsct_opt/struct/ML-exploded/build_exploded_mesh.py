@@ -2,6 +2,7 @@
 Sean P. Engelstad, Georgia Tech 2024
 
 Local machine optimization for the panel thicknesses using all OML and LE panels (more design variables) but no shape variables
+use `mpirun -n 3 python build_exploded_mesh.py` to run this script (3 procs needed for each exploded mesh)
 """
 
 from funtofem import *
