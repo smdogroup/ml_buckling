@@ -23,9 +23,9 @@ parent_parser.add_argument("--nrho0", type=int, default=3)
 parent_parser.add_argument("--nGamma", type=int, default=10)
 parent_parser.add_argument("--nelems", type=int, default=2000)
 parent_parser.add_argument("--rho0Min", type=float, default=0.2)
-parent_parser.add_argument("--plyAngle", type=float, default=0.0)
-parent_parser.add_argument("--gammaMin", type=float, default=0.05)
 parent_parser.add_argument("--rho0Max", type=float, default=0.24)
+parent_parser.add_argument("--plyAngle", type=float, default=0.0)
+parent_parser.add_argument("--gammaMin", type=float, default=5.0)
 parent_parser.add_argument("--gammaMax", type=float, default=15.0)
 
 args = parent_parser.parse_args()
@@ -62,16 +62,16 @@ def get_buckling_load(rho0, gamma, solve_buckling=False, first=False):
     # t_w = h_w / stiff_AR # 0.005
     nstiff = 1 if gamma > 0 else 0
 
-    # plate_material = mlb.CompositeMaterial(
-    #     E11=E,  # Pa
-    #     E22=E,
-    #     G12=G,
-    #     nu12=nu,
-    #     ply_angles=[0],
-    #     ply_fractions=[1.0],
-    #     ref_axis=[1, 0, 0],
-    # )
-    plate_material = mlb.CompositeMaterial.solvay5320(ply_angles=[args.plyAngle], ply_fractions=[1.0], ref_axis=[1.,0.,0.])
+    plate_material = mlb.CompositeMaterial(
+        E11=E,  # Pa
+        E22=E,
+        G12=G,
+        nu12=nu,
+        ply_angles=[0],
+        ply_fractions=[1.0],
+        ref_axis=[1, 0, 0],
+    )
+    # plate_material = mlb.CompositeMaterial.solvay5320(ply_angles=[args.plyAngle], ply_fractions=[1.0], ref_axis=[1.,0.,0.])
 
     stiff_material = plate_material
 
@@ -229,7 +229,7 @@ if __name__ == "__main__":
             #     eig_FEA = np.nan  # just leave value as almost zero..
             #     continue
 
-            # for sufficiently large gamma, low rho0
+            # for sufficiently large gamma, low rho0 (use clamped solution)
             eig_FEA = 4 * eig_CF
 
             # write out as you go so you can see the progress and if run gets killed you don't lose it all
