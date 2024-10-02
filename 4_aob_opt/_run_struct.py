@@ -305,7 +305,7 @@ if test_derivatives:  # test using the finite difference test
 
 # temp just load CF-sizing.txt to compare ML and CF
 design_out_file = os.path.join(
-    base_dir, "design", "ML-metal-sizing.txt" #if args.useML else "CF-metal-sizing.txt"
+    base_dir, "design", "ML-metal-sizing.txt" if args.useML else "CF-metal-sizing.txt"
 )
 
 # reload previous design
