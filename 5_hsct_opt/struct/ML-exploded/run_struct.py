@@ -28,9 +28,9 @@ elif args.exploded == 3:
 
 comm = MPI.COMM_WORLD
 
-from _closed_form_callback import closed_form_callback as callback
+from _gp_callback import gp_callback_generator
 
-model_name = "CF-oneway"
+model_name = "ML-oneway"
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 csm_path = os.path.join(base_dir, "..", "..", "geometry", "hsct.csm")
@@ -187,6 +187,7 @@ if exploded_view == 2:
 
 component_groups = sorted(component_groups)
 
+callback = gp_callback_generator(component_groups)
 
 # print(f"component group 89 = {component_groups[89]}")
 # exit()
@@ -303,7 +304,7 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
 )
 
 # f2f_model.read_design_variables_file(comm, "../../../design/CF-sizing.txt")
-f2f_model.read_design_variables_file(comm, "../CF-sizing.txt")
+f2f_model.read_design_variables_file(comm, "../ML-sizing.txt")
 
 # for var in f2f_model.get_variables():
 #    print(f"var {var.name} = {var.value}")

@@ -25,11 +25,12 @@ parent_parser.add_argument(
 args = parent_parser.parse_args()
 
 if args.useML:
-    from _gp_callback import gp_callback_generator
+    # from _gp_callback import gp_callback_generator
+    from _gp_metal_callback import gp_callback_generator
 
     model_name = "ML-oneway"
 else:
-    from _closed_form_callback import closed_form_callback as callback
+    from _closed_form_metal_callback import closed_form_callback as callback
 
     model_name = "CF-oneway"
 
@@ -46,7 +47,7 @@ f2f_model = FUNtoFEMmodel(model_name)
 tacs_model = caps2tacs.TacsModel.build(
     csm_file=csm_path,
     comm=comm,
-    problem_name="capsStruct1",
+    problem_name="capsStruct0",
     active_procs=[0],
     verbosity=1,
 )
@@ -304,7 +305,7 @@ if test_derivatives:  # test using the finite difference test
 
 # temp just load CF-sizing.txt to compare ML and CF
 design_out_file = os.path.join(
-    base_dir, "design", "CF-sizing.txt"
+    base_dir, "design", "ML-metal-sizing.txt" #if args.useML else "CF-metal-sizing.txt"
 )
 
 # reload previous design

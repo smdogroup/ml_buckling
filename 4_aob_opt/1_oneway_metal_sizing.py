@@ -29,11 +29,11 @@ parent_parser.add_argument(
 args = parent_parser.parse_args()
 
 if args.useML:
-    from _gp_callback import gp_callback_generator
+    from _gp_metal_callback import gp_callback_generator
 
     model_name = "ML-oneway-metal"
 else:
-    from _closed_form_callback import closed_form_callback as callback
+    from _closed_form_metal_callback import closed_form_callback as callback
 
     model_name = "CF-oneway-metal"
 

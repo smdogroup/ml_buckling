@@ -92,7 +92,7 @@ def closed_form_callback(
         stiffenerPlyAngles=plyAngles,
         stiffenerPlyFracs=np.array([1.0], dtype=dtype),
         panelWidth=0.5,  # choose wrong initial value first to check if it corrects in FUNtoFEM
-        flangeFraction=0.8,
+        flangeFraction=0.0, #0.8
         panelLengthNum=dvNum,
         stiffenerPitchNum=dvNum + 1,
         panelThickNum=dvNum + 2,

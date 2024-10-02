@@ -110,7 +110,7 @@ def gp_callback_generator(tacs_component_names):
             stiffenerPlyAngles=plyAngles,
             stiffenerPlyFracs=np.array([1.0], dtype=dtype),
             panelWidth=0.5,  # choose wrong initial value first to check if it corrects in FUNtoFEM
-            flangeFraction=0.8,
+            flangeFraction=0.0, #0.8
             panelLengthNum=dvNum,
             stiffenerPitchNum=dvNum + 1,
             panelThickNum=dvNum + 2,
@@ -122,7 +122,7 @@ def gp_callback_generator(tacs_component_names):
         # Set the KS weight really low so that all failure modes make a
         # significant contribution to the failure function derivatives
         con.setKSWeight(100.0)
-        # con.setWriteDVMode(2)
+        # con.setWriteDVMode(1)
 
         con.setStiffenerPitchBounds(0.05, 0.5)
         con.setPanelThicknessBounds(0.002, 0.1)
