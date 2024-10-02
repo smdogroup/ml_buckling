@@ -35,7 +35,7 @@ if args.useML:
 else:
     from _closed_form_metal_callback import closed_form_callback as callback
 
-    model_name = "CF-oneway-metal"
+    model_name = "CF-oneway-metal2"
 
 
 comm = MPI.COMM_WORLD
@@ -176,7 +176,7 @@ tacs_aim.pre_analysis()
 # make a funtofem scenario
 cruise = Scenario.steady("climb_turb", steps=2)  # 2000
 # increase ksfailure scale to make it stricter on infeasibility for that.
-Function.ksfailure(ks_weight=20.0, safety_factor=1.5).optimize(
+Function.ksfailure(ks_weight=100.0, safety_factor=1.5).optimize(
     scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-cruise"
 ).register_to(cruise)
 
@@ -309,7 +309,10 @@ if test_derivatives:  # test using the finite difference test
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
 design_out_file = os.path.join(
-    base_dir, "design", "ML-metal-sizing.txt" if args.useML else "CF-metal-sizing.txt"
+    base_dir, "design", "ML-metal-sizing.txt" if args.useML else "CF-metal-sizing2.txt"
+)
+other_design_file = os.path.join(
+    base_dir, "design", "ML-metal-sizing.txt"
 )
 
 design_folder = os.path.join(base_dir, "design")
@@ -321,7 +324,7 @@ history_file = os.path.join(
 
 # reload previous design
 # not needed since we are hot starting
-# f2f_model.read_design_variables_file(comm, design_out_file)
+f2f_model.read_design_variables_file(comm, other_design_file)
 
 manager = OptimizationManager(
     tacs_driver,

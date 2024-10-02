@@ -173,7 +173,7 @@ tacs_aim.pre_analysis()
 # make a funtofem scenario
 cruise = Scenario.steady("climb_turb", steps=2)  # 2000
 # increase ksfailure scale to make it stricter on infeasibility for that.
-Function.ksfailure(ks_weight=20.0, safety_factor=1.5).optimize(
+Function.ksfailure(ks_weight=100.0, safety_factor=1.5).optimize(
     scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-cruise"
 ).register_to(cruise)
 
