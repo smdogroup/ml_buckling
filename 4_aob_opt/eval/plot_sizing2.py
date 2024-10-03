@@ -3,17 +3,17 @@ import matplotlib.pyplot as plt, niceplots
 
 # 1 : plot 1_sizing_opt_local.py results
 # ---------------------------------------------------------------------------
-m_case = "CF"
+m_case = "ML"
 scenario_name = "climb-turb"
 plotter = PlotManager.from_hist_file(
-    "CF-oneway_design.txt" if m_case == "CF" else "ML-oneway_design.txt",
+    "CF-oneway_design.txt" if m_case == "CF" else "ML-oneway-metal_design.txt",
     accepted_names=["climb_turb-ksfailure", "climb_turb-mass"],
     plot_names=["ksfailure", "mass"],
     ignore_other_names=True,
 )
 
 # MAKE EACH PLOT FOR A DIFFERENT MODE
-togw = Function.plot("mass").optimize(scale=1.0e-3 * 9.81).register_to(plotter)
+togw = Function.plot("mass").optimize(scale=1.0).register_to(plotter)
 ksfailure = Function.plot("ksfailure").optimize(scale=1.0).register_to(plotter)
 
 # three color schemes from color scheme website https://coolors.co/palettes/popular/3%20colors
@@ -38,7 +38,7 @@ my_colors = colors3  # colors3, colors5
 grey_colors = plt.cm.Greys(np.linspace(1.0, 0.5, 2))
 plt.margins(x=0.05, y=0.05)
 ax1.set_xlabel("Iterations")
-ax1.set_ylabel("Wing Weight (kN)", color=my_colors[0])
+ax1.set_ylabel("Wing mass (kg)", color=my_colors[0])
 ax1.tick_params(axis="y", labelcolor=my_colors[0])
 ax1.plot(
     plotter.iterations,

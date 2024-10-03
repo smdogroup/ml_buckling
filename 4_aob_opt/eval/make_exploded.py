@@ -26,11 +26,11 @@ parent_parser.add_argument("--exploded", type=int, default=1)
 args = parent_parser.parse_args()
 
 if args.useML:
-    from _gp_callback import gp_callback_generator
+    from _gp_metal_callback import gp_callback_generator
 
     model_name = "ML-oneway"
 else:
-    from _closed_form_callback import closed_form_callback as callback
+    from _closed_form_metal_callback import closed_form_callback as callback
 
     model_name = "CF-oneway"
 
@@ -39,7 +39,7 @@ comm = MPI.COMM_WORLD
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 base_dir = os.path.join(base_dir, "..")
-csm_path = os.path.join(base_dir, "geometry", "gbm-half.csm")
+csm_path = os.path.join(base_dir, "geometry", "gbm.csm")
 
 # F2F MODEL and SHAPE MODELS
 # ----------------------------------------
@@ -265,7 +265,7 @@ if test_derivatives:  # test using the finite difference test
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
 design_out_file = os.path.join(
-    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+    base_dir, "design", "ML-metal-sizing.txt" if args.useML else "CF-metal-sizing.txt"
 )
 
 # reload previous design
