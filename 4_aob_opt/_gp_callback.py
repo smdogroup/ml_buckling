@@ -118,6 +118,10 @@ def gp_callback_generator(tacs_component_names):
         # significant contribution to the failure function derivatives
         con.setKSWeight(100.0)
         # con.setWriteDVMode(2)
+        con.setFailureModes(
+            includeStiffenerColumnBuckling=False
+        )
+        con.setCPTstiffenerCrippling(True)
 
         con.setStiffenerPitchBounds(0.05, 0.5)
         con.setPanelThicknessBounds(0.002, 0.1)
