@@ -21,7 +21,7 @@ plotter = PlotManager.from_hist_file(
 )
 
 # MAKE EACH PLOT FOR A DIFFERENT MODE
-togw = Function.plot("mass").optimize(scale=1.0e-3 * 9.81).register_to(plotter)
+togw = Function.plot("mass").optimize(scale=1.0).register_to(plotter)
 ksfailure = Function.plot("ksfailure").optimize(scale=1.0).register_to(plotter)
 
 # three color schemes from color scheme website https://coolors.co/palettes/popular/3%20colors
@@ -45,8 +45,8 @@ fig, ax1 = plt.subplots(figsize=(8, 6))
 my_colors = colors3  # colors3, colors5
 grey_colors = plt.cm.Greys(np.linspace(1.0, 0.5, 2))
 plt.margins(x=0.05, y=0.05)
-ax1.set_xlabel("Iterations")
-ax1.set_ylabel("Wing Weight (kN)", color=my_colors[0])
+ax1.set_xlabel("Iterations", fontsize=18, fontweight='bold')
+ax1.set_ylabel("Wing Mass (kg)", color=my_colors[0], fontsize=18, fontweight='bold')
 ax1.tick_params(axis="y", labelcolor=my_colors[0])
 ax1.plot(
     plotter.iterations,

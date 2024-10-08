@@ -117,7 +117,7 @@ def gp_callback_generator(tacs_component_names):
         # Set the KS weight really low so that all failure modes make a
         # significant contribution to the failure function derivatives
         con.setKSWeight(100.0)  # 20.0
-        con.setWriteDVMode(2)# 0 - regular DVs, 1 - nondim params, 2 - failure indices
+        # con.setWriteDVMode(2) # 0 - regular DVs, 1 - nondim params, 2 - failure indices
 
         con.setStiffenerPitchBounds(0.05, 0.5)
         con.setPanelThicknessBounds(0.002, 0.1)
