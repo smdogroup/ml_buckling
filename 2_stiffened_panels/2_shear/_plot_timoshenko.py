@@ -25,7 +25,7 @@ if __name__ == "__main__":
     plt.style.use(niceplots.get_style())
 
     plt.figure("this")
-    colors = mlb.six_colors2[:4][::-1]
+    colors = mlb.six_colors2[:4] #[::-1]
 
     for igamma, gamma_val in enumerate(gamma_vec[::-1]):
 
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     large_size = 20
 
     # finish making the plot
-    plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
+    # plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
     # plt.title(r"$\gamma = 11.25$")
     plt.xlabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=large_size, fontweight='bold')
     plt.ylabel(r"$\mathbf{\ln(N_{12,cr}^*)}$", fontsize=large_size, fontweight='bold')

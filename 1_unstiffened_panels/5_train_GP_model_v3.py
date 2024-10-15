@@ -543,6 +543,11 @@ if _plot:
                 zorder=1,
             )
 
+            # save data to a file
+            np.savez(os.path.join(GP_folder, f"array-data{ibin}.npz"),
+                     X=X, Y=Y,
+                     DSTAR=DSTAR, AR=AR, KMIN=KMIN)
+
             # save the figure
             ax.set_xlabel(r"$\log(1+\xi)$")
             ax.set_ylabel(r"$log(\rho_0)$")

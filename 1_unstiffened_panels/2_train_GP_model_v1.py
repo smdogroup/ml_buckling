@@ -648,6 +648,11 @@ if _plot:
                 zorder=1,
             )
 
+            # save data to a file
+            np.savez(os.path.join(GP_folder, f"array-data{ibin}.npz"),
+                     X=X, Y=Y,
+                     DSTAR=DSTAR, AR=AR, KMIN=KMIN)
+
             # save the figure
             # ax.set_xlabel(r"$\xi =(D_{12}^p + 2 D_{66}^p)/(\sqrt{D_{11}^p D_{22}^p})$", fontsize=18)
             # ax.set_ylabel(r"$\rho_0 = a/b \cdot \sqrt[4]{D_{22}^p/D_{11}^p}$", fontsize=18)
