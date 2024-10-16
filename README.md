@@ -3,7 +3,7 @@
 ML_BUCKLING uses Gaussian process (GP) surrogate models to predict panel buckling loads based on training data from high-fidelity finite element buckling analysis. These predicted panel buckling loads are designed for structural optimization applications. ML_BUCKLING provides routines for the  training of the GP surrogate models and the parametric studies of high-fidelity finite element buckling analysis. 
 
 <figure class="image">
-  <img src="_archive/main-figure.drawio.png.png" width=\linewidth/>
+  <img src="_archive/main-figure.drawio.png" width=\linewidth/>
 </figure>
 
 ## How to Cite Us
