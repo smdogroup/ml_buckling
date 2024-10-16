@@ -11,5 +11,6 @@ tacs.*
 *.f5
 *.vtk
 Scratch/
+*.pvsm
 *.png
 autosave.csm

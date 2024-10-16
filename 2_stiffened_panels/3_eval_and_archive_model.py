@@ -1078,6 +1078,11 @@ if args.plotmodel3d:
             zorder=1,
         )
 
+        # save data to a file
+        np.savez(os.path.join(GP_folder, f"{args.load}-gamma-data.npz"),
+                    X=X, Y=Y,
+                    GAMMA=GAMMA, AR=AR, KMIN=KMIN)
+
         # save the figure
         ax.set_xlabel(r"$\mathbf{\ln(1+\gamma)}$", fontsize=18, fontweight='bold')
         ax.set_ylabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=18, fontweight='bold')
@@ -1240,6 +1245,11 @@ if args.plotmodel3d:
             alpha=0.4,
             zorder=1,
         )
+
+        # save data to a file
+        np.savez(os.path.join(GP_folder, f"{args.load}-xi-data.npz"),
+                    X=X, Y=Y,
+                    XI=XI, AR=AR, KMIN=KMIN)
 
         # save the figure
         ax.set_xlabel(r"$\mathbf{\ln(1+\xi)}$", fontsize=18, fontweight='bold')

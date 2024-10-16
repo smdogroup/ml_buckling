@@ -6,6 +6,12 @@ import argparse
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--case", type=int)
+parent_parser.add_argument(
+    "--twocolor", default=True, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--title", default=True, action=argparse.BooleanOptionalAction
+)
 
 args = parent_parser.parse_args()
 
@@ -81,16 +87,16 @@ covar = np.array([[kernel(xvec[i], xvec[j]) for i in range(n)] for j in range(n)
 nsamples = 100
 samples = np.random.multivariate_normal(mean, covar, size=nsamples)
 
-if args.case == 7:
+if args.case == 7 and args.twocolor:
     colors = plt.cm.Greens(np.linspace(0, 1, nsamples))
-elif args.case == 5:
+elif args.case == 5 and args.twocolor:
     greens = plt.cm.Greens(np.linspace(0, 1, nsamples))
     blues = plt.cm.Blues(np.linspace(0, 1, nsamples))
 else:
     colors = plt.cm.Blues(np.linspace(0, 1, nsamples))
 
-fig, ax = plt.subplots()
 plt.style.use(niceplots.get_style())
+fig, ax = plt.subplots()
 
 ymin = np.min(np.array(samples))
 ymax = np.max(np.array(samples))
@@ -100,66 +106,77 @@ if args.case in [5, 8]:
     for xval in [-1, 1]:
         ax.vlines(xval, ymin=ymin, ymax=ymax, linestyles="--", colors="k")
 
+lw = 1.5 #2
+
 for isample, sample in enumerate(samples):
     # ax.plot(xvec, sample,color="b", alpha=0.3, linewidth=1)
-    if args.case == 5:
-        ax.plot(xvec[np.abs(xvec) < 1], sample[np.abs(xvec) < 1], color=blues[isample], alpha=0.5, linewidth=2)
-        ax.plot(xvec[xvec <= -1], sample[xvec <= -1], color=greens[isample], alpha=0.5, linewidth=2)
-        ax.plot(xvec[xvec >= 1], sample[xvec >= 1], color=greens[isample], alpha=0.5, linewidth=2)
+    if args.case == 5 and args.twocolor:
+        ax.plot(xvec[np.abs(xvec) < 1], sample[np.abs(xvec) < 1], color=blues[isample], alpha=0.5, linewidth=lw)
+        ax.plot(xvec[xvec <= -1], sample[xvec <= -1], color=greens[isample], alpha=0.5, linewidth=lw)
+        ax.plot(xvec[xvec >= 1], sample[xvec >= 1], color=greens[isample], alpha=0.5, linewidth=lw)
     else:
-        ax.plot(xvec, sample, color=colors[isample], alpha=0.5, linewidth=2)
+        ax.plot(xvec, sample, color=colors[isample], alpha=0.5, linewidth=lw)
 # ax.set_axis_off(
 
 fontsize = 20
 
-if args.case == 1:
-    plt.title(
-        r"$\mathbf{k(x,x^{\prime}) = exp(-\frac{(x-x^{\prime})^2}{2 \cdot 1^2})}$",
-        fontsize=fontsize,
-        pad=15,
-    )
-if args.case == 2:
-    plt.title(
-        r"$k(x,x\prime) = exp(-\frac{(x-x\prime)^2}{2 \cdot 0.2^2})$",
-        fontsize=fontsize,
-        pad=15,
-    )
-if args.case == 3:
-    plt.title(
-        r"$k(x,x\prime) = 1 + 0.2 \cdot x \cdot x\prime$", fontsize=fontsize, pad=15
-    )
-if args.case == 4:
-    plt.title(
-        r"$k(x,x\prime) = 1 + 0.2 \cdot relu(x \cdot x\prime)$",
-        fontsize=fontsize,
-        pad=15,
-    )
-if args.case == 5:
-    plt.title(
-        r"$\mathbf{k(x,x^{\prime}) = exp(-\frac{(x-x^{\prime})^2}{2 \cdot 0.2^2}) \cdot k_{window} + 1.0 + relu(-x) \cdot relu(-x^{\prime})}$",
-        fontsize=12,
-        pad=15,
-    )
-if args.case == 6:
-    plt.title(r"$k(x,x\prime) = 1.0$", fontsize=fontsize, pad=15)
-if args.case == 7:
-    plt.title(
-        r"$\mathbf{k(x,x^{\prime}) = 1.0 + relu(-x) * relu(-x^{\prime})}$",
-        fontsize=fontsize,
-        pad=15,
-    )
-if args.case == 8:
-    plt.title(
-        r"$k(x,x\prime) = exp(-\frac{(x-x\prime)^2}{2 \cdot 0.2^2}) \cdot \tau(1-|x|) \cdot \tau(1 - |x \prime|) + 1.0 + 1.0 \cdot \tau(-x) \cdot \tau(-x\prime)$",
-        fontsize=10,
-        pad=15,
-    )
+if args.title:
+    if args.case == 1:
+        plt.title(
+            r"$\mathbf{k(x,x^{\prime}) = exp(-\frac{(x-x^{\prime})^2}{2 \cdot 1^2})}$",
+            fontsize=fontsize,
+            pad=15,
+        )
+    if args.case == 2:
+        plt.title(
+            r"$k(x,x\prime) = exp(-\frac{(x-x\prime)^2}{2 \cdot 0.2^2})$",
+            fontsize=fontsize,
+            pad=15,
+        )
+    if args.case == 3:
+        plt.title(
+            r"$k(x,x\prime) = 1 + 0.2 \cdot x \cdot x\prime$", fontsize=fontsize, pad=15
+        )
+    if args.case == 4:
+        plt.title(
+            r"$k(x,x\prime) = 1 + 0.2 \cdot relu(x \cdot x\prime)$",
+            fontsize=fontsize,
+            pad=15,
+        )
+    if args.case == 5:
+        plt.title(
+            r"$\mathbf{k(x,x^{\prime}) = exp(-\frac{(x-x^{\prime})^2}{2 \cdot 0.2^2}) \cdot k_{window} + 1.0 + relu(-x) \cdot relu(-x^{\prime})}$",
+            fontsize=12,
+            pad=15,
+        )
+    if args.case == 6:
+        plt.title(r"$k(x,x\prime) = 1.0$", fontsize=fontsize, pad=15)
+    if args.case == 7:
+        plt.title(
+            r"$\mathbf{k(x,x^{\prime}) = 1.0 + relu(-x) * relu(-x^{\prime})}$",
+            fontsize=fontsize,
+            pad=15,
+        )
+    if args.case == 8:
+        plt.title(
+            r"$k(x,x\prime) = exp(-\frac{(x-x\prime)^2}{2 \cdot 0.2^2}) \cdot \tau(1-|x|) \cdot \tau(1 - |x \prime|) + 1.0 + 1.0 \cdot \tau(-x) \cdot \tau(-x\prime)$",
+            fontsize=10,
+            pad=15,
+        )
+else:
+    pass
+    # plt.title(r"$\mathbf{}$", fontsize=16, pad=5)
+    fs1 = 24
+    ax.set_xlabel(r"$\mathbf{x}^*$", fontsize=fs1)
+    ax.set_ylabel(r"$\mathbf{N_{ij,cr}^*(x)}$", fontsize=fs1)
+
 
 if args.case in [5, 8]:
     plt.ylim(-7, 7)
 
-plt.xticks(fontsize=16, fontweight='bold')
-plt.yticks(fontsize=16, fontweight='bold')
+fs = 0 #16
+plt.xticks(fontsize=fs, fontweight='bold')
+plt.yticks(fontsize=fs, fontweight='bold')
 
 plt.savefig(
     f"kernel-demo{args.case}.svg", dpi=400, bbox_inches="tight", pad_inches=0.02

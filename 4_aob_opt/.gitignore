@@ -2,3 +2,5 @@ output.txt
 *.out
 *.f5
 *.vtk
+*.png
+*.pvsm
