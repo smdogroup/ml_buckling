@@ -28,10 +28,10 @@ def gp_callback_generator(tacs_component_names):
     """
 
     # build one Axial and Shear GP model to be used for all const objects (no duplication)
-    axialGP = constitutive.AxialGP.from_csv(
+    axialGP = constitutive.BucklingGP.from_csv(
         csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv
     )
-    shearGP = constitutive.ShearGP.from_csv(
+    shearGP = constitutive.BucklingGP.from_csv(
         csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv
     )
 
