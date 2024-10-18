@@ -85,6 +85,15 @@ ax.plot_surface(
     zorder=1,
 )
 
+ax.grid(False)
+ax.xaxis.pane.set_edgecolor('black')
+ax.yaxis.pane.set_edgecolor('black')
+ax.zaxis.pane.set_edgecolor('black')
+
+ax.xaxis.pane.fill = False
+ax.yaxis.pane.fill = False
+ax.zaxis.pane.fill = False
+
 # save the figure
 fs1 = 16
 ax.set_xlabel(r"$\mathbf{\ln(1+\xi)}$", fontsize=fs1, fontweight='bold')
