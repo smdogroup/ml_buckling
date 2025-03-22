@@ -113,9 +113,9 @@ ax.zaxis.pane.fill = False
 # save the figure
 # ax.set_xlabel(r"$\xi =(D_{12}^p + 2 D_{66}^p)/(\sqrt{D_{11}^p D_{22}^p})$", fontsize=18)
 # ax.set_ylabel(r"$\rho_0 = a/b \cdot \sqrt[4]{D_{22}^p/D_{11}^p}$", fontsize=18)
-ax.set_xlabel(r"$\mathbf{\xi}$", fontsize=24, fontweight='bold')
+ax.set_xlabel(r"$\mathbf{\xi}$", fontsize=24, fontweight='bold', labelpad=14)
 ax.set_ylabel(r"$\mathbf{\rho_0}$", fontsize=24, fontweight='bold')
-ax.set_zlabel(r"$\mathbf{N_{11,cr}^*}$", fontsize=20, fontweight='bold')
+ax.set_zlabel(r"$\mathbf{\overline{N}_{11}^{cr}}$", fontsize=20, fontweight='bold')
 ax.set_ylim(0.0, 10.0)
 ax.set_zlim(0.0, 10.0)
 ax.view_init(elev=20, azim=25, roll=0)

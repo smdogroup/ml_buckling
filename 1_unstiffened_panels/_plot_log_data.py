@@ -161,9 +161,9 @@ for islender, slender_bin in enumerate(slender_bins):
     plt.xlabel(r"$\log(\rho_0)$", fontsize=24)
     plt.xticks(fontsize=18)
     if args.load == "Nx":
-        plt.ylabel(r"$\log(N_{11,cr}^*)$", fontsize=24)
+        plt.ylabel(r"$\log(\overline{N}_{11}^{cr})$", fontsize=24)
     else:  # "Nxy"
-        plt.ylabel(r"$\log(N_{12,cr}^*)$", fontsize=24)
+        plt.ylabel(r"$\log(\overline{N}_{12}^{cr})$", fontsize=24)
     plt.yticks(fontsize=18)
     plt.margins(x=0.02, y=0.02)
     plt.xlim(-2.0, 2.3)

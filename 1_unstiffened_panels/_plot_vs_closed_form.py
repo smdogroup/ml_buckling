@@ -65,7 +65,7 @@ con = constitutive.GPBladeStiffenedShellConstitutive(
 )
 # Set the KS weight really low so that all failure modes make a
 # significant contribution to the failure function derivatives
-con.setCFShearMode(1)
+# con.setCFShearMode(1)
 con.setKSWeight(20.0)
 
 """
@@ -250,14 +250,14 @@ else:
 #     plt.ylabel(r"$N_{12,cr}^* = N_{12,cr} \cdot \frac{b^2}{\pi^2 \sqrt[4]{D_{11}^p (D_{22}^p)^3}}$", fontsize=24)
 if not plot_log:
     if args.load in ["Nx", "axial"]:
-        plt.ylabel(r"$\mathbf{N_{11,cr}^*}$", fontsize=28, fontweight='bold')
+        plt.ylabel(r"$\mathbf{\overline{N}_{11}^{cr}}$", fontsize=28, fontweight='bold')
     else:  # "Nxy"
-        plt.ylabel(r"$N_{12,cr}^*$", fontsize=28, fontweight='bold')
+        plt.ylabel(r"$\overline{N}_{12}^{cr}$", fontsize=28, fontweight='bold')
 else:
     if args.load in ["Nx", "axial"]:
-        plt.ylabel(r"$\ln(N_{11,cr}^*)$", fontsize=28, fontweight='bold')
+        plt.ylabel(r"$\ln(\overline{N}_{11}^{cr})$", fontsize=28, fontweight='bold')
     else:  # "Nxy"
-        plt.ylabel(r"$\ln(\mathbf{N_{12,cr}^*} )$", fontsize=28, fontweight='bold')
+        plt.ylabel(r"$\ln(\overline{N}_{12}^{cr})$", fontsize=28, fontweight='bold')
 # plt.yticks(fontsize=18)
 plt.margins(x=0.02, y=0.02)
 if not plot_log:

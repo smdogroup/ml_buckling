@@ -61,7 +61,7 @@ if __name__ == "__main__":
     plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
     # plt.title(r"$\gamma = 11.25$")
     plt.xlabel(r"$\bf{x_1\ edge\ nondim\ slope}$", fontsize=large_size, fontweight='bold')
-    plt.ylabel(r"$\mathbf{N_{11,FEA} / N_{11,CF}}$", fontsize=large_size, fontweight='bold')
+    plt.ylabel(r"$\mathbf{\overline{N}_{11,FEA}^{cr} / \overline{N}_{11,CF}^{cr}}$", fontsize=large_size, fontweight='bold')
     # plt.xscale('log')
     # plt.yscale('log')
 

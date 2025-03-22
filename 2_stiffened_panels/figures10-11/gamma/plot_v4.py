@@ -118,9 +118,9 @@ fs1 = 16
 ax.set_xlabel(r"$\mathbf{\ln(1+\gamma)}$", fontsize=fs1, fontweight='bold')
 ax.set_ylabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=fs1, fontweight='bold')
 if args.load == "Nx":
-    ax.set_zlabel(r"$\mathbf{\ln(N_{11,cr}^*)}$", fontsize=fs1, fontweight='bold')
+    ax.set_zlabel(r"$\mathbf{\ln(\overline{N}_{11}^{cr})}$", fontsize=fs1, fontweight='bold')
 else:
-    ax.set_zlabel(r"$\mathbf{\ln(N_{12,cr}^*)}$", fontsize=fs1, fontweight='bold')
+    ax.set_zlabel(r"$\mathbf{\ln(\overline{N}_{12}^{cr})}$", fontsize=fs1, fontweight='bold')
 ax.set_ylim3d(np.log(0.3), np.log(10.0))
 # ax.set_zlim3d(0.0, np.log(50.0))
 # ax.set_zlim3d(1.0, 3.0)

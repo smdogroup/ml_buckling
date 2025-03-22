@@ -106,9 +106,9 @@ ax.yaxis.pane.fill = False
 ax.zaxis.pane.fill = False
 
 # save the figure
-ax.set_xlabel(r"$\mathbf{ln(1+\xi)}$", fontsize=16, fontweight='bold')
+ax.set_xlabel(r"$\mathbf{ln(1+\xi)}$", fontsize=16, fontweight='bold', labelpad=10)
 ax.set_ylabel(r"$\mathbf{ln(\rho_0)}$", fontsize=16, fontweight='bold')
-ax.set_zlabel(r"$\mathbf{ln(N_{11,cr}^*)}$", fontsize=16, fontweight='bold')
+ax.set_zlabel(r"$\mathbf{ln(\overline{N}_{11}^{cr})}$", fontsize=16, fontweight='bold')
 ax.set_ylim3d(np.log(0.1), np.log(10.0))
 ax.set_zlim3d(0.0, np.log(30.0))
 ax.view_init(elev=20, azim=25, roll=0)

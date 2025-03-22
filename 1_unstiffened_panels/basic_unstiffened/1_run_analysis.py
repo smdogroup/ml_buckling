@@ -11,16 +11,16 @@ comm = MPI.COMM_WORLD
 flat_plate = mlb.UnstiffenedPlateAnalysis(
     comm=comm,
     bdf_file="plate.bdf",
-    a=3.0,
-    b=1.0,
+    a=2.0,
+    b=1.0/6.0,
     h=0.01,
     E11=82.14e9,
     nu12=0.1487,
 )
 
 flat_plate.generate_bdf(
-    nx=30,
-    ny=30,
+    nx=60,
+    ny=5,
     exx=flat_plate.affine_exx,
     eyy=0.0,
     exy=0.0,

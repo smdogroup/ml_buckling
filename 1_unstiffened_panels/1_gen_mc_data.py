@@ -13,6 +13,7 @@ import pandas as pd
 import os
 import argparse
 from mpi4py import MPI
+import time
 
 comm = MPI.COMM_WORLD
 
@@ -95,6 +96,7 @@ nom_eigvals, _ = nominal_plate.run_buckling_analysis(
 )
 
 for foo in range(N):  # until has generated this many samples
+
     # randomly generate the material
     materials = mlb.UnstiffenedPlateAnalysis.get_materials()
     material = np.random.choice(np.array(materials))
@@ -148,7 +150,10 @@ for foo in range(N):  # until has generated this many samples
             ny = max_elem
             nx = max(min_elem, 25)
 
-        _run_buckling = True
+        # _run_buckling = False
+        _run_buckling = False
+
+        start_time = time.time()
 
         if _run_buckling:
             if loading == "Nx":
@@ -190,36 +195,63 @@ for foo in range(N):  # until has generated this many samples
 
         else:  # just do a model parameter check
             kmin = 1.0  # for model parameter check
+            error_0 = 0.0
 
         reasonable_min = 0.0 < kmin < 100.0
 
         if abs(error_0) < 1e-10 and reasonable_min and kmin:
-            # perform the mode tracking
-            tracked_eigvals, _ = mlb.UnstiffenedPlateAnalysis.mac_permutation(
-                nominal_plate, new_plate, num_modes=20
-            )
+        #     # perform the mode tracking
+            # tracked_eigvals, _ = mlb.UnstiffenedPlateAnalysis.mac_permutation(
+            #     nominal_plate, new_plate, num_modes=20
+            # )
 
-            # record the model parameters
+            dt = time.time() - start_time
+
+            # data_dict = {
+            #     # model parameter section
+            #     "Dstar": [new_plate.Dstar],
+            #     "a0/b0": [new_plate.affine_aspect_ratio],
+            #     "a/b": [new_plate.aspect_ratio],
+            #     "b/h": [new_plate.slenderness],
+            #     "kmin": [np.real(kmin)],
+            #     "error": [np.real(error_0)],
+            #     # other parameter section
+            #     "material": [new_plate.material_name],
+            #     "ply_angle": [new_plate.ply_angle],
+            #     "nx": [nx],
+            #     "ny": [ny],
+            #     'time' : [dt],
+            #     # 'SR' : [slenderness],
+            #     # 'zeta' : [new_plate.zeta],
+            #     # 'lzeta' : [np.log(1+1000.0 * new_plate.zeta)]
+            # }
+
+            #  temp debugging
             data_dict = {
                 # model parameter section
-                "Dstar": [new_plate.Dstar],
-                "a0/b0": [new_plate.affine_aspect_ratio],
+                # "Dstar": [new_plate.Dstar],
+                # "a0/b0": [new_plate.affine_aspect_ratio],
                 "a/b": [new_plate.aspect_ratio],
-                "b/h": [new_plate.slenderness],
-                "kmin": [np.real(kmin)],
-                "error": [np.real(error_0)],
-                # other parameter section
-                "material": [new_plate.material_name],
+                # "b/h": [new_plate.slenderness],
+                # "kmin": [np.real(kmin)],
+                # "error": [np.real(error_0)],
+                # # other parameter section
+                # "material": [new_plate.material_name],
                 "ply_angle": [new_plate.ply_angle],
-                "nx": [nx],
-                "ny": [ny],
+                # "nx": [nx],
+                # "ny": [ny],
+                # 'time' : [dt],
+                'xi' : [new_plate.xi],
+                # 'SR' : [slenderness],
+                # 'zeta' : [new_plate.zeta],
+                # 'lzeta' : [np.log(1+1000.0 * new_plate.zeta)]
             }
 
-            # add the tracked eigenvalues
-            for imode, tracked_eigval in enumerate(tracked_eigvals):
-                data_dict[f"k_{imode+1}"] = (
-                    np.real(tracked_eigval) if tracked_eigval else None
-                )
+        #     # add the tracked eigenvalues
+        #     for imode, tracked_eigval in enumerate(tracked_eigvals):
+        #         data_dict[f"k_{imode+1}"] = (
+        #             np.real(tracked_eigval) if tracked_eigval else None
+        #         )
 
             # "s_xx" : [Sx0],
             # "s_yy" : [Sy0],

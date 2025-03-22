@@ -107,7 +107,7 @@ if __name__ == "__main__":
                 np.log(rho0_CF),
                 np.log(N11_CF),
                 "-",
-                label="closed-form",
+                label="CF",
                 color='k',
                 linewidth=2.5,
                 zorder=0
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
     # plt.title(r"$\gamma = 11.25$")
     plt.xlabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=large_size, fontweight='bold')
-    plt.ylabel(r"$\mathbf{\ln(N_{11,cr}^*)}$", fontsize=large_size, fontweight='bold')
+    plt.ylabel(r"$\mathbf{\ln(\overline{N}_{11}^{cr})}$", fontsize=large_size, fontweight='bold')
     # plt.xscale('log')
     # plt.yscale('log')
 

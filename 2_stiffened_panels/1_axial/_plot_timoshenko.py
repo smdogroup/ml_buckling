@@ -67,10 +67,10 @@ if __name__ == "__main__":
     large_size = 20
 
     # finish making the plot
-    # plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
+    plt.legend(prop={'size' : small_size, 'weight' : 'bold'})
     # plt.title(r"$\gamma = 11.25$")
     plt.xlabel(r"$\mathbf{\ln(\rho_0)}$", fontsize=large_size, fontweight='bold')
-    plt.ylabel(r"$\mathbf{\ln(N_{11,cr}^*)}$", fontsize=large_size, fontweight='bold')
+    plt.ylabel(r"$\mathbf{\ln(\overline{N}_{11}^{cr})}$", fontsize=large_size, fontweight='bold')
     # plt.xscale('log')
     # plt.yscale('log')
 
