@@ -50,25 +50,17 @@ def matern_5_2_kernel(x, xp, th):
 def custom_kernel1(x, xp, th):
     """custom kernel function no. 1"""
     # x is N x 1 x 3, xp is 1 x M x 3
+    x_affine = x[:,:,0] - th[3] * x[:,:,1]
+    xp_affine = xp[:,:,0] - th[3] * xp[:,:,1]
+
     xd = x - xp
     lengths = th[:3]
-    xbar = xd / lengths
+    xbar = xd[:,:,1:] / lengths[1:]
     xbar2 = tf.pow(xbar, 2.0)
+    xbar2_sum = tf.reduce_sum(xbar2, axis=-1)
+    xbar2_sum2 = xbar2_sum + tf.pow((x_affine - xp_affine) / lengths[0], 2.0)
 
-    rho_AL = smooth_relu(-x[:,:,0], th[3]) * smooth_relu(-xp[:,:,0], th[3])
+    rho_AL = smooth_relu(-x_affine, th[4]) * smooth_relu(-xp_affine, th[4])
     gam_LIN = x[:,:,1] * xp[:,:,1]
-    SE_term = np.exp(-0.5 * tf.reduce_sum(xbar2, axis=-1))
-    return rho_AL + th[4] * gam_LIN + th[5] * SE_term
-
-# def custom_kernel2(x, xp, th):
-#     """custom kernel function no. 2"""
-#     # x is N x 1 x 3, xp is 1 x M x 3
-#     xd = x - xp
-#     lengths = th[:3]
-#     xbar = xd / lengths
-#     xbar2 = tf.pow(xbar, 2.0)
-
-#     rho_AL = smooth_relu(-x[:,:,0], th[3]) * smooth_relu(-xp[:,:,0], th[3])
-#     gam_LIN = x[:,:,1] * xp[:,:,1]
-#     SE_term = np.exp(-0.5 * tf.reduce_sum(xbar2, axis=-1))
-#     return rho_AL + th[4] * SE_term
+    SE_term = np.exp(-0.5 * xbar2_sum2)
+    return rho_AL + th[5] * gam_LIN + th[6] * SE_term

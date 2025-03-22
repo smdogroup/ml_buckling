@@ -8,6 +8,7 @@ def plot_surface(
     var_exclude_ind=2, 
     var_exclude_range:list=[0.2, 0.4], 
     log_xi:bool=False,
+    affine_shift=None,
     surf_color_map="gray", # "gray", "blue", etc.
     ax=None, show=True,
 ):
@@ -90,6 +91,9 @@ def plot_surface(
 
         # print(f"{X_in_range.shape=}")
 
+        if affine_shift is not None:
+            X_in_range[:,0] -= affine_shift * X_in_range[:,1]
+
         ax.scatter(
             X_in_range[:, x1_ind], # rho0
             X_in_range[:, x2_ind], # gamma
@@ -105,6 +109,9 @@ def plot_surface(
         face_colors = cm.Grays(0.4 * X1 / X1)
     else:
         face_colors = cm.Blues(0.4 * X1 / X1)
+
+    if affine_shift is not None:
+        X1 -= affine_shift * X2
 
     ax.plot_surface(
         X1, X2, NCR,

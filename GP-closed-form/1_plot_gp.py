@@ -50,14 +50,16 @@ elif args.kernel == 4:
 elif args.kernel == 5:
     kernel = custom_kernel1
     # V1: 0.087 axial, 0.5 shear (smoothed or not)
-    th = np.array([1.0, 8.0, 4.0, 1.0, 1.0, 0.1])
-
-    # V2: 
-    # th = np.array([8.0, 8.0, 4.0, 0.5, 1.0, 0.1])
-
-    # V3: trying to remove gamma linear term 
-    # th = np.array([8.0, 8.0, 4.0, 0.5, 0.0, 0.1])
-
+    if args.axial:
+        th = np.array([1.0, 8.0, 4.0, 0.0, 1.0, 1.0, 0.1])
+    else: # shear, need different affine constant
+        # don't actually want affine transform for the shear case.. that's what happened.
+        if args.ks == None:
+            # could just turn affine off for the shear case.. althoug I think in the wingbox BC, it appears like shear does shift right..
+            # so should learn that from the data..
+            th = np.array([1.0, 8.0, 4.0, -0.25, 1.0, 1.0, 0.1]) # for non smooth one
+        else:
+            th = np.array([8.0, 8.0, 4.0, -0.25, 1.0, 1.0, 0.15]) # for smooth one
 
 # really should use a commercial hyperparameter optimize
 
@@ -172,6 +174,7 @@ colors = ["blue", "gray"]
 for i,Yp in enumerate([Y_plot_pred_extrap, Y_plot_pred_interp]):
     plot_surface(X_plot, Y=Yp, 
         Y_truth=Y_plot_truth,
+        affine_shift=th[3] if args.kernel == 5 else None,
         surf_color_map=colors[i],
         var_exclude_ind=2, 
         nx1=20, nx2=10,
