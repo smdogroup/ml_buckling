@@ -59,7 +59,7 @@ def eval_GPs(
         K_cross_test = kernel(x_test_L, x_train_R, theta)
         Y_test_pred = np.dot(K_cross_test, alpha_train)
 
-        interp_metrics += [metric_func(Y_test, Y_test_pred)]
+        interp_metrics += [metric_func(Y_test, Y_test_pred, take_log=not(log))]
 
         # compute the extrapolation error
         # -------------------------------
@@ -80,7 +80,7 @@ def eval_GPs(
         K_cross_extrap = kernel(x_extrap_L, x_train_R, theta)
         Y_extrap_pred = np.dot(K_cross_extrap, alpha_train)
 
-        extrap_metrics += [metric_func(Y_extrap_truth, Y_extrap_pred)]
+        extrap_metrics += [metric_func(Y_extrap_truth, Y_extrap_pred, take_log=not(log))]
 
     # compute a percentile version of metric
     ovr_interp_metric = np.percentile(np.array(interp_metrics), q=percentile)

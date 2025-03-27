@@ -93,7 +93,9 @@ elif args.kernel == "buckling+SE":
 
 elif args.kernel == "buckling+RQ":
     kernel = buckling_RQ_kernel
-    lbounds = np.array([0.1]*2 + [1e-3] + [0.1]*3)
+    # [relu_alph, gamma_coeff, RQ_coeff, length, alpha, constant]
+    # lbounds = np.array([0.1]*2 + [1e-3] + [0.1]*3)
+    lbounds = np.array([0.1]*2 + [1e-3] + [0.1] + [1e-3]*2)
     ubounds = np.array([10.0]*6)
     theta0 = np.array([5.0, 1.0, 1e-1, 1.0, 2.0, 1.0])
 
