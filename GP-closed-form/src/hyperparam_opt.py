@@ -21,9 +21,14 @@ def kfold_hyperparameter_optimization(
     N = X.shape[0]
     # print(f"{N}")
     n_part = N // k
+
+    # randomly shuffle the data
+    Xshuffle = np.random.shuffle(X.copy())
+    Yshuffle = np.random.shuffle(Y.copy())
+
     for i_k in range(k):
-        Xlist += [X[n_part*i_k:n_part*(i_k+1), :]]
-        Ylist += [Y[n_part*i_k:n_part*(i_k+1)]]
+        Xlist += [Xshuffle[n_part*i_k:n_part*(i_k+1), :]]
+        Ylist += [Yshuffle[n_part*i_k:n_part*(i_k+1)]]
 
     # define the mse loss
     def mse_loss(theta):

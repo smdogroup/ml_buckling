@@ -23,6 +23,7 @@ parser.add_argument("--affine", action=argparse.BooleanOptionalAction, default=F
 parser.add_argument("--log", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable logging (default: False)")
 parser.add_argument("--random", action="store_false", default=True, help="Enable random mode (default: True)")
 parser.add_argument("--kfolds", type=int, default=20, help="number of kfolds")
+parser.add_argument("--ks", type=float, default=None, help="shear_ks_param")
 parser.add_argument("--kernel", type=str, default='SE', help="SE, matern-3/2, matern-5/2, RQ, buckling+SE, buckling+RQ")
 parser.add_argument("--seed", type=int, default=1234, help="Seed for reproducibility (only used if --random is False)")
 args = parser.parse_args()
@@ -44,7 +45,8 @@ axial_str = "axial" if args.axial else "shear"
 log_str = "log" if args.log else "nolog"
 affine_str = "affine" if args.affine else "noaffine"
 kfold_str = f"kfold{args.kfolds}"
-base_name = f"{kfold_str}_{axial_str}_{affine_str}_{log_str}"
+ks_str = "" if args.ks is None else f"ks{args.ks}_"
+base_name = f"{kfold_str}_{ks_str}{axial_str}_{affine_str}_{log_str}"
 
 # make a file in this folder for this specific case
 txt_file = f"{folder_name}/{base_name}.txt"

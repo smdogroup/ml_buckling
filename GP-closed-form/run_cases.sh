@@ -50,11 +50,11 @@ python 1_train_and_eval.py --kernel "buckling+RQ" --axial --affine --log --kfold
 python 1_train_and_eval.py --kernel "buckling+RQ" --axial --affine --log --kfolds 10
 python 1_train_and_eval.py --kernel "buckling+RQ" --axial --affine --log --kfolds 20
 python 1_train_and_eval.py --kernel "buckling+RQ" --axial --affine --log --kfolds 40
-python 1_train_and_eval.py --kernel "buckling+RQ" --axial --affine --log --kfolds 80
+# python 1_train_and_eval.py --kernel "buckling+RQ" --axial --affine --log --kfolds 80
 
 # then for shear
 python 1_train_and_eval.py --kernel "buckling+RQ" --no-axial --affine --log --kfolds 5
 python 1_train_and_eval.py --kernel "buckling+RQ" --no-axial --affine --log --kfolds 10
 python 1_train_and_eval.py --kernel "buckling+RQ" --no-axial --affine --log --kfolds 20
 python 1_train_and_eval.py --kernel "buckling+RQ" --no-axial --affine --log --kfolds 40
-python 1_train_and_eval.py --kernel "buckling+RQ" --no-axial --affine --log --kfolds 80
+# python 1_train_and_eval.py --kernel "buckling+RQ" --no-axial --affine --log --kfolds 80

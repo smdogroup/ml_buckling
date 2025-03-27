@@ -15,6 +15,9 @@
 
 Get results:
 - [ ] run the run_cases.sh
+- [ ] rerun with shuffled data?
+* buckling + SE was better for shear+noaffine
+    - [ ] try running the ks shear version..
 - [ ] compile data for main table into master.csv
 - [ ] make plot of axial + shear buckling+RQ extrap error with num_kfold
 
