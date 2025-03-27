@@ -5,20 +5,20 @@ export NUM_KFOLDS=20
 # standard literature axial
 python 1_train_and_eval.py --kernel "SE" --axial --affine --log --kfolds ${NUM_KFOLDS}
 python 1_train_and_eval.py --kernel "SE" --axial --affine --no-log --kfolds ${NUM_KFOLDS}
-python 1_train_and_eval.py --kernel "matern-3/2" --axial --affine --log --kfolds ${NUM_KFOLDS}
-python 1_train_and_eval.py --kernel "matern-3/2" --axial --affine --no-log --kfolds ${NUM_KFOLDS}
-python 1_train_and_eval.py --kernel "matern-5/2" --axial --affine --log --kfolds ${NUM_KFOLDS}
-python 1_train_and_eval.py --kernel "matern-5/2" --axial --affine --no-log --kfolds ${NUM_KFOLDS}
+python 1_train_and_eval.py --kernel "matern-3_2" --axial --affine --log --kfolds ${NUM_KFOLDS}
+python 1_train_and_eval.py --kernel "matern-3_2" --axial --affine --no-log --kfolds ${NUM_KFOLDS}
+python 1_train_and_eval.py --kernel "matern-5_2" --axial --affine --log --kfolds ${NUM_KFOLDS}
+python 1_train_and_eval.py --kernel "matern-5_2" --axial --affine --no-log --kfolds ${NUM_KFOLDS}
 python 1_train_and_eval.py --kernel "RQ" --axial --affine --log --kfolds ${NUM_KFOLDS}
 python 1_train_and_eval.py --kernel "RQ" --axial --affine --no-log --kfolds ${NUM_KFOLDS}
 
 # # standard literature shear
 python 1_train_and_eval.py --kernel "SE" --no-axial --affine --log --kfolds ${NUM_KFOLDS}
 python 1_train_and_eval.py --kernel "SE" --no-axial --affine --no-log --kfolds ${NUM_KFOLDS}
-python 1_train_and_eval.py --kernel "matern-3/2" --no-axial --affine --log --kfolds ${NUM_KFOLDS}
-python 1_train_and_eval.py --kernel "matern-3/2" --no-axial --affine --no-log --kfolds ${NUM_KFOLDS}
-python 1_train_and_eval.py --kernel "matern-5/2" --no-axial --affine --log --kfolds ${NUM_KFOLDS}
-python 1_train_and_eval.py --kernel "matern-5/2" --no-axial --affine --no-log --kfolds ${NUM_KFOLDS}
+python 1_train_and_eval.py --kernel "matern-3_2" --no-axial --affine --log --kfolds ${NUM_KFOLDS}
+python 1_train_and_eval.py --kernel "matern-3_2" --no-axial --affine --no-log --kfolds ${NUM_KFOLDS}
+python 1_train_and_eval.py --kernel "matern-5_2" --no-axial --affine --log --kfolds ${NUM_KFOLDS}
+python 1_train_and_eval.py --kernel "matern-5_2" --no-axial --affine --no-log --kfolds ${NUM_KFOLDS}
 python 1_train_and_eval.py --kernel "RQ" --no-axial --affine --log --kfolds ${NUM_KFOLDS}
 python 1_train_and_eval.py --kernel "RQ" --no-axial --affine --no-log --kfolds ${NUM_KFOLDS}
 

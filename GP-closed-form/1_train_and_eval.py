@@ -62,14 +62,14 @@ if args.kernel == "SE":
     theta0 = np.array([1, 8, 4])
     ubounds = np.array([10.0]*3)
 
-elif args.kernel == "matern-3/2":
+elif args.kernel == "matern-3_2":
     kernel = matern_3_2_kernel
     # [coeff, length]
     lbounds = np.array([0.1]*2)
     theta0 = np.array([1.0, 2.0])
     ubounds = np.array([10.0]*2)
 
-elif args.kernel == "matern-5/2":
+elif args.kernel == "matern-5_2":
     kernel = matern_5_2_kernel
     # [coeff, length]
     lbounds = np.array([0.1]*2)
