@@ -26,6 +26,7 @@ def rational_quadratic_kernel(x, xp, th):
     alph = th[1]
     # xbar = xd / lengths
     xbar2 = tf.pow(xd, 2.0) / length
+    # I should have made it length**2 here.. (correction)
     return np.power(tf.reduce_sum(xbar2, axis=-1) / 2.0 / alph + 1.0, -alph)
     
 def matern_3_2_kernel(x, xp, th):

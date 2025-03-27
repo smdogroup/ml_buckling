@@ -23,8 +23,14 @@ def kfold_hyperparameter_optimization(
     n_part = N // k
 
     # randomly shuffle the data
-    Xshuffle = np.random.shuffle(X.copy())
-    Yshuffle = np.random.shuffle(Y.copy())
+    print(f"{X.shape=}")
+    myind = np.array([_ for _ in range(N)], dtype=np.int32)
+    # print(f"{myind=}")
+    shuffle_ind = np.random.permutation(myind)
+    print(f"{shuffle_ind=}")
+    Xshuffle = X.copy()[shuffle_ind,:]
+    Yshuffle = Y.copy()[shuffle_ind]
+    # print(f"{Xshuffle.shape=}")
 
     for i_k in range(k):
         Xlist += [Xshuffle[n_part*i_k:n_part*(i_k+1), :]]
