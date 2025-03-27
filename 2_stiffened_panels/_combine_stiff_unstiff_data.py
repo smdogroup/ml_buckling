@@ -26,14 +26,14 @@ args = parent_parser.parse_args()
 assert args.load in ["Nx", "Nxy"]
 
 cpath = os.path.dirname(__file__)
-raw_data_folder = os.path.join(cpath, "raw_data")
-if not os.path.exists(raw_data_folder) and comm.rank == 0:
-    os.mkdir(raw_data_folder)
+# raw_data_folder = os.path.join(cpath, "raw_data")
+# if not os.path.exists(raw_data_folder) and comm.rank == 0:
+#     os.mkdir(raw_data_folder)
 data_folder = os.path.join(cpath, "data")
 if not os.path.exists(data_folder) and comm.rank == 0:
     os.mkdir(data_folder)
 
-stiffened_csv = os.path.join(raw_data_folder, args.load + "_raw_stiffened.csv")
+stiffened_csv = os.path.join(data_folder, args.load + "_raw_stiffened.csv")
 stiff_df = pd.read_csv(stiffened_csv)
 
 X = stiff_df[["xi", "rho_0", "zeta", "gamma", "eig_FEA"]].to_numpy()

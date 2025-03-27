@@ -55,7 +55,7 @@ prefix = "Nx" if args.axial else "Nxy"
 train_csv = f"{prefix}_stiffened.csv"
 raw_csv = f"{prefix}_raw_stiffened.csv"
 cpath = os.path.dirname(__file__)
-data_folder = os.path.join(cpath, "raw_data")
+data_folder = os.path.join(cpath, "data")
 if not os.path.exists(data_folder) and comm.rank == 0:
     os.mkdir(data_folder)
 

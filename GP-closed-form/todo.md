@@ -11,25 +11,22 @@
     - [x] plots the model fit in that case folder
     - [x] add all theta hyperparam settings
 - [x] make a bash script that runs all cases of each kernel + data transform for the data table
-- [x] make a bash script for the different kfold runs of buckling + RQ kernel (included in same one)
+- [x] make a bash script for the different kfold runs of buckling + RQ kernel (included in same one)git 
 
 Get results:
-- [ ] run the run_cases.sh
-- [ ] rerun with shuffled data?
-* buckling + SE was better for shear+noaffine
-    - [ ] try running the ks shear version..
-- [ ] compile data for main table into master.csv
-- [ ] make plot of axial + shear buckling+RQ extrap error with num_kfold
+- [x] run the run_cases.sh
+- [x] compile data for main table into master.csv
+- [x] make plot of axial + shear buckling+RQ extrap error with num_kfold
 
 In the paper:
-- [ ] change hyperparam opt explanation to k-fold cross validation (eqn for that)
-    - [ ] explain that the MAP or MLE methods led to overfitting the model / bad extrapolation error
+- [x] change hyperparam opt explanation to k-fold cross validation (eqn for that)
+    - [x] explain that the MAP or MLE methods led to overfitting the model / bad extrapolation error
     - [ ] explain I only do this hyperparameter fitting on the interpolation zone, not extrapolation
-- [ ] make a table of the different primitive kernel functions in Appendix or in main paper part
+- [x] make a table of the different primitive kernel functions in Appendix or in main paper part
 - [ ] explain why I went with buckling + RQ
     - [ ] explain why the buckling + SE has really good R^2 for longer length scales but hyperparameter opt pushes to lower length scales due to some discontinuity / mode switching behavior
     - [ ] explain that the RQ kernel has a range of length scales in it (SE doesn't) => leads to better hyperparam optimized models than SE
-- [ ] make a plot of k-fold cross validation (k vs extrap R^2 of the buckling + SE)
-- [ ] update the plot of the best interpolating and best extrapolating mdoels (standard vs buckling + RQ kernels)
+- [x] make a plot of k-fold cross validation (k vs extrap R^2 of the buckling + SE)
+- [x] update the plot of the best interpolating and best extrapolating mdoels (standard vs buckling + RQ kernels)
 - [ ] cite this paper in showing how to select different kernel terms? https://arxiv.org/pdf/1302.4922 and https://www.cs.toronto.edu/~duvenaud/cookbook/
-- [ ] and cite / discuss this for k-fold cross validation in text, https://www.mdpi.com/2079-9292/10/16/1973 and https://www.jmlr.org/papers/volume5/grandvalet04a/grandvalet04a.pdf
+- [x] and cite / discuss this for k-fold cross validation in text, https://www.mdpi.com/2079-9292/10/16/1973 and https://www.jmlr.org/papers/volume5/grandvalet04a/grandvalet04a.pdf
