@@ -232,7 +232,7 @@ for foo in range(N):  # until has generated this many samples
                 # "Dstar": [new_plate.Dstar],
                 # "a0/b0": [new_plate.affine_aspect_ratio],
                 "a/b": [new_plate.aspect_ratio],
-                # "b/h": [new_plate.slenderness],
+                "b/h": [new_plate.slenderness],
                 # "kmin": [np.real(kmin)],
                 # "error": [np.real(error_0)],
                 # # other parameter section
@@ -243,7 +243,7 @@ for foo in range(N):  # until has generated this many samples
                 # 'time' : [dt],
                 'xi' : [new_plate.xi],
                 # 'SR' : [slenderness],
-                # 'zeta' : [new_plate.zeta],
+                'zeta' : [new_plate.zeta],
                 # 'lzeta' : [np.log(1+1000.0 * new_plate.zeta)]
             }
 

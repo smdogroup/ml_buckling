@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np, os, argparse
 from mpi4py import MPI
 import scipy.optimize as sopt
+import time
 
 comm = MPI.COMM_WORLD
 
@@ -55,6 +56,8 @@ comm.Barrier()
 # DEFINE ANALYSIS ROUTINE
 # -----------------------
 def get_buckling_load(rho0, gamma, solve_buckling=True, first=False):
+
+    start_time = time.time()
 
     stiff_AR = 20.0
     plate_SR = 100.0  # 100.0
@@ -180,8 +183,10 @@ def get_buckling_load(rho0, gamma, solve_buckling=True, first=False):
     # exit()
     # return [global_lambda_star, pred_lambda, timosh_crit]
 
+    dt = time.time() - start_time
+
     # returns (CF_eig, FEA_eig) as follows:
-    return pred_lambda, global_lambda_star, stiff_analysis
+    return pred_lambda, global_lambda_star, stiff_analysis, dt
 
 
 # GENERATE DATA
@@ -198,7 +203,7 @@ if __name__ == "__main__":
     ct = 0
     for igamma, gamma in enumerate(gamma_vec):
         for irho0, rho0 in enumerate(rho0_vec):
-            eig_CF, eig_FEA, stiff_analysis = get_buckling_load(rho0=rho0, gamma=gamma)
+            eig_CF, eig_FEA, stiff_analysis, dt = get_buckling_load(rho0=rho0, gamma=gamma)
             if comm.rank == 0:
                 print(f"{eig_CF=}, {eig_FEA=}")
 
@@ -223,6 +228,7 @@ if __name__ == "__main__":
                     "zeta": [stiff_analysis.zeta_plate],
                     "eig_FEA": [np.real(eig_FEA)],
                     "eig_CF": [eig_CF],
+                    'time (s)' : [dt],
                 }
                 raw_df = pd.DataFrame(raw_data_dict)
                 first_write = ct == 1 and args.clear

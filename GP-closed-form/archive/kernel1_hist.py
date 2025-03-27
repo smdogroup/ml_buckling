@@ -42,3 +42,15 @@
     th = np.array([6.40151232e-01, 3.38465103e+00, 6.02157464e-01, 1.00000000e+01,
        9.98604621e-01, 1.90107832e-03, 7.39807708e-01])
     th[-2] = 1e-2
+
+
+
+# elif args.kernel == 7:
+#     # bucling + SE * window_fact
+#     kernel = custom_kernel3
+#     th = np.array([1, 8, 4, 1, 1, 0.1] + [1.0])
+
+# elif args.kernel == 8:
+#     # buckling + SE + RQ
+#     kernel = custom_kernel4
+#     th = np.array([1, 8, 4] + [10.0] + [1.0, 1e-2, 0.1, 0.0] + [3.0, 2.0])

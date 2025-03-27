@@ -64,7 +64,7 @@ elif args.kernel == 4:
     th = np.array([1.0, 8.0])
 elif args.kernel == 5:
     # KERNEL 5 is the final kernel!!
-    kernel = custom_kernel1
+    kernel = buckling_SE_kernel
 
     # V1: 0.087 axial, 0.5 shear (smoothed or not)
     # th = np.array([1, 8, 4, 1, 1, 0.1])
@@ -79,7 +79,7 @@ elif args.kernel == 5:
 
 elif args.kernel == 6:
     # buckling + RQ
-    kernel = custom_kernel2 # with RQ instead of SE
+    kernel = buckling_RQ_kernel # with RQ instead of SE
 
     th = np.array([5.0, 1.0, 1e-1, 1.0, 2.0, 1.0])
     # th = np.array([10.0, 0.9959462681018701, 0.048967409869886735, 2.0997981037015867, 0.36781754937098754, 0.9955409650507732])
@@ -89,15 +89,6 @@ elif args.kernel == 6:
     th = np.array([10.        ,  1.05728864,  0.25339722,  7.24746841,  0.1       ,
         0.1       ])
 
-# elif args.kernel == 7:
-#     # bucling + SE * window_fact
-#     kernel = custom_kernel3
-#     th = np.array([1, 8, 4, 1, 1, 0.1] + [1.0])
-
-# elif args.kernel == 8:
-#     # buckling + SE + RQ
-#     kernel = custom_kernel4
-#     th = np.array([1, 8, 4] + [10.0] + [1.0, 1e-2, 0.1, 0.0] + [3.0, 2.0])
 
 # ---------------------------------------------------------
 

@@ -53,7 +53,8 @@ for ct, arr in enumerate([xi, zeta]):
         n, bins, patches = plt.hist(arr, bins=20, density=False, edgecolor='black', alpha=0.9)
     else:
         bin_edges = np.logspace(np.log10(1e-4), np.log10(1e-1), num=20)
-        n, bins, patches = plt.hist(arr, bins=bin_edges, density=False, log=True, edgecolor='black', alpha=0.9)
+        n, bins, patches = plt.hist(arr, bins=bin_edges, density=False, log=False, # was log=True
+                                     edgecolor='black', alpha=0.9)
         # bin_edges = np.logspace(np.log10(min(data)), np.log10(max(data)), num=30)
     
     # Apply gradient to bars
@@ -68,7 +69,8 @@ for ct, arr in enumerate([xi, zeta]):
     plt.xlabel(r"$\boldsymbol{\xi}$" if ct == 0 else r"$\mathbf{\zeta}$", fontsize=fs, fontweight=fw, labelpad=lp)
     plt.ylabel("Frequency", fontsize=fs, fontweight=fw, labelpad=lp)
     #plt.title("Fancy Histogram with KDE", fontsize=14)
-    plt.grid(axis='y', linestyle="--", alpha=0.7)
+    # plt.grid(axis='y', linestyle="--", alpha=0.7)
+    plt.grid(False)
     # plt.grid(False)
 
     if ct == 1:
@@ -78,6 +80,10 @@ for ct, arr in enumerate([xi, zeta]):
     plt.tick_params(axis='both', which='major', labelsize=16)  # Modify font size for both x and y axis
     
     plt.tight_layout()  # Adjust layout to avoid clipping
+
+    if ct == 1:
+        plt.yticks([0, 100, 200, 300, 400])
+        plt.margins(y=0.3)
 
 
     #plt.show()

@@ -32,7 +32,7 @@ if kernel_num == 1:
     ubounds = np.array([10.0]*3)
 
 elif kernel_num == 5:
-    kernel = custom_kernel1
+    kernel = buckling_SE_kernel
     ntheta = 7
     relu_alph = 5.0 # fixed value (so that smoothness is fixed, otherwise makes not smooth)
     # try adding relu_alph back into optimization.. before was fixed
@@ -45,7 +45,7 @@ elif kernel_num == 5:
 
 elif kernel_num == 6:
 
-    kernel = custom_kernel2 
+    kernel = buckling_RQ_kernel 
 
     ntheta = 6
     lbounds = np.array([0.1]*2 + [1e-3] + [0.1]*3)

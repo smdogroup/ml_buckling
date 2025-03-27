@@ -87,3 +87,38 @@ def custom_kernel6(x, xp, th):
 #     th = np.array([8.0, 1.0, 1.0, 0.1])
 
 # really should use a commercial hyperparameter optimize
+
+
+
+def custom_kernel3(x, xp, th):
+    """custom kernel function no. 3, try windowed SE kernel again"""
+
+    SE_term = SE_kernel(x, xp, th[:3])
+    # print(f"{th[4]=}")
+    rho_AL = smooth_relu(-x[:,:,0], th[3]) * smooth_relu(-xp[:,:,0], th[3])
+    gam_LIN = x[:,:,1] * xp[:,:,1]
+    window_fact = smooth_relu(1.0 - np.abs(x[:,:,0]), th[3]) * smooth_relu(1.0 - np.abs(xp[:,:,0]), th[3])
+
+    # V1
+    # this kernel works well for axial + shear closed-form, but not a smoothed shear with ks = 1.0
+    # need to improve to fit a smoothed shear profile
+    return rho_AL + th[4] * gam_LIN + th[5] * SE_term * window_fact + th[6]
+
+def custom_kernel4(x, xp, th):
+    """
+    because k-fold cross validation pushes the SE kernel term to lower length scales
+    likely because of some discontinuities in the data, I am adding an additional kernel
+    term RQ that naturally handles the short length scales, to see if it will do
+    better than just buckling + RQ kernel alone
+    """
+
+    SE_term = SE_kernel(x, xp, th[:3])
+    # print(f"{th[4]=}")
+    rho_AL = smooth_relu(-x[:,:,0], th[3]) * smooth_relu(-xp[:,:,0], th[3])
+    gam_LIN = x[:,:,1] * xp[:,:,1]
+    RQ_term = rational_quadratic_kernel(x, xp, [th[8], th[9]])
+
+    # V1
+    # this kernel works well for axial + shear closed-form, but not a smoothed shear with ks = 1.0
+    # need to improve to fit a smoothed shear profile
+    return rho_AL + th[4] * gam_LIN + th[5] * SE_term + th[6] + th[7] * RQ_term
