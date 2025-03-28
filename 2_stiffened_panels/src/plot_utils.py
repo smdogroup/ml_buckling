@@ -158,7 +158,7 @@ def plot_3d_gamma(
     if show:
         plt.show()
     else:
-        plt.savefig(f"{folder_name}/{file_prefix}gamma-3d.png", dpi=400)
+        plt.savefig(f"{folder_name}/{file_prefix}_gamma-3d.png", dpi=400)
     plt.close(f"3d rho_0, gamma, lam_star")
 
 
