@@ -19,6 +19,7 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
 parent_parser.add_argument("--ntrain", type=int, default=3000)
 parent_parser.add_argument("--kfold", type=int, default=10)
+parent_parser.add_argument("--gammalb", type=int, default=1e-1)
 parent_parser.add_argument("--opt", action=argparse.BooleanOptionalAction, default=True, help="Enable or disable axial mode (default: False)")
 parent_parser.add_argument("--show", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable axial mode (default: False)")
 args = parent_parser.parse_args()
@@ -37,7 +38,9 @@ if not os.path.exists("output/opt"):
 axial_str = "axial" if args.axial else "shear"
 kfold_str = f"kfold{args.kfolds}"
 ntrain_str = f"ntrain{args.ntrain}"
-base_name = f"{axial_str}_{kfold_str}_{ntrain_str}"
+gammalb_log10 = np.log10(args.gammalb)
+gamma_lb_str = f"gammalb{args.gammalb}"
+base_name = f"{axial_str}_{kfold_str}_{ntrain_str}_{gamma_lb_str}"
 
 # make a file in this folder for this specific case
 txt_file = f"output/{base_name}.txt"
@@ -87,7 +90,7 @@ else:
 # hyperparms for the buckling + GP kernel
 kernel = buckling_RQ_kernel
 # [relu_alph, gamma_coeff, RQ_coeff, length, alpha, constant, log10(sigma_n)]
-lbounds = np.array([0.1] + [1e-1] + [1e-3] + [0.1] + [1e-4]*2 + [-4])
+lbounds = np.array([0.1] + [args.gamma_lb] + [1e-3] + [0.1] + [1e-4]*2 + [-4])
 theta0 = np.array([5.0, 1.0, 1e-1, 1.0, 2.0, 1.0] + [-2])
 ubounds = np.array([10.0]*6 + [0])
 
