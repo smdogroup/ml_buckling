@@ -6,7 +6,7 @@ import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
 import shutil, random
-from _saved_kernel import kernel, axial_theta_opt, shear_theta_opt
+from archive._saved_kernel import kernel, axial_theta_opt, shear_theta_opt
 import ml_buckling as mlb
 
 """

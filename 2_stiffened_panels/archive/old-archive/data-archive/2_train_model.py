@@ -13,7 +13,7 @@ from mpi4py import MPI
 from os import environ
 
 environ["OMP_NUM_THREADS"] = "4"
-from _saved_kernel import kernel, soft_abs, soft_relu
+from archive._saved_kernel import kernel, soft_abs, soft_relu
 
 """
 @Author : Sean Engelstad

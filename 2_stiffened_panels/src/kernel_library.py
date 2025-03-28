@@ -24,6 +24,6 @@ def buckling_RQ_kernel(x, xp, th):
     RQ_term = rational_quadratic_kernel(x, xp, [th[3], th[4]])
     # print(f"{th[4]=}")
     rho_AL = smooth_relu(-x[:,:,0], th[0]) * smooth_relu(-xp[:,:,0], th[0])
-    gam_LIN = x[:,:,1] * xp[:,:,1]
+    gam_LIN = x[:,:,2] * xp[:,:,2]
 
     return rho_AL + th[1] * gam_LIN + th[2] * RQ_term + th[5]

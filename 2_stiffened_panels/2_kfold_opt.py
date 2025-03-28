@@ -35,8 +35,8 @@ if not os.path.exists("output"):
 if not os.path.exists("output/opt"):
     os.mkdir("output/opt")
 
-axial_str = "axial" if args.axial else "shear"
-kfold_str = f"kfold{args.kfolds}"
+axial_str = "axial" if args.load == "Nx" else "shear"
+kfold_str = f"kfold{args.kfold}"
 ntrain_str = f"ntrain{args.ntrain}"
 gammalb_log10 = np.log10(args.gammalb)
 gamma_lb_str = f"gammalb{args.gammalb}"
@@ -54,6 +54,13 @@ df = pd.read_csv("data/" + csv_filename + ".csv")
 
 # extract only the model columns
 X0 = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
+# fix order of data
+reorder_data = [1, 0, 3, 2]
+# now is order [log(rho_0), log(1+xi), log(1+gamma), log(1+10^3 * zeta)]
+X0 = X0[:, np.array(reorder_data)]
+# print(f"{X0=}")
+# exit()
+
 Y = df["log(eig_FEA)"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
 
@@ -90,17 +97,22 @@ else:
 # hyperparms for the buckling + GP kernel
 kernel = buckling_RQ_kernel
 # [relu_alph, gamma_coeff, RQ_coeff, length, alpha, constant, log10(sigma_n)]
-lbounds = np.array([0.1] + [args.gamma_lb] + [1e-3] + [0.1] + [1e-4]*2 + [-4])
+lbounds = np.array([0.1] + [args.gammalb] + [1e-3] + [0.1] + [1e-4]*2 + [-4])
 theta0 = np.array([5.0, 1.0, 1e-1, 1.0, 2.0, 1.0] + [-2])
 ubounds = np.array([10.0]*6 + [0])
 
 if not args.opt:
+    pass
     theta_opt_v1 = np.array([5.080335025828115, 0.1, 10.0, 0.7564161097004841, 1.6312811045492983, 0.0001, -1.0314949162668399])
 
-    theta_opt_v2 = np.array([ 1.50257002e+00,  1.00000000e-03,  2.37987533e+00,  7.41594755e-01,
-        1.66484694e+00,  1.00000000e-04, -1.30803643e+00])
+    # theta_opt_v2 = np.array([ 1.50257002e+00,  1.00000000e-03,  2.37987533e+00,  7.41594755e-01,
+    #     1.66484694e+00,  1.00000000e-04, -1.30803643e+00])
+    # theta_opt = np.array([ 1.27759746e+00,  1.00000000e-01,  1.00000000e+01,  7.46292826e-01,
+    #     1.69054504e+00,  1.00000000e-04, -1.01856337e+00])
 
-    theta0 = theta_opt_v2
+    # theta0 = theta_opt_v2
+    # theta0 = theta_opt_v1
+    theta0 = theta0
 
 # prelim train the model for plotting
 # -----------------------------------
@@ -112,15 +124,10 @@ nugget_term = sigma_n**2 * np.eye(x_train_L.shape[0])
 K_train0 = kernel(x_train_L, x_train_R, theta0) + nugget_term
 alpha_train0 = np.linalg.solve(K_train0, Y_train)
 
+print(f"{sigma_n=}")
 
 # plot the initial model
 # ----------------------
-
-if not os.path.exists(f"plots/{args.load}_stiffened"):
-    os.mkdir(f"plots/{args.load}_stiffened")
-
-if not os.path.exists(f"plots/{args.load}_stiffened/GP"):
-    os.mkdir(f"plots/{args.load}_stiffened/GP")
 
 plot_3d_gamma(
     X=X, Y=Y,
@@ -130,11 +137,12 @@ plot_3d_gamma(
     alpha_train=alpha_train0,
     xi_bin=[0.5, 0.7],
     zeta_bin=[0.2, 0.4],
-    folder_name=f"plots",
+    folder_name=f"output",
     load_name=args.load,
-    file_prefix="Nx_init",
+    file_prefix=f"init_{args.load}",
     is_affine=use_affine,
     show=args.show,
+    save_npz=False, 
 )
 
 print(f'{X0_train.shape} {X.shape=}')
@@ -150,9 +158,10 @@ plot_3d_xi(
     zeta_bin=[0.0, 1.0],
     folder_name=f"output",
     load_name=args.load,
-    file_prefix="Nxy_init",
+    file_prefix=f"init_{args.load}",
     is_affine=use_affine,
     show=args.show,
+    save_npz=False,
 )
 
 # predict error on test dataset initially
@@ -166,6 +175,7 @@ txt_hdl.write("--------------------------------------------\n\n")
 txt_hdl.write(f"init Rsquared on ntrain={Y_train.shape[0]} n_test={Y_test.shape[0]} data\n")
 txt_hdl.write(f"\t{init_Rsq=}:\n")
 txt_hdl.write("--------------------------------------------\n\n")
+txt_hdl.flush()
 
 
 # optimize 
@@ -185,7 +195,7 @@ if args.opt:
         num_kfolds=args.kfold,
         X=X_train, Y=Y_train,
         snopt_options={
-            "Major iterations limit": 500,
+            "Major iterations limit": 500, # debug change 2,
             "Print file": f"{folder_name}/opt/{base_name}_SNOPT_print.out",
             "Summary file": f"{folder_name}/opt/{base_name}_SNOPT_summary.out",
         },
@@ -196,7 +206,7 @@ if args.opt:
     print(f"{theta_opt=}")
 
     txt_hdl.write("--------------------------------------------\n\n")
-    txt_hdl.write(f"hyperparameter optimization with kfolds={args.kfolds} and N={args.ntrain}\n")
+    txt_hdl.write(f"hyperparameter optimization with kfolds={args.kfold} and N={args.ntrain}\n")
     txt_hdl.write("\ttheta_opt:\n")
     txt_hdl.write(f"\t{theta_opt=}\n\n")
     txt_hdl.write("--------------------------------------------\n\n")
@@ -217,7 +227,7 @@ if args.opt:
         X=X, Y=Y,
         X_train=X_train,
         kernel_func=kernel,
-        theta=theta0,
+        theta=theta_opt,
         alpha_train=alpha_train_opt,
         xi_bin=[0.5, 0.7],
         zeta_bin=[0.2, 0.4],
@@ -232,7 +242,7 @@ if args.opt:
         X=X, Y=Y,
         X_train=X_train,
         kernel_func=kernel,
-        theta=theta0,
+        theta=theta_opt,
         alpha_train=alpha_train_opt,
         gamma_bin=[0.0, 0.1],
         zeta_bin=[0.0, 1.0],

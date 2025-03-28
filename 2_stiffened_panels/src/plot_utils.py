@@ -27,14 +27,19 @@ def plot_3d_gamma(
     folder_name:str="",
     load_name:str="Nx", # or "Nxy"
     file_prefix:str="",
+    AR_bounds:list=[0.2, 10.0],
     is_affine:bool=True,
     show:bool=False,
+    save_npz:bool=False,
 ):
 
-    xi_mask = np.logical_and(xi_bin[0] <= X[:, 0], X[:, 0] <= xi_bin[1])
+    # X is [ln(rho0 or rho0^*), ln(1+xi), ln(1+gamma), ln(1+10^3 * zeta)]
+    # Y is ln(N11crbar) or ln(N12crbar)
+
+    xi_mask = np.logical_and(xi_bin[0] <= X[:, 1], X[:, 1] <= xi_bin[1])
     avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
 
-    zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 2], X[:, 2] <= zeta_bin[1])
+    zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 3], X[:, 3] <= zeta_bin[1])
     avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
     xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
@@ -49,13 +54,13 @@ def plot_3d_gamma(
     for igamma, gamma_bin in enumerate(gamma_bins):
 
         gamma_mask = np.logical_and(
-            gamma_bin[0] <= X[:, 3], X[:, 3] <= gamma_bin[1]
+            gamma_bin[0] <= X[:, 2], X[:, 2] <= gamma_bin[1]
         )
         mask = np.logical_and(xi_zeta_mask, gamma_mask)
 
-        rho0_bin = [np.log(0.3), np.log(10.0)]
+        rho0_bin = [np.log(AR_bounds[0]), np.log(AR_bounds[1])]
         rho0_mask = np.logical_and(
-            rho0_bin[0] <= X[:,1], X[:,1] <= rho0_bin[1]
+            rho0_bin[0] <= X[:,0], X[:,0] <= rho0_bin[1]
         )
         mask = np.logical_and(mask, rho0_mask)
 
@@ -63,8 +68,8 @@ def plot_3d_gamma(
         Y_in_range = Y[mask, :]
 
         ax.scatter(
-            X_in_range[:, 3],
-            X_in_range[:, 1],
+            X_in_range[:, 2], # ln(1+gamma)
+            X_in_range[:, 0], # ln(rho0 or rho0^*)
             Y_in_range[:, 0],
             s=20,
             color=colors[igamma],
@@ -78,11 +83,12 @@ def plot_3d_gamma(
     X_plot = np.zeros((n_plot, 4))
     ct = 0
     gamma_vec = np.linspace(0.0, 3.0, 30)
-    AR_vec = np.log(np.linspace(0.3, 10.0, 100))
+    AR_vec = np.log(np.linspace(AR_bounds[0], AR_bounds[1], 100))
     for igamma in range(30):
         for iAR in range(100):
             X_plot[ct, :] = np.array(
-                [avg_xi, AR_vec[iAR], avg_zeta, gamma_vec[igamma]]
+                [AR_vec[iAR], avg_xi, gamma_vec[igamma], avg_zeta]
+                # [avg_xi, AR_vec[iAR], avg_zeta, gamma_vec[igamma]]
             )
             ct += 1
 
@@ -123,9 +129,10 @@ def plot_3d_gamma(
     ax.grid(False)
 
     # save data to a file (do later)
-    np.savez(f"{folder_name}/{file_prefix}gamma-data.npz",
-                X=X, Y=Y,
-                GAMMA=GAMMA, AR=AR, KMIN=KMIN)
+    if save_npz:
+        np.savez(f"{folder_name}/{file_prefix}gamma-data.npz",
+                    X=X, Y=Y,
+                    GAMMA=GAMMA, AR=AR, KMIN=KMIN)
 
     ax.xaxis.pane.set_edgecolor('black')
     ax.yaxis.pane.set_edgecolor('black')
@@ -145,7 +152,7 @@ def plot_3d_gamma(
         ax.set_zlabel(r"$\mathbf{\ln(\overline{N}_{11}^{cr})}$", fontsize=fs1, fontweight='bold', labelpad=5)
     else:
         ax.set_zlabel(r"$\mathbf{\ln(\overline{N}_{12}^{cr})}$", fontsize=fs1, fontweight='bold', labelpad=5)
-    ax.set_ylim3d(np.log(0.3), np.log(10.0))
+    ax.set_ylim3d(np.log(AR_bounds[0]), np.log(AR_bounds[1]))
     # ax.set_zlim3d(0.0, np.log(50.0))
     # ax.set_zlim3d(1.0, 3.0)
     ax.view_init(elev=20, azim=20, roll=0)
@@ -173,9 +180,14 @@ def plot_3d_xi(
     folder_name:str="",
     load_name:str="Nx", # or "Nxy"
     file_prefix:str="",
+    AR_bounds:list=[0.2, 10.0],
     is_affine:bool=True,
     show:bool=False,
+    save_npz:bool=False,
 ):
+    
+    # X is [ln(rho0 or rho0^*), ln(1+xi), ln(1+gamma), ln(1+10^3 * zeta)]
+    # Y is ln(N11crbar) or ln(N12crbar)
     
     # adjust bins for this plot in particular
     gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 2.0], [2.0, 3.0]]
@@ -183,10 +195,10 @@ def plot_3d_xi(
     xi_bins = [[xi_vec[i], xi_vec[i+1]] for i in range(6)]
 
     # compute masks for this data
-    gamma_mask = np.logical_and(gamma_bin[0] <= X[:, 3], X[:, 3] <= gamma_bin[1])
+    gamma_mask = np.logical_and(gamma_bin[0] <= X[:, 2], X[:, 2] <= gamma_bin[1])
     avg_gamma = 0.5 * (gamma_bin[0] + gamma_bin[1])
 
-    zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 2], X[:, 2] <= zeta_bin[1])
+    zeta_mask = np.logical_and(zeta_bin[0] <= X[:, 3], X[:, 3] <= zeta_bin[1])
     avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
     gamma_zeta_mask = np.logical_and(gamma_mask, zeta_mask)
 
@@ -200,13 +212,13 @@ def plot_3d_xi(
 
     for ixi, xi_bin in enumerate(xi_bins):
 
-        xi_mask = np.logical_and(xi_bin[0] <= X[:, 0], X[:, 0] <= xi_bin[1])
+        xi_mask = np.logical_and(xi_bin[0] <= X[:, 1], X[:, 1] <= xi_bin[1])
         avg_xi = 0.5 * (xi_bin[0] + xi_bin[1])
         mask = np.logical_and(gamma_zeta_mask, xi_mask)
 
-        rho0_bin = [np.log(0.3), np.log(10.0)]
+        rho0_bin = [np.log(AR_bounds[0]), np.log(AR_bounds[1])]
         rho0_mask = np.logical_and(
-            rho0_bin[0] <= X[:,1], X[:,1] <= rho0_bin[1]
+            rho0_bin[0] <= X[:,0], X[:,0] <= rho0_bin[1]
         )
         mask = np.logical_and(mask, rho0_mask)
 
@@ -214,8 +226,8 @@ def plot_3d_xi(
         Y_in_range = Y[mask, :]
 
         ax.scatter(
-            X_in_range[:, 0],
-            X_in_range[:, 1],
+            X_in_range[:, 1], # ln(1+xi)
+            X_in_range[:, 0], # ln(rho0 or rho0^*)
             Y_in_range[:, 0],
             s=20,
             color=colors[ixi],
@@ -230,11 +242,11 @@ def plot_3d_xi(
     X_plot = np.zeros((n_plot, 4))
     ct = 0
     xi_vec = np.linspace(0.2, 1.0, 30)
-    AR_vec = np.log(np.linspace(0.3, 10.0, 100))
+    AR_vec = np.log(np.linspace(AR_bounds[0], AR_bounds[1], 100))
     for ixi in range(30):
         for iAR in range(100):
             X_plot[ct, :] = np.array(
-                [xi_vec[ixi], AR_vec[iAR], avg_zeta, avg_gamma]
+                [AR_vec[iAR], xi_vec[ixi], avg_gamma, avg_zeta]
             )
             ct += 1
 
@@ -275,9 +287,10 @@ def plot_3d_xi(
     ax.grid(False)
 
     # save data to a file
-    np.savez(f"{folder_name}/{file_prefix}xi-data.npz",
-                X=X, Y=Y,
-                XI=XI, AR=AR, KMIN=KMIN)
+    if save_npz:
+        np.savez(f"{folder_name}/{file_prefix}_xi-data.npz",
+                    X=X, Y=Y,
+                    XI=XI, AR=AR, KMIN=KMIN)
 
     ax.xaxis.pane.set_edgecolor('black')
     ax.yaxis.pane.set_edgecolor('black')
@@ -297,7 +310,7 @@ def plot_3d_xi(
         ax.set_zlabel(r"$\mathbf{\ln(\overline{N}_{11}^{cr})}$", fontsize=fs1, fontweight='bold', labelpad=5)
     else:
         ax.set_zlabel(r"$\mathbf{\ln(\overline{N}_{12}^{cr})}$", fontsize=fs1, fontweight='bold', labelpad=5)
-    ax.set_ylim3d(np.log(0.3), np.log(10.0))
+    ax.set_ylim3d(np.log(AR_bounds[0]), np.log(AR_bounds[1]))
     # ax.set_zlim3d(0.0, np.log(50.0))
     # ax.set_zlim3d(1.0, 3.0)
     ax.view_init(elev=20, azim=20, roll=0)
@@ -310,5 +323,5 @@ def plot_3d_xi(
     if show:
         plt.show()
     else:
-        plt.savefig(f"{folder_name}/{file_prefix}xi-3d.png", dpi=400)
+        plt.savefig(f"{folder_name}/{file_prefix}_xi-3d.png", dpi=400)
     plt.close(f"3d rho_0, xi, lam_star")
