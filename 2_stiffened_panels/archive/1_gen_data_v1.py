@@ -123,9 +123,6 @@ if __name__ == "__main__":
             plate_slenderness = comm.bcast(plate_slenderness, root=0)
             plate_material = comm.bcast(plate_material, root=0)
 
-            # reset stiffener counts to 1
-            num_stiff = 1
-
             for log_rho in logrho_vec[::-1]: # go in reverse order so that mode tracking can be done
                 if args.axial: # log_rho = ln(rho0^*) = ln(rho0 / sqrt[4]{1+gamma})
                     rho0_star = np.exp(log_rho)
@@ -145,12 +142,20 @@ if __name__ == "__main__":
                     log_gamma = np.log(1+gamma); log_rho = np.log(rho0)
                     if args.axial: log_rho -= 0.25 * log_gamma
 
-                # use_single_stiffener = log_gamma < 0.6 * (log_rho + 1.5)
-                # # use_single_stiffener = log_rho < 0.0
-                # num_stiff = 1 if use_single_stiffener else 9
+                use_single_stiffener = log_gamma < 0.6 * (log_rho + 1.5)
+                # use_single_stiffener = log_rho < 0.0
+                num_stiff = 1 if use_single_stiffener else 9
 
-                # preliminary buckling analysis
-                orig_output = get_buckling_load(
+                if comm.rank == 0:
+                    material_name = "metal" if args.metal else composite_material.__name__
+                    ply_angle = 0.0 if args.metal else ply_angle
+                    print(f"{gamma=} {rho0=} {num_stiff=} {ply_angle=} {material_name=} {plate_slenderness=}")
+
+                # run the buckling analysis
+                # -------------------------
+
+                eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = \
+                get_buckling_load(
                     comm,
                     rho0=rho0,
                     gamma=gamma,
@@ -165,63 +170,6 @@ if __name__ == "__main__":
                     b=1.0,
                     stiff_AR=15.0 # works better than 20.0 for getting more high gamma, low rho0 data
                 )
-
-                # loop to check stiffener counts
-                stiffened_region = log_gamma < 0.6 * (log_rho + 1.5)
-
-                if stiffened_region: # check if we need to increase # stiffeners
-                    print("In stiffened region, check if we need more stiffeners:\n\n")
-                    while (num_stiff < 7):
-                        print(f"\tcheck increasing num_stiff to {num_stiff+1}")
-                        # propose increasing the stiffener count
-                        new_output = get_buckling_load(
-                            comm,
-                            rho0=rho0,
-                            gamma=gamma,
-                            plate_slenderness=plate_slenderness,
-                            num_stiff=num_stiff+1,
-                            plate_material=plate_material,
-                            nelems=2000, #2000
-                            prev_eig_dict=None, #prev_eig_dict,
-                            is_axial=args.axial,
-                            solve_buckling=True,
-                            debug=args.debug,
-                            b=1.0,
-                            stiff_AR=15.0 # works better than 20.0 for getting more high gamma, low rho0 data
-                        )
-
-                        # compare FEA eigenvalues aka entry 1
-                        if orig_output[1] is None and new_output[1] is not None:
-                            num_stiff += 1 # increase stiffener count
-                            eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = new_output
-                            break
-                        elif orig_output[1] is not None and new_output[1] is None:
-                            eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
-                            break
-                        elif orig_output[1] is None and new_output[1] is None:
-                            eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
-                            break # None, we going to be skipping this trial
-                        else: # both not None
-                            rel_diff = abs( (orig_output[1] - new_output[1]) / orig_output[1] )
-                            if rel_diff < 0.1: # don't chang enumber of stiffeners
-                                eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
-                                break
-                            else: # makes a difference, increase stiffener count
-                                num_stiff += 1 # increase stiffener count
-                                orig_output = new_output
-                                # now we loop again
-
-                    # end of while loop for increasing # stiffeners
-                else: # not in high stiffening region yet, don't check num stiffeners
-                    eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
-
-                if comm.rank == 0:
-                    material_name = "metal" if args.metal else composite_material.__name__
-                    ply_angle = 0.0 if args.metal else ply_angle
-                    print(f"{gamma=} {rho0=} {num_stiff=} {ply_angle=} {material_name=} {plate_slenderness=}")
-
-                # run the buckling analysis
-                # -------------------------                
 
                 if comm.rank == 0:
                     print(f"{eig_CF=}, {eig_FEA=} {stiff_analysis.gamma=}")
