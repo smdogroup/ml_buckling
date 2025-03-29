@@ -7,10 +7,9 @@ def get_buckling_load(
     comm,
     rho0:float, 
     gamma:float,
-    ply_angle:float,
     plate_slenderness:float,
     num_stiff:int,
-    material_method,
+    plate_material,
     nelems:int=2000,
     prev_eig_dict:dict=None,
     is_axial:bool=True, 
@@ -28,12 +27,6 @@ def get_buckling_load(
     b = h * plate_slenderness
     # h = b / plate_slenderness  # 10 mm
     nstiff = num_stiff if gamma > 0 else 0
-
-    plate_material = material_method(
-        ply_angles=[ply_angle],
-        ply_fractions=[1.0],
-        ref_axis=[1.0, 0.0, 0.0],
-    )
 
     # temporary debug change to metal
     if debug:
@@ -54,19 +47,21 @@ def get_buckling_load(
         else:
             ply_angle = 30.0
 
-            plate_material = material_method(
+            plate_material = mlb.CompositeMaterial.solvay5320(
                 ply_angles=[ply_angle],
                 ply_fractions=[1.0],
                 ref_axis=[1, 0, 0],
             )
         
 
-        rho0 = 5.0; gamma = 0.01
+        rho0 = 5.0
+        gamma = 3.0
         plate_slenderness = 100.0
+        nstiff = 5
 
-        # change to zero stiffeners
-        gamma = 0.0
-        nstiff = 0
+        # # change to zero stiffeners
+        # gamma = 0.0
+        # nstiff = 0
 
     stiff_material = plate_material
 
@@ -134,7 +129,7 @@ def get_buckling_load(
 
     ct = 0
     solved = False
-    while not(solved) or ct < 5:
+    while not(solved) and ct < 5:
         ct += 1
         xopt = sopt.fsolve(func=gamma_rho0_resid, x0=guess_x0, xtol=1e-8)
         myresid = gamma_rho0_resid(xopt)

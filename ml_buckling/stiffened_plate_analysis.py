@@ -1302,6 +1302,15 @@ class StiffenedPlateAnalysis:
                     # assume G23, G13 = G12
                     G23 = G12
                     G13 = G12
+
+                    # to prevent stiffener crippling, make stiffeners stronger in transverse shear
+                    # otherwise with composites, can dominate the modes (doesn't affect in-plane of stiffener, just trying this out)
+                    # does actually affect the eigenvalues.. don't do it
+                    # if "stiff" in compDescript:
+                    #     G23 *= 5
+                    #     G13 *= 5
+
+
                     ortho_prop = constitutive.MaterialProperties(
                         E1=util.E11,
                         E2=util.E22,
@@ -1778,23 +1787,29 @@ class StiffenedPlateAnalysis:
             xi2 = self.nondim_X[:,0].astype(np.double)
             eta2 = self.nondim_X[:,1].astype(np.double)
             phi2 = self._eigenvectors[imode][2::6].astype(np.double) # w component
+            # print(f"{phi2.shape=}")
 
             # get meshgrid format of new mesh
-            xi2_unique = np.unique(np.round(xi2, 4))
-            eta2_unique = np.unique(np.round(eta2, 4))
+            xi2_unique = np.unique(np.round(xi2, 5))
+            eta2_unique = np.unique(np.round(eta2, 5))
             XI2, ETA2 = np.meshgrid(xi2_unique, eta2_unique)
             PHI2 = np.zeros(XI2.shape)
             nxi = XI2.shape[1]
             neta = XI2.shape[0]
+            # dxi = np.diff(xi2_unique)[0]
+            # deta = np.diff(eta2_unique)[0]
             for ixi in range(nxi):
                 for ieta in range(neta):
-                    mask = np.logical_and(
-                        np.abs(xi2 - xi2_unique[ixi]) < 0.03,
-                        np.abs(eta2 - eta2_unique[ieta]) < 0.03
-                    )
-                    # print(f"{mask=} {np.sum(mask)=} {mask.shape=}")
-                    phi2_val = phi2[mask][0]
-                    PHI2[ieta, ixi] = phi2_val
+                    # find the closest point to the unique xi value
+                    distances = (xi2 - xi2_unique[ixi])**2 + (eta2 - eta2_unique[ieta])**2
+                    ind = np.argmin(distances)
+                    # mask = np.logical_and(
+                    #     np.abs(xi2 - xi2_unique[ixi]) < 0.01,
+                    #     np.abs(eta2 - eta2_unique[ieta]) < 0.01
+                    # )
+                    # print(f"{dxi=} {deta=} {mask=} {np.sum(mask)=} {mask.shape=}")
+                    # phi2_val = phi2[mask][0]
+                    PHI2[ieta, ixi] = phi2[ind]
 
             # now interpolate phi1 onto new mesh
             PHI1_interp = interp(XI2, ETA2)

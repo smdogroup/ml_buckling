@@ -27,6 +27,9 @@ parent_parser.add_argument(
     "--axial", default=True, action=argparse.BooleanOptionalAction
 )
 parent_parser.add_argument(
+    "--metal", default=True, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
     "--debug", default=False, action=argparse.BooleanOptionalAction
 )
 args = parent_parser.parse_args()
@@ -64,21 +67,27 @@ if __name__ == "__main__":
     composite_materials = mlb.CompositeMaterial.get_materials()
 
     num_models = 0
-    while (num_models < 2000):
+    while (num_models < 1000): # 1000 each for metal + then composites
 
         # loop over rho0, gamma
         # ---------------------
+
+        failed_in_a_row = 0
 
         for log_gamma in loggamma_vec:
             gamma = np.exp(log_gamma) - 1.0 # since log_gamma = np.log(1+gamma)
 
             prev_eig_dict = None
 
+            if failed_in_a_row > 15 and not(args.metal):
+                # composites can start to fail a bunch with stiffener crippling
+                break # restart gamma loop
+
             # choosing randomness here, so that consistent xi, zeta in the inner rho0 loops
             # otherwise mode tracking for very low rho0 doesn't work
             # -----------------------------------------------------
 
-            ply_angle = None; plate_slenderness = None; composite_material = None
+            ply_angle = None; plate_slenderness = None; plate_material = None
             if comm.rank == 0:
 
                 # choose random ply angle 0 to 90
@@ -89,10 +98,30 @@ if __name__ == "__main__":
                 plate_slenderness = np.exp(log_slenderness)
 
                 # choose a random material
-                composite_material = np.random.choice(np.array(composite_materials))
+                if args.metal:
+                    E = 138e9; nu = 0.3
+                    G = E / 2.0 / (1 + nu)
+                    plate_material = mlb.CompositeMaterial(
+                        E11=E,  # Pa
+                        E22=E,
+                        G12=G,
+                        nu12=nu,
+                        ply_angles=[0], # ply angle doesn't really matter with metal
+                        ply_fractions=[1.0],
+                        ref_axis=[1, 0, 0],
+                    )
+                else:
+                    composite_material = np.random.choice(np.array(composite_materials))
+
+                    plate_material = composite_material(
+                        ply_angles=[ply_angle],
+                        ply_fractions=[1.0],
+                        ref_axis=[1.0, 0.0, 0.0],
+                    )
+
             ply_angle = comm.bcast(ply_angle, root=0)
             plate_slenderness = comm.bcast(plate_slenderness, root=0)
-            composite_material = comm.bcast(composite_material, root=0)
+            plate_material = comm.bcast(plate_material, root=0)
 
             for log_rho in logrho_vec[::-1]: # go in reverse order so that mode tracking can be done
                 if args.axial: # log_rho = ln(rho0^*) = ln(rho0 / sqrt[4]{1+gamma})
@@ -110,7 +139,9 @@ if __name__ == "__main__":
                 # use_single_stiffener = log_rho < 0.0
                 num_stiff = 1 if use_single_stiffener else 9
 
-                print(f"{gamma=} {rho0=} {num_stiff=} {ply_angle=} {composite_material.__name__=} {plate_slenderness=}")
+                if comm.rank == 0:
+                    material_name = "metal" if args.metal else composite_material.__name__
+                    print(f"{gamma=} {rho0=} {num_stiff=} {ply_angle=} {material_name=} {plate_slenderness=}")
 
                 # run the buckling analysis
                 # -------------------------
@@ -120,12 +151,11 @@ if __name__ == "__main__":
                     comm,
                     rho0=rho0,
                     gamma=gamma,
-                    ply_angle=ply_angle,
                     plate_slenderness=plate_slenderness,
                     num_stiff=num_stiff,
-                    material_method=composite_material,
+                    plate_material=plate_material,
                     nelems=2000, #2000
-                    prev_eig_dict=prev_eig_dict,
+                    prev_eig_dict=None, #prev_eig_dict,
                     is_axial=args.axial,
                     solve_buckling=True,
                     debug=args.debug,
@@ -136,12 +166,16 @@ if __name__ == "__main__":
 
                 if eig_FEA is None:
                     eig_FEA = np.nan  # just leave value as almost zero..
+                    failed_in_a_row += 1
                     continue
                 else:
                     prev_eig_dict = new_eig_dict
+                    failed_in_a_row = 0
 
                 # write out as you go so you can see the progress and if run gets killed you don't lose it all
                 if comm.rank == 0:
+                    my_material = "metal" if args.metal else composite_material.__name__
+
                     num_models += 1 # increment the number of models
                     raw_data_dict = {
                         # training parameter section
@@ -150,6 +184,7 @@ if __name__ == "__main__":
                         "gamma": [stiff_analysis.gamma],
                         "zeta": [stiff_analysis.zeta_plate],
                         "num_stiff" : [num_stiff],
+                        "material" : [my_material],
                         "eig_FEA": [np.real(eig_FEA)],
                         "eig_CF": [eig_CF],
                         "time" : [dt],
@@ -162,7 +197,7 @@ if __name__ == "__main__":
                     )
 
                     # check mesh convergence..
-                # exit()
+                if args.debug: exit()
 
 
 
