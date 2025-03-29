@@ -1286,39 +1286,63 @@ class StiffenedPlateAnalysis:
                 con = constitutive.IsoShellConstitutive(mat, t=thickness)
 
             else:  # orthotropic
-                # assume G23, G13 = G12
-                G23 = material.G12 if material._G23 is None else material._G23
-                G13 = material.G12 if material._G13 is None else material._G13
-                ortho_prop = constitutive.MaterialProperties(
-                    E1=material.E11,
-                    E2=material.E22,
-                    nu12=material.nu12,
-                    G12=material.G12,
-                    G23=G23,
-                    G13=G13,
-                )
+                # if single ply we do this
+                # print(f"{len(material.ply_angles)=}")
+                if len(material.ply_angles) == 1 or len(material.ply_angles) == 2: # sym
+                    util = CompositeMaterialUtility(
+                        E11=material.E11, E22=material.E22, nu12=material.nu12, G12=material.G12
+                    ).rotate_ply(material._ply_angles[0])
+                    G12 = util.G12
+                    E11 = util.E11
+                    E22 = util.E22
+                    nu12 = util.nu12
+                    # print(f"{G12=} {E11=} {E22=} {nu12=}")
+
+
+                    # assume G23, G13 = G12
+                    G23 = G12
+                    G13 = G12
+                    ortho_prop = constitutive.MaterialProperties(
+                        E1=util.E11,
+                        E2=util.E22,
+                        nu12=util.nu12,
+                        G12=util.G12,
+                        G23=G23,
+                        G13=G13,
+                    )
+
+                else:
+                    raise AssertionError("Doesn't support multi-ply laminate right now, needs verification.")
 
                 ortho_ply = constitutive.OrthotropicPly(thickness, ortho_prop)
 
                 # make sure it is a symmetric laminate by doing the symmetric number of plies
                 # right now assume it is symmetric
 
-                # how to make sure it is a symmetric laminate?
                 con = constitutive.CompositeShellConstitutive(
-                    [ortho_ply] * material.num_plies,
-                    np.array(material.get_ply_thicknesses(thickness), dtype=dtype),
-                    np.array(material.rad_ply_angles, dtype=dtype),
+                    [ortho_ply],
+                    np.array([thickness], dtype=dtype),
+                    np.array([0], dtype=dtype),
                     tOffset=0.0,
                 )
+
+                # how to make sure it is a symmetric laminate?
+                # con = constitutive.CompositeShellConstitutive(
+                #     [ortho_ply] * material.num_plies,
+                #     np.array(material.get_ply_thicknesses(thickness), dtype=dtype),
+                #     np.array(material.rad_ply_angles, dtype=dtype),
+                #     tOffset=0.0,
+                # )
 
             # For each element type in this component,
             # pass back the appropriate tacs element object
             elemList = []
             for descript in elemDescripts:
-                if ref_axis is None:
-                    transform = None
-                else:
-                    transform = elements.ShellRefAxisTransform(ref_axis)
+                # if ref_axis is None:
+                #     transform = None
+                # else:
+                #     transform = elements.ShellRefAxisTransform(ref_axis)
+                transform = None
                 if descript in ["CQUAD4", "CQUADR"]:
                     elem = elements.Quad4Shell(transform, con)
                 elif descript in ["CQUAD9", "CQUAD"]:

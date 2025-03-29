@@ -9,6 +9,7 @@ sys.path.append("src/")
 from buckling_analysis import get_buckling_load 
 
 comm = MPI.COMM_WORLD
+np.random.seed(123456)
 
 """
 main dataset generation for finite element dataset of paper
@@ -24,6 +25,9 @@ parent_parser.add_argument(
 )
 parent_parser.add_argument(
     "--axial", default=True, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
+    "--debug", default=False, action=argparse.BooleanOptionalAction
 )
 args = parent_parser.parse_args()
 
@@ -54,7 +58,8 @@ if __name__ == "__main__":
     # only generates stiffened data, unstiffened we can downsample but we already have that data
     
     logrho_vec = np.linspace(-2.0, 2.0, 20) #ln(rho0 or rho0^*)
-    loggamma_vec = np.linspace(0.0, 3.0, 10) # ln(1+gamma)
+    loggamma_vec = np.linspace(0.1, 3.0, 10) # ln(1+gamma)
+    # loggamma_vec = np.linspace(0.01, 3.0, 10) # ln(1+gamma)
 
     composite_materials = mlb.CompositeMaterial.get_materials()
 
@@ -73,17 +78,23 @@ if __name__ == "__main__":
             # otherwise mode tracking for very low rho0 doesn't work
             # -----------------------------------------------------
 
-            # choose random ply angle 0 to 90
-            ply_angle = np.random.uniform(0.0, 90.0) # in deg
-            
-            # choose random slenderness 10 to 200
-            log_slenderness = np.random.uniform(np.log(10.0), np.log(200.0))
-            plate_slenderness = np.exp(log_slenderness)
+            ply_angle = None; plate_slenderness = None; composite_material = None
+            if comm.rank == 0:
 
-            # choose a random material
-            composite_material = np.random.choice(np.array(composite_materials))
+                # choose random ply angle 0 to 90
+                ply_angle = np.random.uniform(0.0, 90.0) # in deg
+                
+                # choose random slenderness 10 to 200
+                log_slenderness = np.random.uniform(np.log(10.0), np.log(200.0))
+                plate_slenderness = np.exp(log_slenderness)
 
-            for log_rho in logrho_vec:
+                # choose a random material
+                composite_material = np.random.choice(np.array(composite_materials))
+            ply_angle = comm.bcast(ply_angle, root=0)
+            plate_slenderness = comm.bcast(plate_slenderness, root=0)
+            composite_material = comm.bcast(composite_material, root=0)
+
+            for log_rho in logrho_vec[::-1]: # go in reverse order so that mode tracking can be done
                 if args.axial: # log_rho = ln(rho0^*) = ln(rho0 / sqrt[4]{1+gamma})
                     rho0_star = np.exp(log_rho)
                     rho0 = rho0_star * (1.0 + gamma)**0.25
@@ -95,13 +106,16 @@ if __name__ == "__main__":
 
                 # approx boundary of 1 stiffener so that (-2,0) and (0.5, 1.5) from stiffener study are on boundary
 
-                use_single_stiffener = (log_rho + log_gamma) < 2.0
+                use_single_stiffener = log_gamma < 0.6 * (log_rho + 1.0)
+                # use_single_stiffener = log_rho < 0.0
                 num_stiff = 1 if use_single_stiffener else 9
+
+                print(f"{gamma=} {rho0=} {num_stiff=} {ply_angle=} {composite_material.__name__=} {plate_slenderness=}")
 
                 # run the buckling analysis
                 # -------------------------
 
-                eig_CF, eig_FEA, stiff_analysis, prev_eig_dict, dt = \
+                eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = \
                 get_buckling_load(
                     comm,
                     rho0=rho0,
@@ -110,10 +124,11 @@ if __name__ == "__main__":
                     plate_slenderness=plate_slenderness,
                     num_stiff=num_stiff,
                     material_method=composite_material,
-                    nelems=2000,
+                    nelems=2000, #2000
                     prev_eig_dict=prev_eig_dict,
                     is_axial=args.axial,
-                    solve_buckling=True
+                    solve_buckling=True,
+                    debug=args.debug,
                 )
 
                 if comm.rank == 0:
@@ -122,6 +137,8 @@ if __name__ == "__main__":
                 if eig_FEA is None:
                     eig_FEA = np.nan  # just leave value as almost zero..
                     continue
+                else:
+                    prev_eig_dict = new_eig_dict
 
                 # write out as you go so you can see the progress and if run gets killed you don't lose it all
                 if comm.rank == 0:
@@ -141,8 +158,11 @@ if __name__ == "__main__":
                     first_write = num_models == 1 and args.clear
                     raw_df.to_csv(
                         raw_csv_path, mode="w" if first_write else "a", header=first_write,
-                        float_format="%.4f"
+                        float_format="%.6f"
                     )
+
+                    # check mesh convergence..
+                # exit()
 
 
 

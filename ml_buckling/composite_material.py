@@ -32,6 +32,16 @@ class CompositeMaterial:
         self.ref_axis = np.array(ref_axis)
 
     @property
+    def rotated_material(self):
+        """need to rotate the material with the ply angle"""
+        # assume single rotated ply here
+        util = CompositeMaterialUtility(
+            E11=self.E11, E22=self.E22, nu12=self.nu12, G12=self.G12
+        ).rotate_ply(self._ply_angles[0])
+        return 
+
+
+    @property
     def num_plies(self) -> int:
         assert len(self.ply_angles) == len(self.ply_fractions)
         assert sum(self.ply_fractions) == 1.0

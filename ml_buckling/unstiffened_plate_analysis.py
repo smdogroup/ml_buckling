@@ -881,6 +881,7 @@ class UnstiffenedPlateAnalysis:
                 con = constitutive.IsoShellConstitutive(mat, t=self.h)
 
             else:  # orthotropic
+
                 # assume G23, G13 = G12
                 G23 = self.G12 if self._G23 is None else self._G23
                 G13 = self.G12 if self._G13 is None else self._G13
@@ -892,6 +893,12 @@ class UnstiffenedPlateAnalysis:
                     G23=G23,
                     G13=G13,
                 )
+
+                G12 = self.G12
+                E11 = self.E11
+                E22 = self.E22
+                nu12 = self.nu12
+                print(f"{G12=} {E11=} {E22=} {nu12=} {G23=} {G13=}")
 
                 ortho_ply = constitutive.OrthotropicPly(self.h, ortho_prop)
 
@@ -951,9 +958,9 @@ class UnstiffenedPlateAnalysis:
             SP.writeSolution(outputDir=static_folder)
 
         # test the average stresses routine
-        avgStresses = FEAAssembler.assembler.getAverageStresses()
-        print(f"avg Stresses = {avgStresses}")
-        return avgStresses
+        # avgStresses = FEAAssembler.assembler.getAverageStresses()
+        # print(f"avg Stresses = {avgStresses}")
+        # return avgStresses
 
     def run_buckling_analysis(
         self,
