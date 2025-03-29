@@ -11,18 +11,24 @@ def get_buckling_load(
     num_stiff:int,
     plate_material,
     nelems:int=2000,
+    stiff_AR:float=20.0,
+    sigma_eig:float=5.0,
     prev_eig_dict:dict=None,
     is_axial:bool=True, 
     solve_buckling:bool=True, 
+    ant_hs_ind:int=0,
+    b:float=1.0,
     debug:bool=False,
+    plot_debug:bool=False,
 ):
-
+    
     start_time = time.time()
 
     # set fixed geometry parameters
-    stiff_AR = 20.0
-    h = 0.1
-    b = h * plate_slenderness
+    b = 1.0
+    h = b / plate_slenderness
+    # h = 0.1
+    # b = h * plate_slenderness
     nstiff = num_stiff if gamma > 0 else 0
 
     stiff_material = plate_material
@@ -42,6 +48,8 @@ def get_buckling_load(
         rho0,
         gamma,
         debug,
+        plot_debug=plot_debug,
+        hs_ind=ant_hs_ind,
     )
     
 
@@ -96,7 +104,7 @@ def get_buckling_load(
     if solve_buckling:
 
         tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-            sigma=5.0, num_eig=100, write_soln=True  # 50, 100
+            sigma=sigma_eig, num_eig=100, write_soln=True  # 50, 100
         )
         stiff_analysis.post_analysis()
 

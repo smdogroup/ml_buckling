@@ -19,6 +19,8 @@ def ant_optimization(
     rho0:float,
     gamma:float,
     debug:bool=False,
+    plot_debug:bool=False,
+    hs_ind:int=0,
 ):
      
     target_log_gamma = np.log10(1.0+gamma)
@@ -86,7 +88,7 @@ def ant_optimization(
     if comm.rank == 0:
         print(f"ant finding method: {solns}")
 
-    if debug:
+    if plot_debug:
         import matplotlib.pyplot as plt
         log_hw = np.linspace(-3.0, 2.0, 50)
         log_rho = np.linspace(-2, 2, 40)
@@ -106,8 +108,9 @@ def ant_optimization(
 
     # now select xopt form min first arg of the solns
     hws = [xopt[0] for xopt in solns]
-    ind = np.argmin(np.array(hws))
-    xopt = solns[ind]
+    # ind = np.argmin(np.array(hws))
+    # ind = hws[hs_ind]
+    xopt = solns[hs_ind]
 
     h_w = 10**(xopt[0])
     AR = 10**(xopt[1])

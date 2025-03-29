@@ -167,6 +167,8 @@ if __name__ == "__main__":
                     is_axial=args.axial,
                     solve_buckling=True,
                     debug=args.debug,
+                    b=1.0,
+                    stiff_AR=15.0 # works better than 20.0 for getting more high gamma, low rho0 data
                 )
 
                 if comm.rank == 0:
