@@ -17,7 +17,7 @@ from eval_utils import *
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
-parent_parser.add_argument("--ntrain", type=int, default=3000)
+parent_parser.add_argument("--ntrain", type=int, default=1000)
 parent_parser.add_argument("--kfold", type=int, default=10)
 parent_parser.add_argument("--gammalb", type=int, default=1e-1)
 parent_parser.add_argument("--opt", action=argparse.BooleanOptionalAction, default=True, help="Enable or disable axial mode (default: False)")
@@ -102,17 +102,13 @@ theta0 = np.array([5.0, 1.0, 1e-1, 1.0, 2.0, 1.0] + [-2])
 ubounds = np.array([10.0]*6 + [0])
 
 if not args.opt:
-    pass
-    theta_opt_v1 = np.array([5.080335025828115, 0.1, 10.0, 0.7564161097004841, 1.6312811045492983, 0.0001, -1.0314949162668399])
+   #axial_theta_opt = np.array([5.0, 1.0, 1.358, 2.932, 2.65, 1.0535, -3.85])
+#    axial_theta_opt = np.array([5.192313725900239, 0.9412249195103626, 1.2324562689188556, 2.879985114121687, 2.7464172169558236, 1.0284230103369494, -3.855218420826866])
+   axial_theta_opt = np.array([5.5533203426023485, 0.9443455962430025, 1.3695651227634686, 2.76061721242234, 3.122342726035284, 0.5937776004840607, -3.7852834802145163])
+   #axial_theta_opt[2] = 0.1
+#    theta0 = axial_theta_opt
+   theta0 = theta0
 
-    # theta_opt_v2 = np.array([ 1.50257002e+00,  1.00000000e-03,  2.37987533e+00,  7.41594755e-01,
-    #     1.66484694e+00,  1.00000000e-04, -1.30803643e+00])
-    # theta_opt = np.array([ 1.27759746e+00,  1.00000000e-01,  1.00000000e+01,  7.46292826e-01,
-    #     1.69054504e+00,  1.00000000e-04, -1.01856337e+00])
-
-    # theta0 = theta_opt_v2
-    # theta0 = theta_opt_v1
-    theta0 = theta0
 
 # prelim train the model for plotting
 # -----------------------------------
