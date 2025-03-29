@@ -135,12 +135,20 @@ if __name__ == "__main__":
 
                 # approx boundary of 1 stiffener so that (-2,0) and (0.5, 1.5) from stiffener study are on boundary
 
-                use_single_stiffener = log_gamma < 0.6 * (log_rho + 1.0)
+                # debug
+                if args.debug:
+                    # gamma = 3.0; rho0 = 1.0
+                    gamma = 0.105; rho0 = 0.26
+                    log_gamma = np.log(1+gamma); log_rho = np.log(rho0)
+                    if args.axial: log_rho -= 0.25 * log_gamma
+
+                use_single_stiffener = log_gamma < 0.6 * (log_rho + 1.5)
                 # use_single_stiffener = log_rho < 0.0
                 num_stiff = 1 if use_single_stiffener else 9
 
                 if comm.rank == 0:
                     material_name = "metal" if args.metal else composite_material.__name__
+                    ply_angle = 0.0 if args.metal else ply_angle
                     print(f"{gamma=} {rho0=} {num_stiff=} {ply_angle=} {material_name=} {plate_slenderness=}")
 
                 # run the buckling analysis
@@ -162,7 +170,7 @@ if __name__ == "__main__":
                 )
 
                 if comm.rank == 0:
-                    print(f"{eig_CF=}, {eig_FEA=}")
+                    print(f"{eig_CF=}, {eig_FEA=} {stiff_analysis.gamma=}")
 
                 if eig_FEA is None:
                     eig_FEA = np.nan  # just leave value as almost zero..
@@ -171,6 +179,8 @@ if __name__ == "__main__":
                 else:
                     prev_eig_dict = new_eig_dict
                     failed_in_a_row = 0
+
+                if args.debug: exit()
 
                 # write out as you go so you can see the progress and if run gets killed you don't lose it all
                 if comm.rank == 0:
@@ -197,7 +207,6 @@ if __name__ == "__main__":
                     )
 
                     # check mesh convergence..
-                if args.debug: exit()
 
 
 

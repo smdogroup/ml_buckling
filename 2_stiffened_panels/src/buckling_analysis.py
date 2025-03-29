@@ -1,7 +1,7 @@
 import time
 import ml_buckling as mlb
-import scipy.optimize as sopt
 import numpy as np
+from ant_optimization import ant_optimization
 
 def get_buckling_load(
     comm,
@@ -19,132 +19,35 @@ def get_buckling_load(
 
     start_time = time.time()
 
+    # set fixed geometry parameters
     stiff_AR = 20.0
-    # stiff_AR = 10.0
-    # plate_SR = 100.0  # 100.0
     h = 0.1
-    # h = 1.0 # need larger h for more accurate buckling analysis potentially
     b = h * plate_slenderness
-    # h = b / plate_slenderness  # 10 mm
     nstiff = num_stiff if gamma > 0 else 0
-
-    # temporary debug change to metal
-    if debug:
-        change_to_metal = False
-        if change_to_metal:
-            nu = 0.3
-            E = 138e9
-            G = E / 2.0 / (1 + nu)
-            plate_material = mlb.CompositeMaterial(
-                E11=E,  # Pa
-                E22=E,
-                G12=G,
-                nu12=nu,
-                ply_angles=[0],
-                ply_fractions=[1.0],
-                ref_axis=[1, 0, 0],
-            )
-        else:
-            ply_angle = 30.0
-
-            plate_material = mlb.CompositeMaterial.solvay5320(
-                ply_angles=[ply_angle],
-                ply_fractions=[1.0],
-                ref_axis=[1, 0, 0],
-            )
-        
-
-        rho0 = 5.0
-        gamma = 3.0
-        plate_slenderness = 100.0
-        nstiff = 5
-
-        # # change to zero stiffeners
-        # gamma = 0.0
-        # nstiff = 0
 
     stiff_material = plate_material
 
-    target_log_gamma = np.log10(1.0+gamma)
-    target_log_rho = np.log10(rho0)
 
-    if nstiff > 0:
-        def gamma_rho0_resid(x):
-            # x is [log10(h_w), log10(AR)]
-            h_w = 10**x[0]
-            AR = 10**x[1]
-            t_w = h_w / stiff_AR
+    # ant optimization method here to minimize R(xhat)
+    # ------------------------------------------------
 
-            a = AR * b
-
-            geometry = mlb.StiffenedPlateGeometry(
-                a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=t_w
-            )
-            stiff_analysis = mlb.StiffenedPlateAnalysis(
-                comm=comm,
-                geometry=geometry,
-                stiffener_material=stiff_material,
-                plate_material=plate_material,
-            )
-
-            pred_log_rho0 = np.log10(stiff_analysis.affine_aspect_ratio)
-            pred_log_gamma = np.log10(1.0 + stiff_analysis.gamma)
-            return [target_log_rho - pred_log_rho0, target_log_gamma - pred_log_gamma]
-    else: # nstiff == 0
-        def gamma_rho0_resid(x):
-            # x is [log10(h_w), log10(AR)]
-            h_w = 10**x[0]
-            AR = 10**x[1]
-            t_w = h_w / stiff_AR
-
-            a = AR * b
-
-            geometry = mlb.StiffenedPlateGeometry(
-                a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=t_w
-            )
-            stiff_analysis = mlb.StiffenedPlateAnalysis(
-                comm=comm,
-                geometry=geometry,
-                stiffener_material=stiff_material,
-                plate_material=plate_material,
-            )
-
-            pred_log_rho0 = np.log10(stiff_analysis.affine_aspect_ratio)
-            pred_log_gamma = np.log10(1.0 + stiff_analysis.gamma)
-            return [target_log_rho - pred_log_rho0, np.log10(h_w) + 7]
+    h_w, AR, a = ant_optimization(
+        comm,
+        plate_material,
+        stiff_material,
+        nstiff,
+        stiff_AR,
+        b,
+        h,
+        rho0,
+        gamma,
+        debug,
+    )
     
-    # get best initial condition 
-    min_err = np.inf
-    for log_hw in np.linspace(-3, 1, 20):
-        for log_rho in np.linspace(-2, 2, 20):
-            myresid = gamma_rho0_resid([log_hw, log_rho])
-            resid_norm = np.linalg.norm(np.array(myresid))
-            if resid_norm < min_err:
-                if nstiff == 0:
-                    guess_x0 = (-7, log_rho)
-                else:
-                    guess_x0 = (log_hw, log_rho)
-                min_err = resid_norm
-    print(f"{guess_x0=} {resid_norm=}")
-
-    ct = 0
-    solved = False
-    while not(solved) and ct < 5:
-        ct += 1
-        xopt = sopt.fsolve(func=gamma_rho0_resid, x0=guess_x0, xtol=1e-8)
-        myresid = gamma_rho0_resid(xopt)
-        solved = np.linalg.norm(myresid) < 1e-5
-
-    h_w = 10**(xopt[0])
-    AR = 10**(xopt[1])
-    a = b * AR
-
-    # # now double check residual error
-    # resid = gamma_rho0_resid(xopt)
-    # print(f"{xopt=}")
-    # print(f"{resid=}")
 
     # make a new plate geometry
+    # -------------------------
+
     geometry = mlb.StiffenedPlateGeometry(
         a=a, b=b, h=h, num_stiff=nstiff, h_w=h_w, t_w=h_w / stiff_AR
     )
@@ -155,7 +58,8 @@ def get_buckling_load(
         plate_material=plate_material,
     )
 
-    # print(f"achieved {stiff_analysis.gamma=} {stiff_analysis.affine_aspect_ratio=}")
+    #if comm.rank == 0:
+    print(f"achieved {stiff_analysis.gamma=} {stiff_analysis.affine_aspect_ratio=}")
     # exit()
 
     _nelems = nelems
