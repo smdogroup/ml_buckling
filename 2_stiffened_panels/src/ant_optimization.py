@@ -22,6 +22,8 @@ def ant_optimization(
     plot_debug:bool=False,
     hs_ind:int=0,
 ):
+    
+    print(f"ant opt: {comm.rank} checkpt0", flush=True)
      
     target_log_gamma = np.log10(1.0+gamma)
     # target_log_rho0 = np.log10(rho0)
@@ -63,6 +65,8 @@ def ant_optimization(
                 min_err = resid_norm
     if comm.rank == 0: print(f"{guess_x0=} {min_err=}")
 
+    print(f"ant opt: {comm.rank} checkpt1", flush=True)
+
     # now solve in 10x10 different spots (to try and find the multiple unique solutions)
     log_hw_vec = np.linspace(-3, 2.0, 10); dlog_hw = np.diff(log_hw_vec)[0]
     log_rho_vec = np.linspace(-3, 3.0, 10); dlog_rho = np.diff(log_rho_vec)[0]
@@ -85,8 +89,9 @@ def ant_optimization(
         if len(solns) > 0: break
                 
 
+    print(f"ant opt: {comm.rank} checkpt2", flush=True)
     if comm.rank == 0:
-        print(f"ant finding method: {solns}")
+        print(f"ant finding method: {solns}", flush=True)
 
     if plot_debug:
         import matplotlib.pyplot as plt
@@ -116,7 +121,9 @@ def ant_optimization(
     AR = 10**(xopt[1])
     a = b * AR
 
+    print(f"ant opt: {comm.rank} checkpt3", flush=True)
+
     if comm.rank == 0:
-        print(f"soln of R(xhat): {h_w=} {AR=}")
+        print(f"soln of R(xhat): {h_w=} {AR=}", flush=True)
 
     return h_w, AR, a

@@ -61,6 +61,7 @@ if __name__ == "__main__":
     # only generates stiffened data, unstiffened we can downsample but we already have that data
     
     logrho_vec = np.linspace(-2.0, 2.0, 20) #ln(rho0 or rho0^*)
+    #logrho_vec = np.linspace(-2.0, 2.0, 3) # debugging
     loggamma_vec = np.linspace(0.1, 3.0, 10) # ln(1+gamma)
     # loggamma_vec = np.linspace(0.01, 3.0, 10) # ln(1+gamma)
 
@@ -133,6 +134,10 @@ if __name__ == "__main__":
                 else:
                     rho0 = np.exp(log_rho)
 
+                if comm.rank == 0: 
+                    print("\n----------------------------------------------------\n")
+                    print(f"{num_models=} : new design with {gamma=} {rho0=} {num_stiff=}\n\n", flush=True)
+
                 # choose the number of stiffeners based on (log_rho, log_gamma)
                 # ------------------------------------------------------------
 
@@ -165,14 +170,19 @@ if __name__ == "__main__":
                     b=1.0,
                     stiff_AR=15.0 # works better than 20.0 for getting more high gamma, low rho0 data
                 )
+                comm.Barrier()
 
                 # loop to check stiffener counts
-                stiffened_region = log_gamma < 0.6 * (log_rho + 1.5)
+                stiffened_region = log_gamma >= 0.6 * (log_rho + 1.5)
 
                 if stiffened_region: # check if we need to increase # stiffeners
-                    print("In stiffened region, check if we need more stiffeners:\n\n")
-                    while (num_stiff < 7):
-                        print(f"\tcheck increasing num_stiff to {num_stiff+1}")
+                    if comm.rank == 0: print("In stiffened region, check if we need more stiffeners:\n\n")
+                    eig_FEA = None
+                    if num_stiff == 9: # the max
+                        eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
+
+                    while (num_stiff < 9):
+                        if comm.rank == 0: print(f"\tcheck increasing num_stiff to {num_stiff+1}")
                         # propose increasing the stiffener count
                         new_output = get_buckling_load(
                             comm,
@@ -189,22 +199,27 @@ if __name__ == "__main__":
                             b=1.0,
                             stiff_AR=15.0 # works better than 20.0 for getting more high gamma, low rho0 data
                         )
+                        comm.Barrier()
 
                         # compare FEA eigenvalues aka entry 1
                         if orig_output[1] is None and new_output[1] is not None:
                             num_stiff += 1 # increase stiffener count
                             eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = new_output
-                            break
+                            orig_output = new_output # so we compare to new working eigval
+                            # continue, but still need to check it's converged too
                         elif orig_output[1] is not None and new_output[1] is None:
                             eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
+                            # orig_output stays the same
                             break
                         elif orig_output[1] is None and new_output[1] is None:
+                            # both None, increase # stiffeners and try again
                             eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
-                            break # None, we going to be skipping this trial
+                            num_stiff += 1 # both None, no need to change orig_output
                         else: # both not None
                             rel_diff = abs( (orig_output[1] - new_output[1]) / orig_output[1] )
                             if rel_diff < 0.1: # don't chang enumber of stiffeners
-                                eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
+                                # might as well use new_output since we ran it
+                                eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = new_output
                                 break
                             else: # makes a difference, increase stiffener count
                                 num_stiff += 1 # increase stiffener count
@@ -224,7 +239,8 @@ if __name__ == "__main__":
                 # -------------------------                
 
                 if comm.rank == 0:
-                    print(f"{eig_CF=}, {eig_FEA=} {stiff_analysis.gamma=}")
+                    print(f"model {num_models} : {eig_CF=}, {eig_FEA=} {stiff_analysis.gamma=}", flush=True)
+                    print("---------------------------------\n\n")
 
                 if eig_FEA is None:
                     eig_FEA = np.nan  # just leave value as almost zero..

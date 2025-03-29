@@ -51,6 +51,8 @@ def get_buckling_load(
         plot_debug=plot_debug,
         hs_ind=ant_hs_ind,
     )
+
+    print(f"{comm.rank} checkpt-2", flush=True)
     
 
     # make a new plate geometry
@@ -66,8 +68,10 @@ def get_buckling_load(
         plate_material=plate_material,
     )
 
+    print(f"{comm.rank} checkpt-1", flush=True)
+
     #if comm.rank == 0:
-    print(f"achieved {stiff_analysis.gamma=} {stiff_analysis.affine_aspect_ratio=}")
+    print(f"achieved {stiff_analysis.gamma=} {stiff_analysis.affine_aspect_ratio=}", flush=True)
     # exit()
 
     _nelems = nelems
@@ -81,6 +85,7 @@ def get_buckling_load(
     nz = 3
 
     # print(f"{nx=} {ny=} {nz=}")
+    print(f"{comm.rank} checkpt0", flush=True)
 
     if solve_buckling:
         stiff_analysis.pre_analysis(
@@ -95,6 +100,7 @@ def get_buckling_load(
             _explicit_poisson_exp=True,
         )
 
+    print(f"{comm.rank} checkpt1", flush=True)
     comm.Barrier()
 
     if debug:
@@ -106,7 +112,9 @@ def get_buckling_load(
         tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
             sigma=sigma_eig, num_eig=100, write_soln=True  # 50, 100
         )
+        print(f"{comm.rank} checkpt2", flush=True)
         stiff_analysis.post_analysis()
+        print(f"{comm.rank} checkpt3", flush=True)
 
         eig_FEA = None
         rho0 = stiff_analysis.affine_aspect_ratio
@@ -135,15 +143,22 @@ def get_buckling_load(
                         print(f"mode {imode} was tracked but it is a local mode..")
             
         else: # just use heuristic
-            eig_FEA = stiff_analysis.get_mac_global_mode(
-                axial=is_axial,
-                min_similarity=0.75,  # 0.5
-                local_mode_tol=0.75, #0.8
-            )
+            if comm.rank == 0:
+                eig_FEA = stiff_analysis.get_mac_global_mode(
+                    axial=is_axial,
+                    min_similarity=0.75,  # 0.5
+                    local_mode_tol=0.75, #0.8
+                )
 
-        if eig_FEA is not None:
+        comm.Barrier()
+
+        if eig_FEA is not None and comm.rank == 0:
             if np.abs(errors[stiff_analysis.min_global_mode_index]) > 1e-8:
                 eig_FEA = None
+
+        print(f"{comm.rank=} pre-broadcast")
+        eig_FEA = comm.bcast(eig_FEA, root=0)
+        print(f"{comm.rank=} {eig_FEA=}")
 
         if comm.rank == 0:
             stiff_analysis.print_mode_classification()
