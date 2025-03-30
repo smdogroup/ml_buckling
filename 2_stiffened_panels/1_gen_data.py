@@ -2,7 +2,7 @@ import numpy as np
 import ml_buckling as mlb
 import pandas as pd
 from mpi4py import MPI
-import os, argparse, sys
+import os, argparse, sys, time
 
 # local src for this case
 sys.path.append("src/")
@@ -62,13 +62,13 @@ if __name__ == "__main__":
     
     logrho_vec = np.linspace(-2.0, 2.0, 20) #ln(rho0 or rho0^*)
     #logrho_vec = np.linspace(-2.0, 2.0, 3) # debugging
-    loggamma_vec = np.linspace(0.1, 3.0, 10) # ln(1+gamma)
-    # loggamma_vec = np.linspace(0.01, 3.0, 10) # ln(1+gamma)
+    loggamma_vec = np.linspace(2.5, 3.0, 3) # ln(1+gamma)
+    # loggamma_vec = np.linspace(0.0, 3.0, 10) # ln(1+gamma)
 
     composite_materials = mlb.CompositeMaterial.get_materials()
 
     num_models = 0
-    while (num_models < 1000): # 1000 each for metal + then composites
+    while (num_models < 500): # 1000 each for metal + then composites
 
         # loop over rho0, gamma
         # ---------------------
@@ -95,7 +95,9 @@ if __name__ == "__main__":
                 ply_angle = np.random.uniform(0.0, 90.0) # in deg
                 
                 # choose random slenderness 10 to 200
-                log_slenderness = np.random.uniform(np.log(10.0), np.log(200.0))
+                # I increased slenderness max to 400 since more slender results in more gamma, rho0 
+                # range being covered (better dataset)
+                log_slenderness = np.random.uniform(np.log(10.0), np.log(400.0))
                 plate_slenderness = np.exp(log_slenderness)
 
                 # choose a random material
@@ -128,11 +130,14 @@ if __name__ == "__main__":
             num_stiff = 1
 
             for log_rho in logrho_vec[::-1]: # go in reverse order so that mode tracking can be done
-                if args.axial: # log_rho = ln(rho0^*) = ln(rho0 / sqrt[4]{1+gamma})
+                if args.axial and gamma < 7: # log_rho = ln(rho0^*) = ln(rho0 / sqrt[4]{1+gamma})
+                    # if gamma < 7, high rho0 models cripple
                     rho0_star = np.exp(log_rho)
                     rho0 = rho0_star * (1.0 + gamma)**0.25
                 else:
                     rho0 = np.exp(log_rho)
+
+                start_time = time.time()
 
                 if comm.rank == 0: 
                     print("\n----------------------------------------------------\n")
@@ -256,18 +261,20 @@ if __name__ == "__main__":
                 if comm.rank == 0:
                     my_material = "metal" if args.metal else composite_material.__name__
 
+                    total_time = time.time() - start_time
+
                     num_models += 1 # increment the number of models
                     raw_data_dict = {
                         # training parameter section
                         "rho_0": [stiff_analysis.affine_aspect_ratio],
                         "xi": [stiff_analysis.xi_plate],
                         "gamma": [stiff_analysis.gamma],
-                        "zeta": [stiff_analysis.zeta_plate],
+                        "log10(zeta)": [np.log10(stiff_analysis.zeta_plate)],
                         "num_stiff" : [num_stiff],
                         "material" : [my_material],
                         "eig_FEA": [np.real(eig_FEA)],
                         "eig_CF": [eig_CF],
-                        "time" : [dt],
+                        "time" : [total_time],
                     }
                     raw_df = pd.DataFrame(raw_data_dict)
                     first_write = num_models == 1 and args.clear
