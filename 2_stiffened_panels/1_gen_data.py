@@ -9,7 +9,6 @@ sys.path.append("src/")
 from buckling_analysis import get_buckling_load 
 
 comm = MPI.COMM_WORLD
-np.random.seed(1234)
 
 """
 main dataset generation for finite element dataset of paper
@@ -37,6 +36,8 @@ args = parent_parser.parse_args()
 # setup csv filepath
 # ------------------
 
+if args.debug: np.random.seed(1234)
+
 prefix = "Nx" if args.axial else "Nxy"
 train_csv = f"{prefix}_stiffened.csv"
 raw_csv = f"{prefix}_raw_stiffened.csv"
@@ -62,8 +63,8 @@ if __name__ == "__main__":
     
     logrho_vec = np.linspace(-2.0, 2.0, 20) #ln(rho0 or rho0^*)
     #logrho_vec = np.linspace(-2.0, 2.0, 3) # debugging
-    loggamma_vec = np.linspace(0.0, 3.0, 10) # ln(1+gamma)
-    loggamma_vec = loggamma_vec[6:] # temporary high gamma
+    loggamma_vec = np.linspace(0.1, 3.0, 10) # ln(1+gamma)
+    #loggamma_vec = loggamma_vec[6:] # temporary high gamma
     # loggamma_vec = np.linspace(0.0, 3.0, 10) # ln(1+gamma)
 
     composite_materials = mlb.CompositeMaterial.get_materials()
