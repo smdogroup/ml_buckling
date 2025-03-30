@@ -62,8 +62,8 @@ if __name__ == "__main__":
     
     logrho_vec = np.linspace(-2.0, 2.0, 20) #ln(rho0 or rho0^*)
     #logrho_vec = np.linspace(-2.0, 2.0, 3) # debugging
-    loggamma_vec = np.linspace(0.0, 3.0, 10) # ln(1+gamma)
-    loggamma_vec = loggamma_vec[6:] # temporary high gamma
+    loggamma_vec = np.linspace(0.1, 3.0, 10) # ln(1+gamma)
+    #loggamma_vec = loggamma_vec[6:] # temporary high gamma
     # loggamma_vec = np.linspace(0.0, 3.0, 10) # ln(1+gamma)
 
     composite_materials = mlb.CompositeMaterial.get_materials()
