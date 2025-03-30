@@ -36,21 +36,25 @@ if not os.path.exists(data_folder) and comm.rank == 0:
 stiffened_csv = os.path.join(data_folder, args.load + "_raw_stiffened.csv")
 stiff_df = pd.read_csv(stiffened_csv)
 
-X = stiff_df[["xi", "rho_0", "zeta", "gamma", "eig_FEA"]].to_numpy()
+X = stiff_df[["xi", "rho_0", "log10(zeta)", "gamma", "eig_FEA"]].to_numpy()
 
 # convert xi to log(1+xi)
 X[:, 0] = np.log(1.0 + X[:, 0])
 # convert rho_0 to log(rho_0)
 X[:, 1] = np.log(X[:, 1])
 # convert zeta to log(1+10^3*zeta)
-X[:, 2] = np.log(1.0 + 1e3 * X[:, 2])
+zeta = np.power(10.0, X[:,2])
+X[:, 2] = np.log(1.0 + 1e3 * zeta)
 # convert gamma to log(1+gamma)
 X[:, 3] = np.log(1.0 + X[:, 3])
 # convert eig_FEA to log(eig_FEA)
 X[:, 4] = np.log(X[:, 4])
 
-Y_stiff = X[:, 4:5]
-X_stiff = X[:, :4]
+# remove nan
+not_nan_mask = np.logical_not(np.isnan(X[:,4]))
+
+Y_stiff = X[not_nan_mask, 4:5]
+X_stiff = X[not_nan_mask, :4]
 
 unstiffened_csv = os.path.join(data_folder, args.load + "_unstiffened.csv")
 unstiff_df = pd.read_csv(unstiffened_csv)  # , skiprows=1)
