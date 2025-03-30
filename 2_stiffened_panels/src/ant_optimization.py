@@ -70,7 +70,7 @@ def ant_optimization(
     # now solve in 10x10 different spots (to try and find the multiple unique solutions)
     log_hw_vec = np.linspace(-3, 2.0, 10); dlog_hw = np.diff(log_hw_vec)[0]
     log_rho_vec = np.linspace(-3, 3.0, 10); dlog_rho = np.diff(log_rho_vec)[0]
-    for resid_tol in [1e-1, 3e-1, 1e0]: # [1e-2, 1e-1, 1e0] # just because sometimes a bit too tight for the minimizer
+    for resid_tol in [1e-2, 3e-2, 1e-1, 3e-1, 1e0]: # [1e-2, 1e-1, 1e0] # just because sometimes a bit too tight for the minimizer
         solns = []
         for log_hw_lb in log_hw_vec:
             for log_rho_lb in log_rho_vec:
