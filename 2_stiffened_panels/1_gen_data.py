@@ -9,7 +9,7 @@ sys.path.append("src/")
 from buckling_analysis import get_buckling_load 
 
 comm = MPI.COMM_WORLD
-np.random.seed(123456)
+np.random.seed(1234)
 
 """
 main dataset generation for finite element dataset of paper
@@ -62,7 +62,8 @@ if __name__ == "__main__":
     
     logrho_vec = np.linspace(-2.0, 2.0, 20) #ln(rho0 or rho0^*)
     #logrho_vec = np.linspace(-2.0, 2.0, 3) # debugging
-    loggamma_vec = np.linspace(2.5, 3.0, 3) # ln(1+gamma)
+    loggamma_vec = np.linspace(0.0, 3.0, 10) # ln(1+gamma)
+    loggamma_vec = loggamma_vec[6:] # temporary high gamma
     # loggamma_vec = np.linspace(0.0, 3.0, 10) # ln(1+gamma)
 
     composite_materials = mlb.CompositeMaterial.get_materials()
@@ -77,12 +78,8 @@ if __name__ == "__main__":
 
         for log_gamma in loggamma_vec:
             gamma = np.exp(log_gamma) - 1.0 # since log_gamma = np.log(1+gamma)
-
             prev_eig_dict = None
-
-            # if failed_in_a_row > 15 and not(args.metal):
-            #     # composites can start to fail a bunch with stiffener crippling
-            #     break # restart gamma loop
+            failed_in_a_row = 0 # reset for new gamma, new slenderness
 
             # choosing randomness here, so that consistent xi, zeta in the inner rho0 loops
             # otherwise mode tracking for very low rho0 doesn't work
@@ -130,7 +127,11 @@ if __name__ == "__main__":
             num_stiff = 1
 
             for log_rho in logrho_vec[::-1]: # go in reverse order so that mode tracking can be done
-                if args.axial and gamma < 7: # log_rho = ln(rho0^*) = ln(rho0 / sqrt[4]{1+gamma})
+                
+                if failed_in_a_row > 3:
+                    break # goto next gamma value, which will have new slenderness
+
+                if args.axial and gamma < 5: # log_rho = ln(rho0^*) = ln(rho0 / sqrt[4]{1+gamma})
                     # if gamma < 7, high rho0 models cripple
                     rho0_star = np.exp(log_rho)
                     rho0 = rho0_star * (1.0 + gamma)**0.25

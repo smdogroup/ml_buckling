@@ -70,7 +70,7 @@ def ant_optimization(
     # now solve in 10x10 different spots (to try and find the multiple unique solutions)
     log_hw_vec = np.linspace(-3, 2.0, 10); dlog_hw = np.diff(log_hw_vec)[0]
     log_rho_vec = np.linspace(-3, 3.0, 10); dlog_rho = np.diff(log_rho_vec)[0]
-    for resid_tol in [1e-2, 1e-1, 1e0]: # just because sometimes a bit too tight for the minimizer
+    for resid_tol in [1e-1, 3e-1, 1e0]: # [1e-2, 1e-1, 1e0] # just because sometimes a bit too tight for the minimizer
         solns = []
         for log_hw_lb in log_hw_vec:
             for log_rho_lb in log_rho_vec:
@@ -83,11 +83,12 @@ def ant_optimization(
                 myresid = gamma_rho0_resid(xopt)
                 resid_norm = np.linalg.norm(myresid)
                 # print(f"{xopt=} {resid_norm=}")
+                reasonable_AR = xopt[1] < (np.log10(rho0) + 0.3)
                 solved = resid_norm < resid_tol
-                if solved:
+                if solved and reasonable_AR:
                     solns += [xopt]
         if len(solns) > 0: break
-                
+              
 
     print(f"ant opt: {comm.rank} checkpt2", flush=True)
     if comm.rank == 0:
@@ -124,6 +125,7 @@ def ant_optimization(
     print(f"ant opt: {comm.rank} checkpt3", flush=True)
 
     if comm.rank == 0:
+        print(f"reasonable AR constr for {rho0=} is {xopt[1]=} < {np.log10(rho0) + 0.3}, with current {AR=}")
         print(f"soln of R(xhat): {h_w=} {AR=}", flush=True)
 
     return h_w, AR, a
