@@ -9,7 +9,6 @@ sys.path.append("src/")
 from buckling_analysis import get_buckling_load 
 
 comm = MPI.COMM_WORLD
-np.random.seed(1234)
 
 """
 main dataset generation for finite element dataset of paper
@@ -36,6 +35,8 @@ args = parent_parser.parse_args()
 
 # setup csv filepath
 # ------------------
+
+if args.debug: np.random.seed(1234)
 
 prefix = "Nx" if args.axial else "Nxy"
 train_csv = f"{prefix}_stiffened.csv"
