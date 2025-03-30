@@ -8,7 +8,7 @@ def eval_Rsquared(
 ):
     if take_log:
         # was not in log scale before, so we put in log scale
-        Y_pred_log = np.log(Y_pred)
+        Y_pred_log = np.log(np.abs(Y_pred)) # took absolute value to prevent a few negative values from getting nan
         Y_truth_log = np.log(Y_truth)
         numerator = np.sum((Y_pred_log - Y_truth_log)**2)
         mean = np.mean(Y_truth_log)
