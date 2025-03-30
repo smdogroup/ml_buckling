@@ -69,6 +69,12 @@ Y_unstiff = unstiff_df["y"].to_numpy().reshape((n_unstiff, 1))
 # assume gamma=0 is approx exp(-6) => -6 log scale
 X_unstiff = np.concatenate([X_unstiff[:, :], np.zeros((n_unstiff, 1))], axis=1)
 
+# downselect only 1000 random unstiff models
+unstiff_ind = [_ for _ in range(n_unstiff)]
+rand_unstiff_ind = np.random.choice(np.array(unstiff_ind), size=1000, replace=False)
+X_unstiff = X_unstiff[rand_unstiff_ind,:]
+Y_unstiff = Y_unstiff[rand_unstiff_ind, :]
+
 # combine the unstiff and stiff data
 X_combined = np.concatenate([X_unstiff, X_stiff], axis=0)
 Y_combined = np.concatenate([Y_unstiff, Y_stiff], axis=0)
