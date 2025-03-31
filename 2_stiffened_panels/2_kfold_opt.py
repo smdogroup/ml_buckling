@@ -17,8 +17,8 @@ from eval_utils import *
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
-parent_parser.add_argument("--ntrain", type=int, default=2000) # 1000
-parent_parser.add_argument("--kfold", type=int, default=10)
+parent_parser.add_argument("--ntrain", type=int, default=1500) # 1000
+parent_parser.add_argument("--kfold", type=int, default=20)
 parent_parser.add_argument("--gammalb", type=int, default=1e-1)
 parent_parser.add_argument("--opt", action=argparse.BooleanOptionalAction, default=True, help="Enable or disable axial mode (default: False)")
 parent_parser.add_argument("--show", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable axial mode (default: False)")
@@ -112,7 +112,9 @@ if not args.opt:
     axial_theta_opt=np.array([4.770866756384451, 0.988243783336739, 0.058580859840164944, 1.063360767037736, 0.136915375688455, 0.9897319273833416, -1.5298378328595506])
     axial_theta_opt=np.array([4.24924529696483, 0.9668667355603373, 0.23404459151290297, 6.603669025547548, 0.002219737106821394, 0.9638183801378273, -2.1444063661684476])
     # final axial theta opt
-    axial_theta_opt=np.array([1.49083009e+00, 9.43316328e-01, 3.57081802e-01, 1.00000000e+01, 9.90789055e-04, 9.58937173e-01, -2.24874104e+00])
+    # axial_theta_opt=np.array([1.49083009e+00, 9.43316328e-01, 3.57081802e-01, 1.00000000e+01, 9.90789055e-04, 9.58937173e-01, -2.24874104e+00])
+    axial_theta_opt=np.array([ 1.87597327e+00,  6.87123481e-01,  5.73982474e-01,  8.86433206e+00,
+        2.64332885e-03,  7.20043093e-01, -1.93544570e+00])
 
     theta0 = axial_theta_opt
     # theta0 = theta0
@@ -139,8 +141,11 @@ plot_3d_gamma(
     kernel_func=kernel,
     theta=theta0,
     alpha_train=alpha_train0,
+    #xi_bin=[0.3, 1.1],
     xi_bin=[0.6, 0.8],
+    # xi_bin=[0.2, 0.6],
     zeta_bin=[0.0, 0.5],
+    #zeta_bin=[0.5, 1.5],
     folder_name=f"output",
     load_name=args.load,
     file_prefix=f"init_{args.load}",
