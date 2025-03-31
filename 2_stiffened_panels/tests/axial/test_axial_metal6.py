@@ -4,6 +4,7 @@ import pandas as pd
 from mpi4py import MPI
 import os, argparse, sys
 import unittest
+sys.path.append("../")
 from _utils import get_metal_buckling_load, axial_load_old
 import warnings
 

@@ -4,7 +4,7 @@ import sys
 from scipy.optimize import fsolve
 
 # local src for this case
-sys.path.append("../src/")
+sys.path.append("../../src/")
 from buckling_analysis import get_buckling_load 
 
 def get_metal_buckling_load(

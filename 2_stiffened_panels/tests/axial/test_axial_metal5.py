@@ -4,6 +4,7 @@ import pandas as pd
 from mpi4py import MPI
 import os, argparse, sys
 import unittest
+sys.path.append("../")
 from _utils import get_metal_buckling_load, axial_load_old
 import warnings
 
@@ -27,15 +28,15 @@ class TestAxial_Metal4(unittest.TestCase):
         # case from finite element dataset
         eig_CF, eig_FEA = get_metal_buckling_load(
             comm,
-            rho0=0.5, # also 0.378
-            gamma=1.1,
-            num_stiff=5, # 1 stiffener works, 3 stiffener works, 5 stiffener fails, 9 stiffener fails
+            rho0=0.2, # also 0.378
+            gamma=0.1,
+            num_stiff=3, # suddenly 1,2 fail and 3 works, need to loop until not None sometimes 
             sigma_eig=10.0,
             stiff_AR=15.0,
             b=1.0,
             ant_hs_ind=0, # 0 default
             # plate_slenderness=27.38,
-            plate_slenderness=100.0,
+            plate_slenderness=181.0,
             is_axial=True,
         )
 

@@ -4,31 +4,36 @@ import pandas as pd
 from mpi4py import MPI
 import os, argparse, sys
 import unittest
-from _utils import get_metal_buckling_load, axial_load_old
+sys.path.append("../")
+
+from _utils import get_metal_buckling_load
 import warnings
 
 comm = MPI.COMM_WORLD
 
-class TestAxial_Metal2Old(unittest.TestCase):
+class TestAxial_Metal1(unittest.TestCase):
 
     def setUp(self):
         # Suppress the specific warning from scipy.optimize
         warnings.filterwarnings("ignore", category=UserWarning, message="delta_grad == 0.0.*")
+    
+    def test_case1(self):
 
-    def test_old(self):
-
-        eig_FEA, eig_CF, _, _ = axial_load_old(
+        eig_CF, eig_FEA = get_metal_buckling_load(
             comm,
-            rho0=0.6, # less than 0.6 fails..
+            rho0=1.0,
             gamma=3.0,
-            nstiff=5,
-            prev_dict=None,
-            solve_buckling=True
+            num_stiff=1,
+            sigma_eig=5.0,
+            stiff_AR=20.0,
+            plate_slenderness=100.0,
+            is_axial=True,
         )
 
         if comm.rank == 0:
             print(f"{eig_CF=} {eig_FEA=}")
             self.assertTrue(eig_FEA is not None)
+
 
 if __name__ == "__main__":
     unittest.main()

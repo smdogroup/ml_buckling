@@ -39,16 +39,16 @@ stiff_df = pd.read_csv(stiffened_csv)
 X = stiff_df[["xi", "rho_0", "log10(zeta)", "gamma", "eig_FEA"]].to_numpy()
 
 # convert xi to log(1+xi)
-X[:, 0] = np.log(1.0 + X[:, 0])
-# convert rho_0 to log(rho_0)
-X[:, 1] = np.log(X[:, 1])
-# convert zeta to log(1+10^3*zeta)
-zeta = np.power(10.0, X[:,2])
-X[:, 2] = np.log(1.0 + 1e3 * zeta)
-# convert gamma to log(1+gamma)
-X[:, 3] = np.log(1.0 + X[:, 3])
-# convert eig_FEA to log(eig_FEA)
-X[:, 4] = np.log(X[:, 4])
+# X[:, 0] = np.log(1.0 + X[:, 0])
+# # convert rho_0 to log(rho_0)
+# X[:, 1] = np.log(X[:, 1])
+# # convert zeta to log(1+10^3*zeta)
+# zeta = np.power(10.0, X[:,2])
+# X[:, 2] = np.log(1.0 + 1e3 * zeta)
+# # convert gamma to log(1+gamma)
+# X[:, 3] = np.log(1.0 + X[:, 3])
+# # convert eig_FEA to log(eig_FEA)
+# X[:, 4] = np.log(X[:, 4])
 
 # remove nan
 not_nan_mask = np.logical_not(np.isnan(X[:,4]))
@@ -56,21 +56,21 @@ not_nan_mask = np.logical_not(np.isnan(X[:,4]))
 Y_stiff = X[not_nan_mask, 4:5]
 X_stiff = X[not_nan_mask, :4]
 
-Y_CF = np.log(stiff_df[["eig_CF"]].to_numpy()[not_nan_mask,:])
-FEA_CF_ratio = np.exp(Y_stiff[:,0]) / np.exp(Y_CF[:,0])
+Y_CF = stiff_df[["eig_CF"]].to_numpy()[not_nan_mask,:]
+FEA_CF_ratio = Y_stiff[:,0] / Y_CF[:,0]
 
 X2 = stiff_df[["num_stiff", "material"]].to_numpy()
 
 # make a new dataframe and csv file in the reg data folder
 new_df_dict = {
-    "log(1+xi)": list(X_stiff[:, 0]),
-    "log(rho_0)": list(X_stiff[:, 1]),
-    "log(1+10^3*zeta)": list(X_stiff[:, 2]),
-    "log(1+gamma)": list(X_stiff[:, 3]),
+    "xi": list(X_stiff[:, 0]),
+    "rho_0": list(X_stiff[:, 1]),
+    "log10(zeta)": list(X_stiff[:, 2]),
+    "gamma": list(X_stiff[:, 3]),
     "num_stiff": list(X2[not_nan_mask,0]),
     "material": list(X2[not_nan_mask,1]),
-    "log(eig_FEA)": list(Y_stiff[:, 0]),
-    "log(eig_CF)": list(Y_CF[:,0]),
+    "eig_FEA": list(Y_stiff[:, 0]),
+    "eig_CF": list(Y_CF[:,0]),
     "FEA/CF" : list(FEA_CF_ratio),
 }
 df = pd.DataFrame(new_df_dict)
