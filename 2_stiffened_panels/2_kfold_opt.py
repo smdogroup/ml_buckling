@@ -21,7 +21,8 @@ parent_parser.add_argument("--ntrain", type=int, default=1500) # 1000
 parent_parser.add_argument("--kfold", type=int, default=20)
 parent_parser.add_argument("--gammalb", type=int, default=1e-1)
 parent_parser.add_argument("--opt", action=argparse.BooleanOptionalAction, default=True, help="Enable or disable axial mode (default: False)")
-parent_parser.add_argument("--show", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable axial mode (default: False)")
+parent_parser.add_argument("--show", action=argparse.BooleanOptionalAction, default=False, help="Show plot instead of save to file (default: False)")
+parent_parser.add_argument("--archive", action=argparse.BooleanOptionalAction, default=False, help="Archive the hyperparams model (default: False)")
 args = parent_parser.parse_args()
 
 # random seed (fixed for now..)
@@ -281,3 +282,41 @@ if args.opt:
 
 # close the text file
 txt_hdl.close()
+
+if args.archive and args.opt:
+    import ml_buckling as mlb
+
+    # archive the data to the format of the
+    filename = "axialGP.csv" if args.load == "Nx" else "shearGP.csv"
+    output_csv = "../archived_models/" + filename
+
+    # remove the previous csv file if it exits
+    # assume on serial here
+    if os.path.exists(output_csv):
+        os.remove(output_csv)
+
+    # print(f"{X_train=}")
+
+    # [log(1+xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
+    dataframe_dict = {
+        "log(1+xi)": X_train[:, 0],
+        "log(rho0)": X_train[:, 1],
+        "log(1+gamma)": X_train[:, 3],
+        "log(1+10^3*zeta)": X_train[
+            :, 2
+        ],  # gamma,zeta are flipped to the order used in TACS
+        "alpha": alpha_train_opt[:, 0],
+    }
+    model_df = pd.DataFrame(dataframe_dict)
+    model_df.to_csv(output_csv)
+
+    # also deploy the current theta_opt
+    theta_csv = mlb.axial_theta_csv if args.load == "Nx" else mlb.shear_theta_csv
+    if os.path.exists(theta_csv):
+        os.remove(theta_csv)
+
+    theta_df_dict = {
+        "theta": theta_opt,
+    }
+    theta_df = pd.DataFrame(theta_df_dict)
+    theta_df.to_csv(theta_csv)

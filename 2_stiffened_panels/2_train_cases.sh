@@ -1,18 +1,6 @@
-# different training cases to examine model fit
-python 2_kfold_opt.py --load "Nx" --ntrain 1000 --kfold 10
-python 2_kfold_opt.py --load "Nxy" --ntrain 1000 --kfold 10
+# train each case
+python data/_combine_stiff_unstiff_data.py --load "Nx"
+python 2_kfold_opt.py --load "Nx" --ntrain 1500 --kfold 20 --archive
 
-python 2_kfold_opt.py --load "Nx" --ntrain 1000 --kfold 30
-python 2_kfold_opt.py --load "Nxy" --ntrain 1000 --kfold 30
-
-python 2_kfold_opt.py --load "Nx" --ntrain 1000 --kfold 30 --gammalb 1e-2
-python 2_kfold_opt.py --load "Nxy" --ntrain 1000 --kfold 30 --gammalb 1e-2
-
-python 2_kfold_opt.py --load "Nx" --ntrain 1000 --kfold 30 --gammalb 1e-3
-python 2_kfold_opt.py --load "Nxy" --ntrain 1000 --kfold 30 --gammalb 1e-3
-
-python 2_kfold_opt.py --load "Nx" --ntrain 2000 --kfold 30
-python 2_kfold_opt.py --load "Nxy" --ntrain 2000 --kfold 30
-
-# python 2_kfold_opt.py --load "Nx" --ntrain 3000 --kfold 30
-# python 2_kfold_opt.py --load "Nxy" --ntrain 3000 --kfold 30
+python data/_combine_stiff_unstiff_data.py --load "Nxy"
+python 2_kfold_opt.py --load "Nxy" --ntrain 1500 --kfold 20 --archive
