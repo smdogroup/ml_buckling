@@ -14,7 +14,9 @@ from data_transforms import affine_transform
 # --------
 
 parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--load", type=str, default="Nx")
+parent_parser.add_argument(
+    "--axial", default=True, action=argparse.BooleanOptionalAction
+)
 parent_parser.add_argument("--version", type=int, default=0)
 parent_parser.add_argument("--show", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable axial mode (default: False)")
 args = parent_parser.parse_args()
@@ -27,13 +29,14 @@ np.random.seed(123456)
 if not os.path.exists("output"):
     os.mkdir("output")
 
-axial_str = "axial" if args.load == "Nx" else "shear"
+axial_str = "axial" if args.axial else "shear"
 base_name = f"{axial_str}"
 
 # get the dataset
 # ---------------
 
-csv_filename = f"{args.load}_raw_stiffened"
+load_str = "Nx" if args.axial else "Nxy"
+csv_filename = f"{load_str}_raw_stiffened"
 suffix = None
 if args.version == 0:
     suffix = ""
@@ -55,7 +58,7 @@ X0[:,3] = np.log(1 + X0[:,3])
 Y = np.log(Y)
 
 # affine transform
-use_affine = args.load == "Nx" # only use for axial
+use_affine = args.axial # only use for axial
 # use_affine = False
 if use_affine:
     X = affine_transform(X0, is_log=True)
@@ -114,7 +117,7 @@ for igam,loggam_bin in enumerate(loggam_bins):
 
     print(f"{np.sum(full_mask)=}")
 
-    if igam == 5:
+    if igam == 4:
         # print out dataset to terminal
         arr = np.concatenate([X_in_range, Y_in_range], axis=1)
         print(f"{arr=}")

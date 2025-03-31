@@ -49,6 +49,49 @@ def get_metal_buckling_load(
 
     return eig_CF, eig_FEA
 
+def get_composite_buckling_load(
+    comm,
+    rho0:float,
+    gamma:float,
+    num_stiff:int,
+    sigma_eig:float,
+    ply_angle:float,
+    composite_material=None,
+    stiff_AR:float=20.0,
+    ant_hs_ind:int=0,
+    b:float=1.0,
+    plate_slenderness:float=100,
+    ant_plot_debug:bool=False,
+    is_axial:bool=True,
+):
+    plate_material = composite_material(
+        ply_angles=[ply_angle],
+        ply_fractions=[1.0],
+        ref_axis=[1.0, 0.0, 0.0],
+    )
+
+    eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = \
+    get_buckling_load(
+        comm,
+        rho0=rho0,
+        gamma=gamma,
+        plate_slenderness=plate_slenderness,
+        num_stiff=num_stiff,
+        plate_material=plate_material,
+        nelems=2000, #2000
+        stiff_AR=stiff_AR,
+        sigma_eig=sigma_eig,
+        prev_eig_dict=None, #prev_eig_dict,
+        is_axial=is_axial,
+        solve_buckling=True,
+        ant_hs_ind=ant_hs_ind,
+        b=b,
+        debug=True,
+        plot_debug=ant_plot_debug,
+    )
+
+    return eig_CF, eig_FEA
+
 def axial_load_old(
     comm,
     rho0, 
