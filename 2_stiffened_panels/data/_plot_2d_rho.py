@@ -5,7 +5,7 @@ import argparse
 import os
 import matplotlib.pyplot as plt
 
-sys.path.append("src/")
+sys.path.append("../src/")
 from kernel_library import *
 # from plot_utils import plot_3d_gamma, plot_3d_xi
 from data_transforms import affine_transform
@@ -33,7 +33,7 @@ base_name = f"{axial_str}"
 # ---------------
 
 csv_filename = f"{args.load}_stiffened"
-df = pd.read_csv("data/" + csv_filename + ".csv")
+df = pd.read_csv(csv_filename + ".csv")
 
 # extract only the model columns
 X0 = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
@@ -100,10 +100,15 @@ for igam,loggam_bin in enumerate(loggam_bins):
 
     print(f"{np.sum(full_mask)=}")
 
+    if igam == 5:
+        # print out dataset to terminal
+        arr = np.concatenate([X_in_range, Y_in_range], axis=1)
+        print(f"{arr=}")
+
     plt.scatter(
         X_in_range[:, 1],
         Y_in_range[:],
-        s=20,
+        s=30,
         color=colors[igam % 6],
         edgecolors="black",
         zorder=2 + igam,

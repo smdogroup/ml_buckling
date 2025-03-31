@@ -188,7 +188,7 @@ if __name__ == "__main__":
                     if num_stiff == 9: # the max
                         eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = orig_output
 
-                    while (num_stiff < 9):
+                    while (num_stiff < 15):
                         if comm.rank == 0: print(f"\tcheck increasing num_stiff to {num_stiff+1}")
                         # propose increasing the stiffener count
                         new_output = get_buckling_load(
@@ -224,7 +224,7 @@ if __name__ == "__main__":
                             num_stiff += 1 # both None, no need to change orig_output
                         else: # both not None
                             rel_diff = abs( (orig_output[1] - new_output[1]) / orig_output[1] )
-                            if rel_diff < 0.1: # don't chang enumber of stiffeners
+                            if rel_diff < 0.03: # was 0.1 constraint # don't chang enumber of stiffeners
                                 # might as well use new_output since we ran it
                                 eig_CF, eig_FEA, stiff_analysis, new_eig_dict, dt = new_output
                                 break

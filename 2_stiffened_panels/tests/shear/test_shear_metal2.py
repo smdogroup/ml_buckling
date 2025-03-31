@@ -19,36 +19,22 @@ class TestShear_Metal1(unittest.TestCase):
     
     def test_case1(self):
 
-        # ref in data (bad datapoint probably)
-        # eig_FEA, eig_CF, ratio FEA/CF
-        # 41.745864,8.720298,4.787206
-        # rho0 = 0.9, AR = 1.3, delta = 0.18 (somewhat high delta)
-        
-        # high ratio because it's an intermediate rho0 and the shear closed-form is very conservative here
-        # for some reason it took mode 2 not mode 0, both look like global modes, check this
+        # ref in data (higher gamma, but barely higher than prev lower gamma)
+        # maybe needs more stiffeners?
 
-        # orig
+        # was getting N11^cr bar = 30.723, now getting 42.816
+
         eig_CF, eig_FEA = get_metal_buckling_load(
             comm,
-            rho0=0.900,
-            gamma=6.6394,
-            num_stiff=4, # 4 orig
+            rho0=0.623,
+            gamma=9.114,
+            num_stiff=3, # 3 worked
             sigma_eig=5.0,
             stiff_AR=15.0,
             plate_slenderness=100.0,
             is_axial=False,
+            ant_plot_debug=True,
         )
-
-        # eig_CF, eig_FEA = get_metal_buckling_load(
-        #     comm,
-        #     rho0=0.5,
-        #     gamma=9.0,
-        #     num_stiff=9, # 4 orig
-        #     sigma_eig=5.0,
-        #     stiff_AR=15.0,
-        #     plate_slenderness=100.0,
-        #     is_axial=False,
-        # )
 
         ratio = eig_FEA / eig_CF
 

@@ -36,7 +36,8 @@ def gamma_rho_resid_wrapper(
 
             pred_log_rho0 = np.log10(stiff_analysis.affine_aspect_ratio)
             pred_log_gamma = np.log10(1.0 + stiff_analysis.gamma)
-            return [target_log_rho0 - pred_log_rho0, target_log_gamma - pred_log_gamma]
+            # scale up gamma resid since tends to under-solve that one
+            return [target_log_rho0 - pred_log_rho0, (target_log_gamma - pred_log_gamma)]
     else: # nstiff == 0
         def gamma_rho0_resid(x):
             # x is [log10(h_w), log10(AR)]

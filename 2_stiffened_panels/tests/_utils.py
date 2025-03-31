@@ -17,6 +17,7 @@ def get_metal_buckling_load(
     ant_hs_ind:int=0,
     b:float=1.0,
     plate_slenderness:float=100,
+    ant_plot_debug:bool=False,
     is_axial:bool=True,
 ):
     E = 138e9; nu = 0.3
@@ -43,7 +44,7 @@ def get_metal_buckling_load(
         ant_hs_ind=ant_hs_ind,
         b=b,
         debug=True,
-        plot_debug=False,
+        plot_debug=ant_plot_debug,
     )
 
     return eig_CF, eig_FEA

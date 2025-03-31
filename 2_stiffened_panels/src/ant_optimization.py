@@ -41,7 +41,7 @@ def ant_optimization(
     
     # can be multiple solutions in AR, h_s inputs for rho0, gamma
     # this helps prevent highly stiffened solutions for low gamma, high AR
-    gamma = np.exp(target_log_gamma - 1.0)
+    # gamma = np.exp(target_log_gamma - 1.0)
     # if gamma < 5: 
     #     ub_log_rho = np.log(rho0 * 1.5)
     # else:
@@ -51,7 +51,7 @@ def ant_optimization(
     # get initial guess
     # -----------------
     min_err = np.inf
-    for log_hw in np.linspace(-3, 1.0, 50):
+    for log_hw in np.linspace(-3, 2.0, 50):
         for log_rho in np.linspace(-3, 3.0, 40):
             xhat = [log_hw, log_rho]
             myresid = gamma_rho0_resid([log_hw, log_rho])
@@ -83,16 +83,23 @@ def ant_optimization(
                 myresid = gamma_rho0_resid(xopt)
                 resid_norm = np.linalg.norm(myresid)
                 # print(f"{xopt=} {resid_norm=}")
-                reasonable_AR = xopt[1] < (np.log10(rho0) + 0.3)
+                reasonable_AR = xopt[1] < (np.log10(rho0) + 0.5) # v1
+                # reasonable_AR = True
+                # reasonable_AR = xopt[1] < (np.log10(rho0) + 0.15) # v2 - trying lower ub
                 solved = resid_norm < resid_tol
                 if solved and reasonable_AR:
                     solns += [xopt]
+
+        if comm.rank == 0:
+            rho0_ub = np.log10(rho0) + 0.5
+            print(f"{rho0_ub=}")
+            print(f"{resid_tol=} {solns=}")
         if len(solns) > 0: break
               
 
     print(f"ant opt: {comm.rank} checkpt2", flush=True)
     if comm.rank == 0:
-        print(f"ant finding method: {solns}", flush=True)
+        print(f"ant finding method: {solns} with final resid_tol {resid_tol=}", flush=True)
 
     if plot_debug:
         import matplotlib.pyplot as plt
@@ -102,10 +109,10 @@ def ant_optimization(
         RESID = np.zeros((40,50))
         for i, my_log_hw in enumerate(log_hw):
             for j, my_log_rho in enumerate(log_rho):
-                RESID[j,i] = np.linalg.norm(np.array(gamma_rho0_resid([my_log_hw, my_log_rho])))
+                RESID[j,i] = np.log(np.linalg.norm(np.array(gamma_rho0_resid([my_log_hw, my_log_rho]))))
         if comm.rank == 0:
             fig, ax = plt.subplots(1,1)
-            contour = ax.contourf(LOG_HW, LOG_RHO, RESID, levels=20, vmin=0.0, vmax=2.0)
+            contour = ax.contourf(LOG_HW, LOG_RHO, RESID, levels=20) #, vmin=0.0, vmax=2.0)
             cbar = plt.colorbar(contour) 
             # cbar.set_clim(0.0, 1.0)
             plt.xlabel("log hw")
