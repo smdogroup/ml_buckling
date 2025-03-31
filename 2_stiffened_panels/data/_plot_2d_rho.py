@@ -15,6 +15,7 @@ from data_transforms import affine_transform
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--load", type=str, default="Nx")
+parent_parser.add_argument("--version", type=int, default=0)
 parent_parser.add_argument("--show", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable axial mode (default: False)")
 args = parent_parser.parse_args()
 
@@ -32,13 +33,26 @@ base_name = f"{axial_str}"
 # get the dataset
 # ---------------
 
-csv_filename = f"{args.load}_stiffened"
-df = pd.read_csv(csv_filename + ".csv")
+csv_filename = f"{args.load}_raw_stiffened"
+suffix = None
+if args.version == 0:
+    suffix = ""
+elif args.version > 0:
+    suffix = "_v" + str(args.version)
+
+df = pd.read_csv(csv_filename + suffix + ".csv")
 
 # extract only the model columns
-X0 = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
-Y = df["log(eig_FEA)"].to_numpy()
+X0 = df[["xi", "rho_0", "log10(zeta)", "gamma"]].to_numpy()
+Y = df["eig_FEA"].to_numpy()
 Y = np.reshape(Y, newshape=(Y.shape[0], 1))
+
+# transform
+X0[:,0] = np.log(1.0 + X0[:,0])
+X0[:,1] = np.log(X0[:,1])
+X0[:,2] = np.log(1.0 + 1e3 * np.power(10.0, X0[:,2]))
+X0[:,3] = np.log(1 + X0[:,3])
+Y = np.log(Y)
 
 # affine transform
 use_affine = args.load == "Nx" # only use for axial
@@ -69,7 +83,7 @@ def best_fit(X, Y):
 # -------------------
 
 xi_bin = [0.6, 0.8]
-zeta_bin = [0.0, 0.4]
+zeta_bin = [0.0, 0.5]
 
 ngam = 6
 gam_vec = np.geomspace(0 + 1, 15 + 1, ngam+1) - 1
