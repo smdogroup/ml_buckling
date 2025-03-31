@@ -116,8 +116,14 @@ if not args.opt:
     axial_theta_opt=np.array([ 1.87597327e+00,  6.87123481e-01,  5.73982474e-01,  8.86433206e+00,
         2.64332885e-03,  7.20043093e-01, -1.93544570e+00])
 
-    theta0 = axial_theta_opt
-    # theta0 = theta0
+    shear_theta_opt=np.array([ 1.99999308e+00,  1.00000000e-01,  1.00000000e+01,  3.88991009e-01,
+        8.43663518e-02,  1.00000000e-04, -3.88553112e-01])
+
+    if args.load == "Nxy":
+        theta0 = axial_theta_opt
+    else:
+        theta0 = shear_theta_opt
+    theta0 = theta0
 
 
 # prelim train the model for plotting

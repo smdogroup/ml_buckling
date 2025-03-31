@@ -56,6 +56,14 @@ not_nan_mask = np.logical_not(np.isnan(X[:,4]))
 Y_stiff = X[not_nan_mask, 4:5]
 X_stiff = X[not_nan_mask, :4]
 
+# shear, temp check (better to review individual models and see why)
+# if args.load == "Nxy":
+#     Y_CF = np.log(stiff_df[["eig_CF"]].to_numpy()[not_nan_mask,:])
+#     FEA_CF_ratio = np.exp(Y_stiff[:,0]) / np.exp(Y_CF[:,0])
+#     not_outliers = FEA_CF_ratio < 2.5
+#     X_stiff = X_stiff[not_outliers,:]
+#     Y_stiff = Y_stiff[not_outliers,:]
+
 unstiffened_csv = os.path.join(data_folder, args.load + "_unstiffened.csv")
 unstiff_df = pd.read_csv(unstiffened_csv)  # , skiprows=1)
 
