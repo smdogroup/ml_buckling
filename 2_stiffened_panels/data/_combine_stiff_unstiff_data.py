@@ -34,7 +34,10 @@ cpath = os.path.dirname(__file__)
 #    os.mkdir(data_folder)
 
 #stiffened_csv = os.path.join(data_folder, args.load + "_raw_stiffened.csv")
-stiff_df = pd.read_csv(args.load + "_raw_stiffened.csv")
+if args.load == "Nx":
+    stiff_df = pd.read_csv(args.load + "_raw_stiffened.csv")
+else:
+    stiff_df = pd.read_csv(args.load + "_raw_stiffened_smoothed.csv")
 
 X = stiff_df[["xi", "rho_0", "log10(zeta)", "gamma", "eig_FEA"]].to_numpy()
 
