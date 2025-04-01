@@ -16,6 +16,7 @@ def get_metal_buckling_load(
     stiff_AR:float=20.0,
     ant_hs_ind:int=0,
     b:float=1.0,
+    nelems:int=2000,
     plate_slenderness:float=100,
     ant_plot_debug:bool=False,
     is_axial:bool=True,
@@ -35,7 +36,7 @@ def get_metal_buckling_load(
         plate_slenderness=plate_slenderness,
         num_stiff=num_stiff,
         plate_material=plate_material,
-        nelems=2000, #2000
+        nelems=nelems, #2000
         stiff_AR=stiff_AR,
         sigma_eig=sigma_eig,
         prev_eig_dict=None, #prev_eig_dict,

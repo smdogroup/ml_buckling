@@ -22,15 +22,15 @@ class TestShear_Metal3(unittest.TestCase):
         eig_FEA_list = []
 
         # these inputs are pretty close.. why much lower than curve?
-        #for Ns in range(1, 10+1):
-        my_Ns = 3
-        for Ns in range(my_Ns, my_Ns+1):
+        for Ns in range(1, 10+1):
+        # my_Ns = 3
+        # for Ns in range(my_Ns, my_Ns+1):
             eig_CF, eig_FEA = get_metal_buckling_load(
                 comm,
                 rho0=0.3,
                 gamma=3.04,
                 num_stiff=Ns,
-                sigma_eig=5.0,
+                sigma_eig=10.0,
                 stiff_AR=15.0,
                 plate_slenderness=100,
                 is_axial=False,

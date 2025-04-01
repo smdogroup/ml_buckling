@@ -1567,7 +1567,7 @@ class StiffenedPlateAnalysis:
         w_middle_max = np.max(np.abs(w_middle))
         low_middle_deflection = w_middle_max / w_max < local_mode_tol
 
-        print(f"local_mode check: {imode=} {w_middle_max=} {w_stiff_max=} {w_max=}", flush=True)
+        # print(f"local_mode check: {imode=} {w_middle_max=} {w_stiff_max=} {w_max=}", flush=True)
 
         
         if just_check_local:

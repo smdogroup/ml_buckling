@@ -79,7 +79,11 @@ def get_buckling_load(
     MIN_Z = 5  # 5
     N = geometry.num_local
     AR_s = geometry.a / geometry.h_w
+    # den = (1.0 / AR + (N - 1) / AR_s)
+    # print(f"{AR_s=} {den=}")
     nx = np.ceil(np.sqrt(_nelems / (1.0 / AR + (N - 1) / AR_s)))
+    print(f"{nx=}")
+    nx = max([nx, 5])
     den = 1.0 / AR + (N - 1) * 1.0 / AR_s
     ny = max([np.ceil(nx / AR / N), MIN_Y])
     nz = 3

@@ -44,6 +44,17 @@ def plot_3d_gamma(
     avg_zeta = 0.5 * (zeta_bin[0] + zeta_bin[1])
     xi_zeta_mask = np.logical_and(xi_mask, zeta_mask)
 
+    stiff_bounds = [0.01, 4.0] # non-restricting
+    stiff_mask = np.logical_and(
+        stiff_bounds[0] <= X[:, 2], X[:, 2] <= stiff_bounds[1]
+    )
+
+
+    unstiff_bounds = [-0.01, 0.1]
+    unstiff_mask = np.logical_and(
+        unstiff_bounds[0] <= X[:, 2], X[:, 2] <= unstiff_bounds[1]
+    )
+
     colors = ["#264653", "#2a9d8f", "#8ab17d", "#e9c46a", "#f4a261", "#e76f51"]
     colors = colors[::-1]
 
@@ -58,12 +69,22 @@ def plot_3d_gamma(
             gamma_bin[0] <= X[:, 2], X[:, 2] <= gamma_bin[1]
         )
         mask = np.logical_and(xi_zeta_mask, gamma_mask)
+        mask = np.logical_and(mask, stiff_mask)
 
         rho0_bin = [np.log(AR_bounds[0]), np.log(AR_bounds[1])]
         rho0_mask = np.logical_and(
             rho0_bin[0] <= X[:,0], X[:,0] <= rho0_bin[1]
         )
         mask = np.logical_and(mask, rho0_mask)
+
+        # if igamma == 0: # unstiffened data (cleanup)
+        #     avg_xi_mask = np.logical_and((avg_xi - 0.05) <= X[:, 1], X[:, 1] <= (avg_xi + 0.05))
+        #     avg_zeta_mask = np.logical_and(0.5 <= X[:, 3], X[:, 3] <=  0.8)
+        #     mask2 = np.logical_and(unstiff_mask, avg_xi_mask)
+        #     mask2 = np.logical_and(mask2, avg_zeta_mask)
+        #     print(f'{np.sum(mask2)=} {np.sum(unstiff_mask)=}')
+            
+        #     mask = np.logical_or(mask, mask2)
 
         X_in_range = X[mask, :]
         Y_in_range = Y[mask, :]

@@ -10,12 +10,16 @@ import niceplots, scipy, time, os
 import argparse
 from mpl_toolkits import mplot3d
 from matplotlib import cm
-import shutil, random
-from archive._saved_kernel import kernel, axial_theta_opt, shear_theta_opt
+import shutil, random, sys
+# from archive._saved_kernel import kernel, axial_theta_opt, shear_theta_opt
 from tacs import TACS, constitutive
 import ml_buckling as mlb
 
-# np.random.seed(1234567)
+sys.path.append("src/")
+from kernel_library import *
+
+# random seed (fixed for now..)
+np.random.seed(123456)
 
 # parse the arguments
 parent_parser = argparse.ArgumentParser(add_help=False)
@@ -27,73 +31,18 @@ args = parent_parser.parse_args()
 assert args.load in ["Nx", "Nxy"]
 
 
-theta_opt = axial_theta_opt if args.load == "Nx" else shear_theta_opt
+kernel = buckling_RQ_kernel
+if args.load == "Nx":
+    theta_opt=np.array([ 1.87597327e+00,  6.87123481e-01,  5.73982474e-01,  8.86433206e+00,
+            2.64332885e-03,  7.20043093e-01, -1.93544570e+00])
+elif args.load == "Nxy":
+    theta_opt = np.array([ 1.02616868e+00,  8.78408049e-01,  1.00000000e-01,  5.32860494e+00,
+        4.51945737e-03,  6.22763482e-01, -2.19295125e+00])
 
 load = args.load
 
 # PRELIM LOAD THE DATASET, etc.
 # -------------------------------------------------------------
-
-# load the Nxcrit dataset
-csv_filename = f"{load}_stiffened"
-df = pd.read_csv("data/" + csv_filename + ".csv")
-
-# extract only the model columns
-X = df[["log(1+xi)", "log(rho_0)", "log(1+10^3*zeta)", "log(1+gamma)"]].to_numpy()
-Y = df["log(eig_FEA)"].to_numpy()
-Y = np.reshape(Y, newshape=(Y.shape[0], 1))
-
-N_data = X.shape[0]
-
-# n_train = int(0.9 * N_data)
-n_train = 3000
-n_test = N_data - n_train
-
-print(f"Monte Carlo #data training {n_train} / {X.shape[0]} data points")
-
-# print bounds of the data
-xi = X[:, 0]
-# print(f"\txi or x0: min {np.min(xi)}, max {np.max(xi)}")
-rho0 = X[:, 1]
-# print(f"\trho0 or x1: min {np.min(rho0)}, max {np.max(rho0)}")
-zeta = X[:, 2]
-# print(f"\tzeta or x2: min {np.min(zeta)}, max {np.max(zeta)}")
-gamma = X[:, 3]
-# print(f"\tgamma or x3: min {np.min(gamma)}, max {np.max(gamma)}")
-
-# bins for the data (in log space)
-xi_bins = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1.0]]
-rho0_bins = [[-2.5, -1.0], [-1.0, 0.0], [0.0, 1.0], [1.0, 2.5]]
-zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.5]]
-gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 3.0], [3.0, 5.0]]
-
-# randomly permute the arrays
-rand_perm = np.random.permutation(N_data)
-X = X[rand_perm, :]
-Y = Y[rand_perm, :]
-
-n_data = X.shape[0]
-
-# split into training and test datasets
-n_total = X.shape[0]
-assert n_test > 100
-
-# reorder the data
-indices = [_ for _ in range(n_total)]
-train_indices = np.random.choice(indices, size=n_train)
-test_indices = [_ for _ in range(n_total) if not (_ in train_indices)]
-
-X_train = X[train_indices, :]
-X_test = X[test_indices[:n_test], :]
-Y_train = Y[train_indices, :]
-Y_test = Y[test_indices[:n_test], :]
-
-# only eval relative error on test set for zeta < 1
-# because based on the model plots it appears that the patterns break down some for that
-# zeta_mask = X_test[:,2] < 1.0
-# X_test = X_test[zeta_mask, :]
-# Y_test = Y_test[zeta_mask, :]
-n_test = X_test.shape[0]
 
 # get the previous training weights from MLB package
 if args.load == "Nx":
@@ -112,13 +61,13 @@ alpha = np.reshape(alpha, (alpha.shape[0], 1))
 
 # flip the indices of Xtrain matrix
 # otherwise gamma, zeta values are flipped
-Xtrain_mat = Xtrain_mat[:, [0, 1, 3, 2]]
+Xtrain_mat_tacs = Xtrain_mat[:, [0, 1, 3, 2]]
 n_train = alpha.shape[0]
 # no longer need to do this as fixed the order
 
-# print(f"{Xtrain_mat=} shape {Xtrain_mat.shape}")
-# print(f"{alpha=}", flush=True)
-# exit()
+# now is order [log(rho_0), log(1+xi), log(1+gamma), log(1+10^3 * zeta)]
+X_train_mlb = Xtrain_mat[:, np.array([1,0,2,3])]
+
 
 # build the TACS GP model
 # -------------------------------------------
@@ -148,10 +97,10 @@ ortho_ply = constitutive.OrthotropicPly(1e-3, ortho_prop)
 
 # build the axial GP object (which is the main ML object we are testing for this example)
 # however it is used inside of the constitutive object so we need to build that too
-axialGP = constitutive.BucklingGP.from_csv(
+axialGP = constitutive.BucklingGP.from_axial_csv(
     csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv
 )
-shearGP = constitutive.BucklingGP.from_csv(
+shearGP = constitutive.BucklingGP.from_shear_csv(
     csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv
 )
 panelGP = constitutive.PanelGPs(axialGP=axialGP, shearGP=shearGP)
@@ -180,11 +129,14 @@ con = constitutive.GPBladeStiffenedShellConstitutive(
 c_Xtrain = np.random.rand(4).astype(TACS.dtype)
 c_Xtest = np.random.rand(4).astype(TACS.dtype)
 
-mlb_kernel_res = kernel(c_Xtrain, c_Xtest, theta_opt)
+mlb_c_Xtrain = np.reshape(c_Xtrain, (1,1,4))
+mlb_c_Xtest = np.reshape(c_Xtest, (1,1,4))
+
+mlb_kernel_res = kernel(mlb_c_Xtrain, mlb_c_Xtest, theta_opt)
 tacs_kernel_res = axialGP.kernel(c_Xtrain, c_Xtest)
 print(f"{mlb_kernel_res=}")
 print(f"{tacs_kernel_res=}")
-# exit()
+exit()
 
 # now also compare it again for prescribed xi, rho_0, gamma, zeta
 xi = 1.0

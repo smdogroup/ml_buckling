@@ -102,29 +102,36 @@ lbounds = np.array([0.1] + [args.gammalb] + [1e-3] + [0.1] + [1e-4]*2 + [-4])
 theta0 = np.array([5.0, 1.0, 1e-1, 1.0, 2.0, 1.0] + [-2])
 ubounds = np.array([10.0]*6 + [0])
 
+if args.load == "Nxy":
+    lbounds[1] = 0.5
+    ubounds[2] = 0.100
+
 if not args.opt:
     # on old dataset: was pushing to high RQ coeff (bad extrapolation then)
     # axial_theta_opt = np.array([ 6.1113998 ,  0.93618111,  1.02880069,  2.6260183 ,  3.61487815, 0.5955076 , -3.79359076])
 
     # opt designs at current axial hyperparam optimization (for axial ntrain=2000)
-    axial_theta_opt=np.array([4.99630718443544, 0.9999004325011723, 0.03583481403808614, 1.1524101376060423, 1.9959891162767658, 0.9999560129887785, -1.7679458065241216])
-    axial_theta_opt=np.array([4.981801992541742, 0.9995130001726854, 0.02058467660235196, 0.9417197218475319, 1.9476959841602728, 0.9996652322809855, -1.7103460293491948])
-    axial_theta_opt=np.array([4.967179290402711, 0.9990411895159346, 0.01930761236310141, 0.8104718784236444, 1.8790979147849334, 0.9992958917469411, -1.6308058379603843])
-    axial_theta_opt=np.array([4.770866756384451, 0.988243783336739, 0.058580859840164944, 1.063360767037736, 0.136915375688455, 0.9897319273833416, -1.5298378328595506])
-    axial_theta_opt=np.array([4.24924529696483, 0.9668667355603373, 0.23404459151290297, 6.603669025547548, 0.002219737106821394, 0.9638183801378273, -2.1444063661684476])
+    # axial_theta_opt=np.array([4.99630718443544, 0.9999004325011723, 0.03583481403808614, 1.1524101376060423, 1.9959891162767658, 0.9999560129887785, -1.7679458065241216])
+    # axial_theta_opt=np.array([4.981801992541742, 0.9995130001726854, 0.02058467660235196, 0.9417197218475319, 1.9476959841602728, 0.9996652322809855, -1.7103460293491948])
+    # axial_theta_opt=np.array([4.967179290402711, 0.9990411895159346, 0.01930761236310141, 0.8104718784236444, 1.8790979147849334, 0.9992958917469411, -1.6308058379603843])
+    # axial_theta_opt=np.array([4.770866756384451, 0.988243783336739, 0.058580859840164944, 1.063360767037736, 0.136915375688455, 0.9897319273833416, -1.5298378328595506])
+    # axial_theta_opt=np.array([4.24924529696483, 0.9668667355603373, 0.23404459151290297, 6.603669025547548, 0.002219737106821394, 0.9638183801378273, -2.1444063661684476])
     # final axial theta opt
     # axial_theta_opt=np.array([1.49083009e+00, 9.43316328e-01, 3.57081802e-01, 1.00000000e+01, 9.90789055e-04, 9.58937173e-01, -2.24874104e+00])
     axial_theta_opt=np.array([ 1.87597327e+00,  6.87123481e-01,  5.73982474e-01,  8.86433206e+00,
         2.64332885e-03,  7.20043093e-01, -1.93544570e+00])
 
-    shear_theta_opt=np.array([ 1.99999308e+00,  1.00000000e-01,  1.00000000e+01,  3.88991009e-01,
-        8.43663518e-02,  1.00000000e-04, -3.88553112e-01])
+    # shear_theta_opt=np.array([ 1.99999308e+00,  1.00000000e-01,  1.00000000e+01,  3.88991009e-01,
+    #     8.43663518e-02,  1.00000000e-04, -3.88553112e-01])
+    shear_theta_opt = np.array([ 1.02616868e+00,  8.78408049e-01,  1.00000000e-01,  5.32860494e+00,
+        4.51945737e-03,  6.22763482e-01, -2.19295125e+00])
 
-    if args.load == "Nxy":
+    
+    if args.load == "Nx":
         theta0 = axial_theta_opt
     else:
         theta0 = shear_theta_opt
-    theta0 = theta0
+    print(f"{theta0=}")
 
 
 # prelim train the model for plotting
@@ -142,17 +149,22 @@ print(f"{sigma_n=}")
 # plot the initial model
 # ----------------------
 
+thick_walled = False
+if thick_walled:
+    xi_bin = [0.2, 0.8]
+    zeta_bin = [0.5, 1.5]
+else:
+    xi_bin = [0.6, 0.8]
+    zeta_bin = [0.0, 0.5]
+
 plot_3d_gamma(
     X=X, Y=Y,
     X_train=X_train,
     kernel_func=kernel,
     theta=theta0,
     alpha_train=alpha_train0,
-    #xi_bin=[0.3, 1.1],
-    xi_bin=[0.6, 0.8],
-    # xi_bin=[0.2, 0.6],
-    zeta_bin=[0.0, 0.5],
-    #zeta_bin=[0.5, 1.5],
+    xi_bin=xi_bin,
+    zeta_bin=zeta_bin,
     folder_name=f"output",
     load_name=args.load,
     file_prefix=f"init_{args.load}",
@@ -192,6 +204,7 @@ txt_hdl.write(f"init Rsquared on ntrain={Y_train.shape[0]} n_test={Y_test.shape[
 txt_hdl.write(f"\t{init_Rsq=}:\n")
 txt_hdl.write("--------------------------------------------\n\n")
 txt_hdl.flush()
+print(f"{init_Rsq=}")
 
 
 # optimize 
@@ -283,7 +296,7 @@ if args.opt:
 # close the text file
 txt_hdl.close()
 
-if args.archive and args.opt:
+if args.archive:
     import ml_buckling as mlb
 
     # archive the data to the format of the
@@ -297,15 +310,21 @@ if args.archive and args.opt:
 
     # print(f"{X_train=}")
 
+    if args.opt:
+        alpha = alpha_train_opt
+    else:
+        alpha = alpha_train0
+
     # [log(1+xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
     dataframe_dict = {
-        "log(1+xi)": X_train[:, 0],
-        "log(rho0)": X_train[:, 1],
-        "log(1+gamma)": X_train[:, 3],
+        # order was flipped from initial order
+        "log(1+xi)": X_train[:, 1],
+        "log(rho0)": X_train[:, 0],
+        "log(1+gamma)": X_train[:, 2],
         "log(1+10^3*zeta)": X_train[
-            :, 2
+            :, 3
         ],  # gamma,zeta are flipped to the order used in TACS
-        "alpha": alpha_train_opt[:, 0],
+        "alpha": alpha[:, 0],
     }
     model_df = pd.DataFrame(dataframe_dict)
     model_df.to_csv(output_csv)
@@ -314,9 +333,17 @@ if args.archive and args.opt:
     theta_csv = mlb.axial_theta_csv if args.load == "Nx" else mlb.shear_theta_csv
     if os.path.exists(theta_csv):
         os.remove(theta_csv)
+    
+    # print(f"{theta_csv=}")
+    if args.opt:
+        theta = theta_opt
+    else:
+        theta = theta0
+
+    # exclude the noise though
 
     theta_df_dict = {
-        "theta": theta_opt,
+        "theta": theta[:-1],
     }
     theta_df = pd.DataFrame(theta_df_dict)
     theta_df.to_csv(theta_csv)
