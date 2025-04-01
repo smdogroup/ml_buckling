@@ -15,10 +15,9 @@ from data_transforms import affine_transform
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument(
-    "--axial", default=True, action=argparse.BooleanOptionalAction
+    "--axial", default=False, action=argparse.BooleanOptionalAction
 )
-parent_parser.add_argument("--version", type=int, default=0)
-parent_parser.add_argument("--show", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable axial mode (default: False)")
+# parent_parser.add_argument("--version", type=int, default=0)
 args = parent_parser.parse_args()
 
 # random seed (fixed for now..)
@@ -38,10 +37,11 @@ base_name = f"{axial_str}"
 load_str = "Nx" if args.axial else "Nxy"
 csv_filename = f"{load_str}_raw_stiffened"
 suffix = None
-if args.version == 0:
-    suffix = ""
-elif args.version > 0:
-    suffix = "_v" + str(args.version)
+# if args.version == 0:
+#     suffix = ""
+# elif args.version > 0:
+#     suffix = "_v" + str(args.version)
+suffix = ""
 
 df = pd.read_csv(csv_filename + suffix + ".csv")
 
@@ -101,7 +101,7 @@ colors = colors[::-1]
 
 for igam,loggam_bin in enumerate(loggam_bins):
     gam_bin = [np.exp(loggam_bin[0])-1, np.exp(loggam_bin[1]) - 1]
-    print(f"{gam_bin=}")
+    print(f"{gam_bin=} {loggam_bin=}")
     loggam_mask = np.logical_and(loggam_bin[0] <= X[:,-1], X[:,-1] <= loggam_bin[1])
 
     # print(f"{}")
@@ -113,14 +113,14 @@ for igam,loggam_bin in enumerate(loggam_bins):
     Y_in_range = Y[full_mask, :]
 
     log_rho = X_in_range[:,1]
-    a, b = best_fit(log_rho, Y_in_range[:])
+    #a, b = best_fit(log_rho, Y_in_range[:])
 
     print(f"{np.sum(full_mask)=}")
 
-    if igam == 4:
+    #if igam == 4:
         # print out dataset to terminal
-        arr = np.concatenate([X_in_range, Y_in_range], axis=1)
-        print(f"{arr=}")
+    arr = np.concatenate([X_in_range, Y_in_range], axis=1)
+    print(f"{igam=} {arr=}")
 
     plt.scatter(
         X_in_range[:, 1],
@@ -129,11 +129,11 @@ for igam,loggam_bin in enumerate(loggam_bins):
         color=colors[igam % 6],
         edgecolors="black",
         zorder=2 + igam,
-        label=f"loggam-{igam}"
+        label=r"$\ln(1+\gamma) \in $" + f"[{loggam_bin[0]:.2f},{loggam_bin[1]:.2f}]"
     )
 
     # now also plot the line of best fit
-    Y_fit = a + b * log_rho
+    #Y_fit = a + b * log_rho
     # plt.plot(log_rho, Y_fit, "--", color=colors[igam % 6], zorder=1)
 
 plt.legend()

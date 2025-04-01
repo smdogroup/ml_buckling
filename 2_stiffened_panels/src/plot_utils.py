@@ -9,7 +9,8 @@ xi_bins = [[0.2, 0.4], [0.4, 0.6], [0.6, 0.8], [0.8, 1.05]]
 rho0_bins = [[-2.5, -1.0], [-1.0, 0.0], [0.0, 1.0], [1.0, 2.5]]
 zeta_bins = [[0.0, 0.1], [0.1, 0.5], [0.5, 1.0], [1.0, 2.5]]
 # gamma_bins = [[0.0, 0.1], [0.1, 1.0], [1.0, 2.0], [2.0, 3.0]]
-gamma_vec = np.geomspace(1+0.0, 1+3.0, 6+1)-1
+#gamma_vec = np.geomspace(1+0.0, 1+3.0, 6+1)-1
+gamma_vec = np.linspace(0.0, 2.8, 6+1) # since in log space already
 gamma_bins = [[gamma_vec[i], gamma_vec[i+1]] for i in range(6)]
 
 

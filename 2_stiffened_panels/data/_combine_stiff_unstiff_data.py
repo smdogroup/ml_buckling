@@ -29,12 +29,12 @@ cpath = os.path.dirname(__file__)
 # raw_data_folder = os.path.join(cpath, "raw_data")
 # if not os.path.exists(raw_data_folder) and comm.rank == 0:
 #     os.mkdir(raw_data_folder)
-data_folder = os.path.join(cpath, "data")
-if not os.path.exists(data_folder) and comm.rank == 0:
-    os.mkdir(data_folder)
+#data_folder = os.path.join(cpath, "data")
+#if not os.path.exists(data_folder) and comm.rank == 0:
+#    os.mkdir(data_folder)
 
-stiffened_csv = os.path.join(data_folder, args.load + "_raw_stiffened.csv")
-stiff_df = pd.read_csv(stiffened_csv)
+#stiffened_csv = os.path.join(data_folder, args.load + "_raw_stiffened.csv")
+stiff_df = pd.read_csv(args.load + "_raw_stiffened.csv")
 
 X = stiff_df[["xi", "rho_0", "log10(zeta)", "gamma", "eig_FEA"]].to_numpy()
 
@@ -64,8 +64,8 @@ X_stiff = X[not_nan_mask, :4]
 #     X_stiff = X_stiff[not_outliers,:]
 #     Y_stiff = Y_stiff[not_outliers,:]
 
-unstiffened_csv = os.path.join(data_folder, args.load + "_unstiffened.csv")
-unstiff_df = pd.read_csv(unstiffened_csv)  # , skiprows=1)
+#unstiffened_csv = os.path.join(data_folder, args.load + "_unstiffened.csv")
+unstiff_df = pd.read_csv(args.load + "_unstiffened.csv")  # , skiprows=1)
 
 # print(f"unstiff df = {unstiff_df}")
 
@@ -96,4 +96,4 @@ new_df_dict = {
     "log(eig_FEA)": list(Y_combined[:, 0]),
 }
 df = pd.DataFrame(new_df_dict)
-df.to_csv(f"data/{args.load}_stiffened.csv")
+df.to_csv(f"{args.load}_stiffened.csv")
