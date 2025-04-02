@@ -1,7 +1,7 @@
 # Gray Benchmark Model geometry script
 
-cfgpmtr view:flow 1
-cfgpmtr view:struct 0
+cfgpmtr view:flow 0
+cfgpmtr view:struct 1
 
 cfgpmtr symPlane 0      # Symmetry plane input (yes/no)
 cfgpmtr nribs 23

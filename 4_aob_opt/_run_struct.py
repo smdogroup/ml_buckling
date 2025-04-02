@@ -53,8 +53,8 @@ tacs_model = caps2tacs.TacsModel.build(
 )
 tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative test to pass
     edge_pt_min=2,
-    edge_pt_max=50,
-    global_mesh_size=0.03,  # 0.3
+    edge_pt_max=20,
+    global_mesh_size=0.3,  # 0.3
     max_surf_offset=0.2,
     max_dihedral_angle=15,
 ).register_to(
@@ -72,9 +72,9 @@ egads_aim = tacs_model.mesh_aim
 if comm.rank == 0:
     aim = egads_aim.aim
     aim.input.Mesh_Sizing = {
-        "chord": {"numEdgePoints": 20},
-        "span": {"numEdgePoints": 10},
-        "vert": {"numEdgePoints": 10},
+        "chord": {"numEdgePoints": 40},
+        "span": {"numEdgePoints": 20},
+        "vert": {"numEdgePoints": 20},
     }
 
 
