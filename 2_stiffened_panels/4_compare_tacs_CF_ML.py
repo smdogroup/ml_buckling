@@ -19,8 +19,8 @@ parent_parser.add_argument("--load", type=str, default="Nx")
 parent_parser.add_argument(
     "--show", default=True, action=argparse.BooleanOptionalAction
 )
-parent_parser.add_argument("--xi", type=float, default=1.0)
-parent_parser.add_argument("--zeta", type=float, default=0.0)
+parent_parser.add_argument("--xi", type=float, default=1.0) # this is not in log transform
+parent_parser.add_argument("--zeta", type=float, default=1e-4) # this is not in log transform, 1e-4 to 1e-2 values
 
 args = parent_parser.parse_args()
 
@@ -120,8 +120,8 @@ for igamma, gamma in enumerate([0.0, 1.0, 2.0, 5.0, 10.0]):
             CF_vec[i] = CF_con.nondimCriticalGlobalShearLoad(rho0, xi, gamma)
             ML_vec[i] = ML_con.nondimCriticalGlobalShearLoad(rho0, xi, gamma, zeta)
     plt.plot(
-        rho0_vec,
-        CF_vec,
+        np.log(rho0_vec),
+        np.log(CF_vec),
         "-",
         # label=f"CF-gam={gamma:.2f}",
         label=f"gam={gamma:.2f}",
@@ -129,8 +129,8 @@ for igamma, gamma in enumerate([0.0, 1.0, 2.0, 5.0, 10.0]):
         color=colors[igamma],
     )
     plt.plot(
-        rho0_vec,
-        ML_vec,
+        np.log(rho0_vec),
+        np.log(ML_vec),
         "--",
         # label=f"ML-gam={gamma:.2f}",
         color=colors[igamma],
@@ -143,8 +143,10 @@ if args.load == "Nx":
     plt.ylabel(r"$N_{11,cr}^*$")
 else:
     plt.ylabel(r"$N_{12,cr}^*$")
-plt.xscale("log")
-plt.yscale("log")
+
+# plt.axis([0.0, 10.0, 0.0, 100.0])
+# plt.xscale("log")
+# plt.yscale("log")
 plt.legend()
 
 if args.show:

@@ -84,13 +84,16 @@ Y_test = Y[rem_ind]
 use_affine = args.load == "Nx" # only use for axial
 # use_affine = False
 if use_affine:
-    X_train = affine_transform(X0_train, is_log=True)
+    X_train = affine_transform(X0_train.copy(), is_log=True)
     X = affine_transform(X0, is_log=True)
     X_test = affine_transform(X0_test, is_log=True)
 else: 
     X_train = X0_train
     X = X0
     X_test = X0_test
+
+# print(f"{X0_train[0,:]=} {X_train[0,:]=}")
+# exit()
 
 # set bounds of the hyperparam opt and initial
 # --------------------------------------------
@@ -118,8 +121,13 @@ if not args.opt:
     # axial_theta_opt=np.array([4.24924529696483, 0.9668667355603373, 0.23404459151290297, 6.603669025547548, 0.002219737106821394, 0.9638183801378273, -2.1444063661684476])
     # final axial theta opt
     # axial_theta_opt=np.array([1.49083009e+00, 9.43316328e-01, 3.57081802e-01, 1.00000000e+01, 9.90789055e-04, 9.58937173e-01, -2.24874104e+00])
-    axial_theta_opt=np.array([ 1.87597327e+00,  6.87123481e-01,  5.73982474e-01,  8.86433206e+00,
-        2.64332885e-03,  7.20043093e-01, -1.93544570e+00])
+    #axial_theta_opt=np.array([ 1.87597327e+00,  6.87123481e-01,  5.73982474e-01,  8.86433206e+00,
+    #    2.64332885e-03,  7.20043093e-01, -1.93544570e+00])
+    #axial_theta_opt=np.array([ 1.00000000e+01,  1.02155356e+00,  1.68192006e-01,  9.76039919e+00,
+    #8.31644315e-04,  9.59546841e-01, -2.41801515e+00]) 
+    axial_theta_opt=np.array([ 9.63302923e+00,  9.27452799e-01,  5.69392385e-01,  9.99999999e+00,
+        1.36615180e-03,  8.90670865e-01, -2.02954097e+00])
+
 
     # shear_theta_opt=np.array([ 1.99999308e+00,  1.00000000e-01,  1.00000000e+01,  3.88991009e-01,
     #     8.43663518e-02,  1.00000000e-04, -3.88553112e-01])
@@ -144,6 +152,10 @@ nugget_term = sigma_n**2 * np.eye(x_train_L.shape[0])
 K_train0 = kernel(x_train_L, x_train_R, theta0) + nugget_term
 alpha_train0 = np.linalg.solve(K_train0, Y_train)
 
+# print(f"{X_train=}")
+# print(f"{alpha_train0=}")
+# exit()
+
 print(f"{sigma_n=}")
 
 # plot the initial model
@@ -151,11 +163,14 @@ print(f"{sigma_n=}")
 
 thick_walled = False
 if thick_walled:
-    xi_bin = [0.2, 0.8]
+    xi_bin = [0.4, 0.8]
     zeta_bin = [0.5, 1.5]
 else:
     xi_bin = [0.6, 0.8]
     zeta_bin = [0.0, 0.5]
+
+#xi_bin = [0.0, 0.0]
+#zeta_bin = [0.0, 0.0]
 
 plot_3d_gamma(
     X=X, Y=Y,
@@ -173,7 +188,7 @@ plot_3d_gamma(
     save_npz=False, 
 )
 
-print(f'{X0_train.shape} {X.shape=}')
+#print(f'{X0_train.shape} {X.shape=}')
 # exit()
 
 plot_3d_xi(
@@ -318,10 +333,10 @@ if args.archive:
     # [log(1+xi), log(rho0), log(1+gamma), log(1+10^3 * zeta)]
     dataframe_dict = {
         # order was flipped from initial order
-        "log(1+xi)": X_train[:, 1],
-        "log(rho0)": X_train[:, 0],
-        "log(1+gamma)": X_train[:, 2],
-        "log(1+10^3*zeta)": X_train[
+        "log(1+xi)": X0_train[:, 1],
+        "log(rho0)": X0_train[:, 0], # before affine transform
+        "log(1+gamma)": X0_train[:, 2],
+        "log(1+10^3*zeta)": X0_train[
             :, 3
         ],  # gamma,zeta are flipped to the order used in TACS
         "alpha": alpha[:, 0],

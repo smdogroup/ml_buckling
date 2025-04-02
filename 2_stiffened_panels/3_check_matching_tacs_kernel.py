@@ -32,12 +32,6 @@ assert args.load in ["Nx", "Nxy"]
 
 
 kernel = buckling_RQ_kernel
-if args.load == "Nx":
-    theta_opt=np.array([ 1.87597327e+00,  6.87123481e-01,  5.73982474e-01,  8.86433206e+00,
-            2.64332885e-03,  7.20043093e-01, -1.93544570e+00])
-elif args.load == "Nxy":
-    theta_opt = np.array([ 1.02616868e+00,  8.78408049e-01,  1.00000000e-01,  5.32860494e+00,
-        4.51945737e-03,  6.22763482e-01, -2.19295125e+00])
 
 load = args.load
 
@@ -47,8 +41,10 @@ load = args.load
 # get the previous training weights from MLB package
 if args.load == "Nx":
     csv_file = mlb.axialGP_csv
+    theta_csv = mlb.axial_theta_csv
 elif args.load == "Nxy":
     csv_file = mlb.shearGP_csv
+    theta_csv = mlb.shear_theta_csv
 
 
 import pandas as pd
@@ -59,6 +55,9 @@ Xtrain_mat = df[df.columns[1:5]].to_numpy(dtype=dtype)
 alpha = df[df.columns[-1]].to_numpy(dtype=dtype)
 alpha = np.reshape(alpha, (alpha.shape[0], 1))
 
+theta_df = pd.read_csv(theta_csv)
+theta_opt = theta_df[["theta"]].to_numpy()[:,0]
+
 # flip the indices of Xtrain matrix
 # otherwise gamma, zeta values are flipped
 Xtrain_mat_tacs = Xtrain_mat[:, [0, 1, 3, 2]]
@@ -68,6 +67,13 @@ n_train = alpha.shape[0]
 # now is order [log(rho_0), log(1+xi), log(1+gamma), log(1+10^3 * zeta)]
 X_train_mlb = Xtrain_mat[:, np.array([1,0,2,3])]
 
+# affine transform
+if args.load == "Nx":
+    X_train_mlb[:,0] -= X_train_mlb[:,2] * 0.25
+
+# print(f"{X_train_mlb=}")
+# print(f"{alpha=}")
+# exit()
 
 # build the TACS GP model
 # -------------------------------------------
@@ -126,17 +132,31 @@ con = constitutive.GPBladeStiffenedShellConstitutive(
 
 # COMPARE the kernel functions first
 # -------------------------------------------
+# ln(rho0), ln(1+xi), ln(1+gamma), ln(1+10^3*zeta)
 c_Xtrain = np.random.rand(4).astype(TACS.dtype)
 c_Xtest = np.random.rand(4).astype(TACS.dtype)
 
-mlb_c_Xtrain = np.reshape(c_Xtrain, (1,1,4))
-mlb_c_Xtest = np.reshape(c_Xtest, (1,1,4))
+mlb_c_Xtrain = np.reshape(c_Xtrain.copy(), (1,1,4))
+mlb_c_Xtest = np.reshape(c_Xtest.copy(), (1,1,4))
+
+# affine transform
+if args.load == "Nx":
+    mlb_c_Xtrain[:,:,0] -= mlb_c_Xtrain[:,:,2] * 0.25
+    mlb_c_Xtest[:,:,0] -= mlb_c_Xtest[:,:,2] * 0.25
+
+# reorder inputs to TACS
+# ln(1+xi), ln(rho0), ln(1+gamma), ln(1+10^3*zeta)
+c_Xtrain = c_Xtrain[np.array([1,0,2,3])]
+c_Xtest = c_Xtest[np.array([1,0,2,3])]
+print(f"{c_Xtrain=} {c_Xtest=}")
 
 mlb_kernel_res = kernel(mlb_c_Xtrain, mlb_c_Xtest, theta_opt)
 tacs_kernel_res = axialGP.kernel(c_Xtrain, c_Xtest)
+
+# useful check on whether the covariance for same inputs match
 print(f"{mlb_kernel_res=}")
 print(f"{tacs_kernel_res=}")
-exit()
+# exit()
 
 # now also compare it again for prescribed xi, rho_0, gamma, zeta
 xi = 1.0
@@ -145,17 +165,18 @@ gamma = 0.0
 zeta = 0.0
 
 # predictions for MLB model
-c_Xtest = np.array(
-    [np.log(1.0 + xi), np.log(rho_0), np.log(1.0 + 1000.0 * zeta), np.log(1.0 + gamma)]
-)
-K_cross = np.array(
-    [kernel(Xtrain_mat[i, :], c_Xtest, theta_opt) for i in range(n_train)]
-)
-K_cross = np.reshape(K_cross, (1, K_cross.shape[0]))
-print(f"{K_cross=} {K_cross.shape}")
-print(f"alpha shape {alpha.shape}")
-pred_log_load = (K_cross @ alpha)[0, 0]
+c_Xtest_left = np.array(
+    [np.log(rho_0), np.log(1.0 + xi), 
+     np.log(1.0 + gamma), np.log(1.0 + 1000.0 * zeta)]
+).reshape((1,1,4)) # no affine transform needed because gamma = 0.0
+x_train_right = tf.expand_dims(X_train_mlb, axis=0)
+K_cross = kernel(c_Xtest_left, x_train_right, theta_opt)
+print(f"{np.array(K_cross[:10])=}")
+print(f"{alpha[:10]=}")
+pred_log_load = np.dot(K_cross, alpha)
 mlb_buckling_load = np.exp(pred_log_load)
+
+# tacs prediction for single buckling load
 if args.load == "Nx":
     tacs_buckling_load = con.nondimCriticalGlobalAxialLoad(rho_0, xi, gamma, zeta)
 else:
@@ -164,7 +185,7 @@ else:
 print(f"{mlb_buckling_load=}")
 print(f"{tacs_buckling_load=}")
 
-# exit()
+exit()
 
 
 # PREDICTIONS for the ML_buckling model
