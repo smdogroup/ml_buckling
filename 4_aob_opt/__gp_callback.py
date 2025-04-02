@@ -25,10 +25,10 @@ def gp_callback_generator(tacs_component_names):
     """
 
     # build one Axial and Shear GP model to be used for all const objects (no duplication)
-    axialGP = constitutive.BucklingGP.from_csv(
+    axialGP = constitutive.BucklingGP.from_axial_csv(
         csv_file=mlb.axialGP_csv, theta_csv=mlb.axial_theta_csv
     )
-    shearGP = constitutive.BucklingGP.from_csv(
+    shearGP = constitutive.BucklingGP.from_shear_csv(
         csv_file=mlb.shearGP_csv, theta_csv=mlb.shear_theta_csv
     )
 
@@ -61,9 +61,13 @@ def gp_callback_generator(tacs_component_names):
 
         # case by case initial ply angles
         if "OML" in compDescript:
+            inboard = any([descr in compDescript for descr in ["OML1", "OML2", "OML3"]])
+            if inboard:
+                refAxis = np.array([0.0, 1.0, 0.0])
+            else:
+                refAxis = np.array([0.34968, 0.936868, 0.0])
             plyAngles = np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype))
             panelPlyFractions = np.array([44.41, 22.2, 22.2, 11.19], dtype=dtype) / 100.0
-            refAxis = np.array([0.34968083, 0.93686889, 0.0])
         else:
             plyAngles = np.deg2rad(np.array([0.0, -45.0, 45.0, 90.0], dtype=dtype))
             panelPlyFractions = np.array([10.0, 35.0, 35.0, 20.0], dtype=dtype) / 100.0
@@ -118,10 +122,10 @@ def gp_callback_generator(tacs_component_names):
         # significant contribution to the failure function derivatives
         con.setKSWeight(100.0)
         # con.setWriteDVMode(2)
-        con.setFailureModes(
-            includeStiffenerColumnBuckling=False
-        )
-        con.setCPTstiffenerCrippling(True)
+        # con.setFailureModes(
+        #     includeStiffenerColumnBuckling=False
+        # )
+        # con.setCPTstiffenerCrippling(True)
 
         con.setStiffenerPitchBounds(0.05, 0.5)
         con.setPanelThicknessBounds(0.002, 0.1)

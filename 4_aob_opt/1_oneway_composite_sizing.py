@@ -5,12 +5,10 @@ Local machine optimization for the panel thicknesses using nribs-1 OML panels an
 """
 
 from funtofem import *
-import time
 from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
 import time
-start_time = time.time()
 
 # import openmdao.api as om
 from mpi4py import MPI
@@ -282,8 +280,6 @@ if test_derivatives:  # test using the finite difference test
     # design_in_file = os.path.join(base_dir, "design", "sizing-oneway.txt")
     # f2f_model.read_design_variables_file(comm, design_in_file)
 
-    start_time = time.time()
-
     # run the finite difference test
     max_rel_error = TestResult.derivative_test(
         "gbm-oneway",
@@ -293,11 +289,7 @@ if test_derivatives:  # test using the finite difference test
         complex_mode=False,
         epsilon=1e-4,
     )
-
-    end_time = time.time()
-    dt = end_time - start_time
     if comm.rank == 0:
-        print(f"total time for ssw derivative test is {dt} seconds", flush=True)
         print(f"max rel error = {max_rel_error}", flush=True)
 
     # exit before optimization
@@ -379,8 +371,3 @@ sol = snoptimizer(
 sol_xdict = sol.xStar
 if comm.rank == 0:
     print(f"Final solution = {sol_xdict}", flush=True)
-
-end_time = time.time()
-elapsed_time = end_time - start_time
-if comm.rank == 0:
-    print(f"elapsed time = {elapsed_time:.5e} seconds for the {model_name} model", flush=True)

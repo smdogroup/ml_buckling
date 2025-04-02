@@ -4,33 +4,36 @@ Sean P. Engelstad, Georgia Tech 2023
 Local machine optimization for the panel thicknesses using nribs-1 OML panels and nribs-1 LE panels
 """
 
+from funtofem import *
 import time
-
-# from pyoptsparse import SNOPT, Optimization
+from pyoptsparse import SNOPT, Optimization
 import numpy as np
 import argparse
+import time
+start_time = time.time()
 
 # import openmdao.api as om
-from funtofem import *
 from mpi4py import MPI
 from tacs import caps2tacs
 import os
 
+
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument("--procs", type=int, default=6)
 parent_parser.add_argument(
+    "--hotstart", default=False, action=argparse.BooleanOptionalAction
+)
+parent_parser.add_argument(
     "--useML", default=False, action=argparse.BooleanOptionalAction
 )
-
 args = parent_parser.parse_args()
 
 if args.useML:
-    # from _gp_callback import gp_callback_generator
-    from __gp_callback import gp_callback_generator
+    from _gp_callback import gp_callback_generator
 
     model_name = "ML-oneway"
 else:
-    from __closed_form_callback import closed_form_callback as callback
+    from _closed_form_callback import closed_form_callback as callback
 
     model_name = "CF-oneway"
 
@@ -47,7 +50,7 @@ f2f_model = FUNtoFEMmodel(model_name)
 tacs_model = caps2tacs.TacsModel.build(
     csm_file=csm_path,
     comm=comm,
-    problem_name="capsStruct0",
+    problem_name="capsStruct1",
     active_procs=[0],
     verbosity=1,
 )
@@ -171,7 +174,7 @@ tacs_aim.pre_analysis()
 # ----------------------------------------------------
 
 # make a funtofem scenario
-cruise = Scenario.steady("climb_turb", steps=2, coupled=False)  # 2000
+cruise = Scenario.steady("climb_turb", steps=2)  # 2000
 # increase ksfailure scale to make it stricter on infeasibility for that.
 Function.ksfailure(ks_weight=100.0, safety_factor=1.5).optimize(
     scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-cruise"
@@ -232,8 +235,14 @@ for igroup, comp_group in enumerate(comp_groups):
 
         # minimum stiffener AR
         min_stiff_AR = sheight_var - 2.0 * sthick_var
-        min_stiff_AR.set_name(f"{comp_group}{icomp}-stiffAR").optimize(
+        min_stiff_AR.set_name(f"{comp_group}{icomp}-minstiffAR").optimize(
             lower=0.0, scale=1.0, objective=False
+        ).register_to(f2f_model)
+
+        # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
+        max_stiff_AR = sheight_var - 20.0 * sthick_var
+        max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
+            upper=0.0, scale=1.0, objective=False
         ).register_to(f2f_model)
 
 # DISCIPLINE INTERFACES AND DRIVERS
@@ -299,23 +308,79 @@ if test_derivatives:  # test using the finite difference test
 
 # create an OptimizationManager object for the pyoptsparse optimization problem
 # design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-# design_out_file = os.path.join(
-#     base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
-# )
-
-# temp just load CF-sizing.txt to compare ML and CF
 design_out_file = os.path.join(
-    base_dir, "design", "ML-metal-sizing.txt" if args.useML else "CF-metal-sizing.txt"
+    base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
+)
+
+design_folder = os.path.join(base_dir, "design")
+if not os.path.exists(design_folder) and comm.rank == 0:
+    os.mkdir(design_folder)
+history_file = os.path.join(
+    design_folder, "ML-sizing.hst" if args.useML else "CF-sizing.hst"
 )
 
 # reload previous design
 # not needed since we are hot starting
-f2f_model.read_design_variables_file(comm, design_out_file)
+# f2f_model.read_design_variables_file(comm, design_out_file)
 
-# run a forward struct analysis
-tacs_driver.solve_forward()
+manager = OptimizationManager(
+    tacs_driver,
+    design_out_file=design_out_file,
+    hot_start=args.hotstart,
+    debug=True,
+    hot_start_file=history_file,
+    sparse=True,
+)
 
-# print out the function values
+# create the pyoptsparse optimization problem
+opt_problem = Optimization("gbm-sizing", manager.eval_functions)
+
+# add funtofem model variables to pyoptsparse
+manager.register_to_problem(opt_problem)
+
+# run an SNOPT optimization
+snoptimizer = SNOPT(
+    options={
+        "Print frequency": 1000,
+        "Summary frequency": 10000000,
+        "Major feasibility tolerance": 1e-6,
+        "Major optimality tolerance": 1e-6,
+        "Verify level": 0,
+        "Major iterations limit": 4000,
+        "Minor iterations limit": 150000000,
+        "Iterations limit": 100000000,
+        # "Major step limit": 5e-2, # had this off I think (but this maybe could be on)
+        "Nonderivative linesearch": True,  # turns off derivative linesearch
+        "Linesearch tolerance": 0.9,
+        "Difference interval": 1e-6,
+        "Function precision": 1e-10,
+        "New superbasics limit": 2000,
+        "Penalty parameter": 1.0,  # had this off for faster opt in the single panel case
+        # however ksfailure becomes too large with this off. W/ on merit function goes down too slowly though
+        # try intermediate value btw 0 and 1 (smaller penalty)
+        # this may be the most important switch to change for opt performance w/ ksfailure in the opt
+        # TODO : could try higher penalty parameter like 50 or higher and see if that helps reduce iteration count..
+        #   because it often increases the penalty parameter a lot near the optimal solution anyways
+        "Scale option": 1,
+        "Hessian updates": 40,
+        "Print file": os.path.join("SNOPT_print.out"),
+        "Summary file": os.path.join("SNOPT_summary.out"),
+    }
+)
+
+sol = snoptimizer(
+    opt_problem,
+    sens=manager.eval_gradients,
+    storeHistory=history_file,  # None
+    hotStart=history_file if args.hotstart else None,
+)
+
+# print final solution
+sol_xdict = sol.xStar
 if comm.rank == 0:
-    for func in f2f_model.get_functions(optim=True):
-        print(f"func {func.name} = {func.value.real}")
+    print(f"Final solution = {sol_xdict}", flush=True)
+
+end_time = time.time()
+elapsed_time = end_time - start_time
+if comm.rank == 0:
+    print(f"elapsed time = {elapsed_time:.5e} seconds for the {model_name} model", flush=True)
