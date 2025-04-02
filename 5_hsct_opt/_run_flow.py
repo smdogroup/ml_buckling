@@ -16,17 +16,20 @@ wing = Body.aeroelastic("wing", boundary=3)
 wing.register_to(f2f_model)
 
 # make a funtofem scenario
-if case == "inviscid":
-    climb = Scenario.steady("climb_inviscid", steps=3000)  # 2000
-elif case == "turbulent":
-    climb = Scenario.steady(
-        "climb_turb", steps=150, forward_coupling_frequency=30, uncoupled_steps=100
-    )
-Function.lift().register_to(climb)
-Function.drag().register_to(climb)
-climb.set_temperature(T_ref=216, T_inf=216)
-climb.set_flow_ref_vals(qinf=3.16e4)
-climb.register_to(f2f_model)
+# climb = Scenario.steady("climb_inviscid", steps=3000)  # 2000
+pullup = Scenario.steady(
+    "pullup", steps=150, forward_coupling_frequency=30, uncoupled_steps=100
+)
+pushdown = Scenario.steady(
+    "pushdown", steps=150, forward_coupling_frequency=30, uncoupled_steps=100
+)
+
+for my_scenario in [pullup, pushdown]:
+    Function.lift().register_to(my_scenario)
+    Function.drag().register_to(my_scenario)
+    my_scenario.set_temperature(T_ref=216, T_inf=216)
+    my_scenario.set_flow_ref_vals(qinf=3.16e4)
+    my_scenario.register_to(f2f_model)
 
 
 # DISCIPLINE INTERFACES AND DRIVERS
@@ -47,10 +50,6 @@ fun3d_driver = OnewayAeroDriver(
 fun3d_driver.solve_forward()
 
 # write an aero loads file
-if case == "inviscid":
-    aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_loads.txt")
-elif case == "turbulent":
-    aero_loads_file = os.path.join(
-        os.getcwd(), "cfd", "loads", "uncoupled_turb_loads.txt"
-    )
+    # aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_loads.txt")
+aero_loads_file = "cfd/loads/uncoupled_turb_loads.txt"
 f2f_model.write_aero_loads(comm, aero_loads_file)

@@ -1,0 +1,89 @@
+&project
+  project_rootname = 'hsct-turb'
+/
+&raw_grid
+  grid_format = 'aflr3'
+  data_format = 'default'
+  swap_yz_axes = .false.
+/
+&governing_equations
+  eqn_type = 'compressible'
+  viscous_terms = 'turbulent'
+/
+&turbulence_diffusion_models
+  turbulence_model = 'sa'
+/
+&reference_physical_properties
+  mach_number     = 0.4
+  angle_of_attack = -3.0
+  reynolds_number = 1e8
+  temperature     = 216.0
+  temperature_units = 'Kelvin'
+/
+&code_run_control
+  restart_write_freq = 1200
+  restart_read       = 'off'
+  steps              =  2000
+  stopping_tolerance = 1e-18
+/
+&inviscid_flux_method
+  flux_construction       = 'roe'
+  flux_limiter            = 'hminmod'
+  smooth_limiter_coeff    = 1.0
+  freeze_limiter_iteration = 0
+/
+&nonlinear_solver_parameters
+  time_accuracy = "steady"
+  time_step_nondim =   0.1
+  subiterations =          0
+  schedule_iteration(1:2) = 1,150
+  schedule_cfl(1:2) = 2.0, 100.0
+  schedule_cflturb(1:2) = 5.0,10.0
+  hanim = .false.
+/
+&hanim
+  cfl_increase_factor = 1.2
+  cfl_decrease_factor = 0.7
+/
+&massoud_output
+  funtofem_include_skin_friction = .true.
+  funtofem_restart_grid_adjoint = .true.
+/
+&global
+  moving_grid = .true.
+  boundary_animation_freq = 300
+  volume_animation_freq = 300
+  recompute_turb_dist = .false.
+/
+&elasticity_gmres
+  elasticity = 2
+  preconditioner_iters = 10
+  nsearch = 100 ! num GMRES steps
+  nrestarts = 15 ! leads to 50*15 = 750 grid iterations
+  tol = 1e-22
+  tol_abs = 1e-30
+/
+&slice_data
+  nslices       = 1
+  slice_z(:)    = .true.
+  slice_location(:) = 2.5
+/
+&volume_output_variables
+  export_to = 'tecplot'
+  temperature = .true.
+  residuals = .true.
+  turb1 = .true.
+  x = .true.
+  y = .true.
+  z = .true.
+/
+&boundary_output_variables
+  number_of_boundaries = 3
+  boundary_list = '1-3'
+  temperature = .true.
+  turb1 = .true.
+  residuals = .true.
+  x = .true.
+  y = .true.
+  z = .true.
+/
