@@ -221,7 +221,7 @@ def make_model_and_solver(
 
     solvers = SolverManager(comm)
 
-    output_dir = "design/struct"
+    output_dir = "design/struct/"
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
     dat_file = "design/struct/tacs.dat"

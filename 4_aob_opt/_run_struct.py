@@ -1,321 +1,49 @@
-"""
-Sean P. Engelstad, Georgia Tech 2023
-
-Local machine optimization for the panel thicknesses using nribs-1 OML panels and nribs-1 LE panels
-"""
-
-import time
-
-# from pyoptsparse import SNOPT, Optimization
-import numpy as np
-import argparse
-
-# import openmdao.api as om
-from funtofem import *
+import sys, pickle, os
 from mpi4py import MPI
-from tacs import caps2tacs
-import os
+from funtofem import *
 
-parent_parser = argparse.ArgumentParser(add_help=False)
-parent_parser.add_argument("--procs", type=int, default=6)
-parent_parser.add_argument(
-    "--useML", default=False, action=argparse.BooleanOptionalAction
-)
+# import the case utils from the local src/ directory
+sys.path.append("src/")
+from model_and_solver import make_model_and_solver
+from get_argparser import get_argparser
 
-args = parent_parser.parse_args()
-
-if args.useML:
-    # from _gp_callback import gp_callback_generator
-    from __gp_callback import gp_callback_generator
-
-    model_name = "ML-oneway"
-else:
-    from __closed_form_callback import closed_form_callback as callback
-
-    model_name = "CF-oneway"
-
+# get argparse
+parser = get_argparser()
+args = parser.parse_args()
 
 comm = MPI.COMM_WORLD
-
 base_dir = os.path.dirname(os.path.abspath(__file__))
-csm_path = os.path.join(base_dir, "geometry", "gbm.csm")
 
-# F2F MODEL and SHAPE MODELS
-# ----------------------------------------
-
-f2f_model = FUNtoFEMmodel(model_name)
-tacs_model = caps2tacs.TacsModel.build(
-    csm_file=csm_path,
-    comm=comm,
-    problem_name="capsStruct0",
-    active_procs=[0],
-    verbosity=1,
+# setup the model and solver
+ML_str = "ML" if args.useML else "CF"
+f2f_model, solvers, transfer_settings = make_model_and_solver(
+    comm, args, model_name=f"{ML_str}_oneway-trim-sizing"
 )
-tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative test to pass
-    edge_pt_min=2,
-    edge_pt_max=20,
-    global_mesh_size=0.3,  # 0.3
-    max_surf_offset=0.2,
-    max_dihedral_angle=15,
-).register_to(
-    tacs_model
-)
-f2f_model.structural = tacs_model
 
-tacs_aim = tacs_model.tacs_aim
-tacs_aim.set_config_parameter("view:flow", 0)
-tacs_aim.set_config_parameter("view:struct", 1)
-tacs_aim.set_config_parameter("fullRootRib", 0)
-
-egads_aim = tacs_model.mesh_aim
-
+# load the initial trim dictionary for lift, AOA values
+initial_trim_dict = None
 if comm.rank == 0:
-    aim = egads_aim.aim
-    aim.input.Mesh_Sizing = {
-        "chord": {"numEdgePoints": 40},
-        "span": {"numEdgePoints": 20},
-        "vert": {"numEdgePoints": 20},
-    }
+    with open(f'cfd/loads/initial_trim_dict.pkl', 'rb') as f:
+        initial_trim_dict = pickle.load(f)
+initial_trim_dict = comm.bcast(initial_trim_dict, root=0)
 
+# if args.reload_design:
+# f2f_model.read_design_variables_file(comm, "design/CF-sizing_design.txt")
+f2f_model.read_design_variables_file(comm, "design/ML-sizing_design.txt")
 
-# BODIES AND STRUCT DVs
-# -------------------------------------------------
-
-wing = Body.aeroelastic("wing", boundary=2)
-# aerothermoelastic
-
-# setup the material and shell properties
-nribs = int(tacs_model.get_config_parameter("nribs"))
-nOML = nribs - 1
-null_material = caps2tacs.Orthotropic.null().register_to(tacs_model)
-
-# create the design variables by components now
-# since this mirrors the way TACS creates design variables
-component_groups = [f"rib{irib}" for irib in range(1, nribs + 1)]
-for prefix in ["spLE", "spTE", "uOML", "lOML"]:
-    component_groups += [f"{prefix}{iOML}" for iOML in range(1, nOML + 1)]
-component_groups = sorted(component_groups)
-
-# now that you have the list of tacs components, you can build the custom gp callback if using ML case
-if args.useML:
-    callback = gp_callback_generator(component_groups)
-
-for icomp, comp in enumerate(component_groups):
-    caps2tacs.CompositeProperty.null(comp, null_material).register_to(tacs_model)
-
-    # NOTE : need to make the struct DVs in TACS in the same order as the blade callback
-    # which is done by components and then a local order
-
-    # panel length variable
-    if "rib" in comp:
-        panel_length = 0.38
-    elif "sp" in comp:
-        panel_length = 0.36
-    elif "OML" in comp:
-        panel_length = 0.65
-    Variable.structural(
-        f"{comp}-" + TacsSteadyInterface.LENGTH_VAR, value=panel_length
-    ).set_bounds(
-        lower=0.0,
-        scale=1.0,
-        state=True,  # need the length & width to be state variables
-    ).register_to(
-        wing
-    )
-
-    # stiffener pitch variable
-    Variable.structural(f"{comp}-spitch", value=0.20).set_bounds(
-        lower=0.05, upper=0.5, scale=1.0
-    ).register_to(wing)
-
-    # panel thickness variable, shortened DV name for ESP/CAPS, nastran requirement here
-    Variable.structural(f"{comp}-T", value=0.02).set_bounds(
-        lower=0.002, upper=0.1, scale=100.0
-    ).register_to(wing)
-
-    # stiffener height
-    Variable.structural(f"{comp}-sheight", value=0.05).set_bounds(
-        lower=0.002, upper=0.1, scale=10.0
-    ).register_to(wing)
-
-    # stiffener thickness
-    Variable.structural(f"{comp}-sthick", value=0.02).set_bounds(
-        lower=0.002, upper=0.1, scale=100.0
-    ).register_to(wing)
-
-    Variable.structural(
-        f"{comp}-" + TacsSteadyInterface.WIDTH_VAR, value=panel_length
-    ).set_bounds(
-        lower=0.0,
-        scale=1.0,
-        state=True,  # need the length & width to be state variables
-    ).register_to(
-        wing
-    )
-
-caps2tacs.PinConstraint("root", dof_constraint=246).register_to(tacs_model)
-caps2tacs.PinConstraint("sob", dof_constraint=13).register_to(tacs_model)
-
-# caps2tacs.PinConstraint("root", dof_constraint=123).register_to(tacs_model)
-
-# register the wing body to the model
-wing.register_to(f2f_model)
-
-# INITIAL STRUCTURE MESH, SINCE NO STRUCT SHAPE VARS
-# --------------------------------------------------
-
-tacs_aim.setup_aim()
-tacs_aim.pre_analysis()
-
-# SCENARIOS
-# ----------------------------------------------------
-
-# make a funtofem scenario
-cruise = Scenario.steady("climb_turb", steps=2, coupled=False)  # 2000
-# increase ksfailure scale to make it stricter on infeasibility for that.
-Function.ksfailure(ks_weight=100.0, safety_factor=1.5).optimize(
-    scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-cruise"
-).register_to(cruise)
-
-Function.mass().optimize(
-    scale=1.0e-3, objective=True, plot=True, plot_name="mass"
-).register_to(cruise)
-cruise.register_to(f2f_model)
-
-# COMPOSITE FUNCTIONS
-# -------------------------------------------------------
-
-# skin thickness adjacency constraints
-variables = f2f_model.get_variables()
-adjacency_scale = 10.0
-thick_adj = 2.5e-3
-
-comp_groups = ["spLE", "spTE", "uOML", "lOML"]
-comp_nums = [nOML for i in range(len(comp_groups))]
-adj_types = ["T"]
-adj_types += ["sthick", "sheight"]
-adj_values = [thick_adj, thick_adj, 10e-3]
-for igroup, comp_group in enumerate(comp_groups):
-    comp_num = comp_nums[igroup]
-    for icomp in range(1, comp_num):
-        # no constraints across sob (higher stress there)
-        for iadj, adj_type in enumerate(adj_types):
-            adj_value = adj_values[iadj]
-            name = f"{comp_group}{icomp}-{adj_type}"
-            # print(f"name = {name}", flush=True)
-            left_var = f2f_model.get_variables(f"{comp_group}{icomp}-{adj_type}")
-            right_var = f2f_model.get_variables(f"{comp_group}{icomp+1}-{adj_type}")
-            # print(f"left var = {left_var}, right var = {right_var}")
-            adj_constr = left_var - right_var
-            adj_constr.set_name(f"{comp_group}{icomp}-adj_{adj_type}").optimize(
-                lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-            ).register_to(f2f_model)
-
-    for icomp in range(1, comp_num + 1):
-        skin_var = f2f_model.get_variables(f"{comp_group}{icomp}-T")
-        sthick_var = f2f_model.get_variables(f"{comp_group}{icomp}-sthick")
-        sheight_var = f2f_model.get_variables(f"{comp_group}{icomp}-sheight")
-        spitch_var = f2f_model.get_variables(f"{comp_group}{icomp}-spitch")
-
-        # stiffener - skin thickness adjacency here
-        adj_value = thick_adj
-        adj_constr = skin_var - sthick_var
-        adj_constr.set_name(f"{comp_group}{icomp}-skin_stiff_T").optimize(
-            lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-        ).register_to(f2f_model)
-
-        # minimum stiffener spacing pitch > 2 * height
-        min_spacing_constr = spitch_var - 2 * sheight_var
-        min_spacing_constr.set_name(f"{comp_group}{icomp}-sspacing").optimize(
-            lower=0.0, scale=1.0, objective=False
-        ).register_to(f2f_model)
-
-        # minimum stiffener AR
-        min_stiff_AR = sheight_var - 2.0 * sthick_var
-        min_stiff_AR.set_name(f"{comp_group}{icomp}-stiffAR").optimize(
-            lower=0.0, scale=1.0, objective=False
-        ).register_to(f2f_model)
-
-# DISCIPLINE INTERFACES AND DRIVERS
-# -----------------------------------------------------
-solvers = SolverManager(comm)
-# solvers.flow = Fun3dInterface(comm, f2f_model, fun3d_dir="meshes")
-solvers.structural = TacsSteadyInterface.create_from_bdf(
-    model=f2f_model,
-    comm=comm,
-    nprocs=args.procs,
-    bdf_file=tacs_aim.root_dat_file,
-    # bdf_file="tacs.dat",
-    prefix=tacs_aim.root_analysis_dir,
-    callback=callback,
-    panel_length_dv_index=0,
-    panel_width_dv_index=5,
-)
-
-# read in aero loads
-aero_loads_file = os.path.join(os.getcwd(), "cfd", "loads", "uncoupled_turb_loads.txt")
-
-transfer_settings = TransferSettings(npts=50, beta=0.1)
-
-# build the shape driver from the file
-tacs_driver = OnewayStructDriver.prime_loads_from_file(
-    filename=aero_loads_file,
+# make the trim and sizing driver
+tacs_driver = OnewayStructTrimDriver.prime_loads_from_file(
+    filename="cfd/loads/coupled-loads.txt",
     solvers=solvers,
     model=f2f_model,
+    initial_trim_dict=initial_trim_dict,
     nprocs=args.procs,
     transfer_settings=transfer_settings,
     init_transfer=True,
 )
 
-test_derivatives = False
-if test_derivatives:  # test using the finite difference test
-    # load the previous design
-    # design_in_file = os.path.join(base_dir, "design", "sizing-oneway.txt")
-    # f2f_model.read_design_variables_file(comm, design_in_file)
-
-    start_time = time.time()
-
-    # run the finite difference test
-    max_rel_error = TestResult.derivative_test(
-        "gbm-oneway",
-        model=f2f_model,
-        driver=tacs_driver,
-        status_file="1-derivs.txt",
-        complex_mode=False,
-        epsilon=1e-4,
-    )
-
-    end_time = time.time()
-    dt = end_time - start_time
-    if comm.rank == 0:
-        print(f"total time for ssw derivative test is {dt} seconds", flush=True)
-        print(f"max rel error = {max_rel_error}", flush=True)
-
-    # exit before optimization
-    exit()
-
-# PYOPTSPARSE OPTMIZATION
-# -------------------------------------------------------------
-
-# create an OptimizationManager object for the pyoptsparse optimization problem
-# design_in_file = os.path.join(base_dir, "design", "sizing.txt")
-# design_out_file = os.path.join(
-#     base_dir, "design", "ML-sizing.txt" if args.useML else "CF-sizing.txt"
-# )
-
-# temp just load CF-sizing.txt to compare ML and CF
-design_out_file = os.path.join(
-    base_dir, "design", "ML-metal-sizing.txt" if args.useML else "CF-metal-sizing.txt"
-)
-
-# reload previous design
-# not needed since we are hot starting
-f2f_model.read_design_variables_file(comm, design_out_file)
-
-# run a forward struct analysis
 tacs_driver.solve_forward()
 
-# print out the function values
-if comm.rank == 0:
-    for func in f2f_model.get_functions(optim=True):
-        print(f"func {func.name} = {func.value.real}")
+for func in f2f_model.get_functions(optim=True):
+    if "ksfailure" in func.name and comm.rank == 0:
+        print(f"{func.full_name=} {func.value=}")
