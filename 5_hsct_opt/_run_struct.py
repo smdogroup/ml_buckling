@@ -32,7 +32,12 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
 
 f2f_model.read_design_variables_file(comm, "design/ML-sizing.txt" if args.useML else "design/CF-sizing.txt")
 
+import time
+start_time = time.time()
 tacs_driver.solve_forward()
+fwd_dt = time.time() - start_time
+if comm.rank == 0:
+    print(f"{fwd_dt=:.4e}")
 
 # print out the function values
 if comm.rank == 0:
