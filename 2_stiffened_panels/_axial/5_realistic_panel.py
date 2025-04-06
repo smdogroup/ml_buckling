@@ -141,7 +141,7 @@ stiff_analysis.pre_analysis(
 comm.Barrier()
 
 tacs_eigvals, errors = stiff_analysis.run_buckling_analysis(
-    sigma=args.sigma, num_eig=100, write_soln=True  # 50, 100
+    sigma=args.sigma, num_eig=1, write_soln=True  # 50, 100
 )
 
 # if args.static:

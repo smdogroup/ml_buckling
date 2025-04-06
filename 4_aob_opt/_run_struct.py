@@ -29,7 +29,7 @@ initial_trim_dict = comm.bcast(initial_trim_dict, root=0)
 
 # if args.reload_design:
 # f2f_model.read_design_variables_file(comm, "design/CF-sizing_design.txt")
-f2f_model.read_design_variables_file(comm, "design/ML-sizing_design.txt")
+f2f_model.read_design_variables_file(comm, "design/ML-sizing_design.txt" if args.useML else "design/CF-sizing_design.txt")
 
 # make the trim and sizing driver
 tacs_driver = OnewayStructTrimDriver.prime_loads_from_file(
@@ -46,4 +46,6 @@ tacs_driver.solve_forward()
 
 for func in f2f_model.get_functions(optim=True):
     if "ksfailure" in func.name and comm.rank == 0:
+        print(f"{func.full_name=} {func.value=}")
+    elif "mass" in func.name and comm.rank == 0:
         print(f"{func.full_name=} {func.value=}")
