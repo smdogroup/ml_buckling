@@ -11,7 +11,7 @@
   viscous_terms = 'turbulent'
 /
 &turbulence_diffusion_models
-  turbulence_model = 'sa'
+  turbulence_model = 'sa-neg'
 /
 &reference_physical_properties
   mach_number     = 0.4
@@ -39,7 +39,7 @@
   schedule_iteration(1:2) = 1,150
   schedule_cfl(1:2) = 2.0, 100.0
   schedule_cflturb(1:2) = 5.0,10.0
-  hanim = .false.
+  hanim = .true.
 /
 &hanim
   cfl_increase_factor = 1.2
