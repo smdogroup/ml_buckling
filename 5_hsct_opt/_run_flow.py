@@ -18,10 +18,10 @@ wing.register_to(f2f_model)
 # make a funtofem scenario
 # climb = Scenario.steady("climb_inviscid", steps=3000)  # 2000
 pullup = Scenario.steady(
-    "pullup", steps=150, forward_coupling_frequency=30, uncoupled_steps=100
+    "pullup", steps=150, coupled=False, forward_coupling_frequency=30, uncoupled_steps=100
 )
 pushdown = Scenario.steady(
-    "pushdown", steps=150, forward_coupling_frequency=30, uncoupled_steps=100
+    "pushdown", steps=150, coupled=False, forward_coupling_frequency=30, uncoupled_steps=100
 )
 
 for my_scenario in [pullup, pushdown]:

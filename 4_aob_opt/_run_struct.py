@@ -1,6 +1,7 @@
 import sys, pickle, os
 from mpi4py import MPI
 from funtofem import *
+import time
 
 # import the case utils from the local src/ directory
 sys.path.append("src/")
@@ -42,10 +43,18 @@ tacs_driver = OnewayStructTrimDriver.prime_loads_from_file(
     init_transfer=True,
 )
 
+start_time = time.time()
 tacs_driver.solve_forward()
+forward_dt = time.time() - start_time
+print(f"{forward_dt=:.4e}")
 
 for func in f2f_model.get_functions(optim=True):
     if "ksfailure" in func.name and comm.rank == 0:
         print(f"{func.full_name=} {func.value=}")
     elif "mass" in func.name and comm.rank == 0:
         print(f"{func.full_name=} {func.value=}")
+
+start_time = time.time()
+tacs_driver.solve_adjoint()
+adj_dt = time.time() - start_time
+print(f"{adj_dt=:.4e}")
