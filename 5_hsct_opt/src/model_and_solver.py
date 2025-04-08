@@ -87,7 +87,7 @@ def make_model_and_solver(
 
     # pullup
     pull_up = Scenario.steady(
-        "pull_up",
+        "pullup",
         steps=1,
         coupled=False,
     )
@@ -105,7 +105,7 @@ def make_model_and_solver(
 
     # pushdown
     push_down = Scenario.steady(
-        "push_down",
+        "pushdown",
         steps=1,
         coupled=False,
     )
@@ -118,72 +118,15 @@ def make_model_and_solver(
     Function.mass().register_to(push_down)
     push_down.register_to(f2f_model)
 
-    # struct adjacency composite functions
-    # ------------------------------------
-    
-    thick_adj = 2.5e-3
-
-    comp_groups = ["spLE", "spTE", "uOML", "lOML"]
-    comp_nums = [nOML for i in range(len(comp_groups))]
-    adj_types = ["T"]
-    adj_types += ["sthick", "sheight"]
-    adj_values = [thick_adj, thick_adj, 10e-3]
-    for igroup, comp_group in enumerate(comp_groups):
-        comp_num = comp_nums[igroup]
-        for icomp in range(1, comp_num):
-            # no constraints across sob (higher stress there)
-            for iadj, adj_type in enumerate(adj_types):
-                adj_value = adj_values[iadj]
-                name = f"{comp_group}{icomp}-{adj_type}"
-                # print(f"name = {name}", flush=True)
-                left_var = f2f_model.get_variables(f"{comp_group}{icomp}-{adj_type}")
-                right_var = f2f_model.get_variables(f"{comp_group}{icomp+1}-{adj_type}")
-                # print(f"left var = {left_var}, right var = {right_var}")
-                adj_constr = left_var - right_var
-                adj_constr.set_name(f"{comp_group}{icomp}-adj_{adj_type}").optimize(
-                    lower=-adj_value, upper=adj_value, scale=10.0, objective=False
-                ).register_to(f2f_model)
-
-        for icomp in range(1, comp_num + 1):
-            skin_var = f2f_model.get_variables(f"{comp_group}{icomp}-T")
-            sthick_var = f2f_model.get_variables(f"{comp_group}{icomp}-sthick")
-            sheight_var = f2f_model.get_variables(f"{comp_group}{icomp}-sheight")
-            spitch_var = f2f_model.get_variables(f"{comp_group}{icomp}-spitch")
-
-            # stiffener - skin thickness adjacency here
-            adj_value = thick_adj
-            adj_constr = 15.0 * skin_var - sthick_var
-            adj_constr.set_name(f"{comp_group}{icomp}-skin_stiff_T").optimize(
-                lower=0.0, scale=10.0, objective=False
-            ).register_to(f2f_model)
-
-            # minimum stiffener spacing pitch - sheight
-            min_spacing_constr = spitch_var - sheight_var
-            min_spacing_constr.set_name(f"{comp_group}{icomp}-sspacing").optimize(
-                lower=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
-
-            # minimum stiffener AR
-            min_stiff_AR = sheight_var - 5.0 * sthick_var
-            min_stiff_AR.set_name(f"{comp_group}{icomp}-minstiffAR").optimize(
-                lower=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
-
-            # maximum stiffener AR (for regions with tensile strains where crippling constraint won't be active)
-            max_stiff_AR = sheight_var - 30.0 * sthick_var
-            max_stiff_AR.set_name(f"{comp_group}{icomp}-maxstiffAR").optimize(
-                upper=0.0, scale=1.0, objective=False
-            ).register_to(f2f_model)
-
     # discipline solvers (just TACS here)
     # -----------------------------------
 
     solvers = SolverManager(comm)
 
-    output_dir = "design/struct"
+    output_dir = "struct"
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
-    dat_file = "design/struct/tacs.dat"
+    dat_file = "struct/tacs.dat"
 
     # inertial loads and auxElems
 

@@ -25,6 +25,7 @@ length - 40 m (change to just wing)
 VInf - 136 m/s
 dynamic viscosity (mu) - 1.18e-5 Pa*s
 Re - 5.7e8
+NACA 64012A airfoil
 
 # Concept Based on NASA TM - HSCT Manuscript
 NOTE : Figure 4.21 is a great view of the Mach 2.4 geometry.

@@ -1,5 +1,6 @@
 import os
 from funtofem import *
+from adj_constraints import *
 
 def optimize_model(
         comm,
@@ -39,6 +40,8 @@ def optimize_model(
 
     # add funtofem model variables to pyoptsparse
     manager.register_to_problem(opt_problem)
+
+    add_adjacency_constraints(comm, driver.model, manager, opt_problem)
 
     # run an SNOPT optimization
     snoptimizer = SNOPT(

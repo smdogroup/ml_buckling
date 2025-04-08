@@ -1,4 +1,5 @@
 import sys, pickle, os
+import numpy as np
 from mpi4py import MPI
 from funtofem import *
 
@@ -30,6 +31,14 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
     transfer_settings=transfer_settings,
     init_transfer=True,
 )
+
+trim_load_factors = np.array([2.55405546, 3.88574745])
+# scale up loads by this
+body = f2f_model.bodies[0]
+for i, scenario in enumerate(f2f_model.scenarios):
+    fa = body.get_aero_loads(scenario)
+    fa *= trim_load_factors[i]
+tacs_driver._transfer_fixed_aero_loads()
 
 # if args.test_derivs:
 #     test_derivs(

@@ -17,7 +17,7 @@
   mach_number     = 0.4
   angle_of_attack = 5.0
   reynolds_number = 1e8
-  temperature     = 216.0
+  temperature     = 300.0
   temperature_units = 'Kelvin'
 /
 &code_run_control

@@ -27,8 +27,8 @@ pushdown = Scenario.steady(
 for my_scenario in [pullup, pushdown]:
     Function.lift().register_to(my_scenario)
     Function.drag().register_to(my_scenario)
-    my_scenario.set_temperature(T_ref=216, T_inf=216)
-    my_scenario.set_flow_ref_vals(qinf=3.16e4)
+    my_scenario.set_temperature(T_ref=300, T_inf=300)
+    my_scenario.set_flow_ref_vals(qinf=2.2657e4)
     my_scenario.register_to(f2f_model)
 
 
