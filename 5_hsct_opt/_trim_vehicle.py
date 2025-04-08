@@ -30,11 +30,11 @@ pullup_CL /= area
 pushdown_CL /= area
 
 # ran at wrong qinf, Tinf by accident
-qinf_factor = 2.2657e4 /3.1682e4
-Tinf_factor = 300 / 216
-corr_factor = qinf_factor * Tinf_factor
-print(f'{corr_factor=}') # equals almost exactly 1.0, so ignore it
-# because density propto 1/T
+# qinf_factor = 2.2657e4 /3.1682e4
+# Tinf_factor = 300 / 216
+# corr_factor = qinf_factor * Tinf_factor
+# print(f'{corr_factor=}') # equals almost exactly 1.0, so ignore it
+# # because density propto 1/T
 
 # above is full wing area
 
@@ -42,12 +42,16 @@ print(f'{corr_factor=}') # equals almost exactly 1.0, so ignore it
 TOGM = 3.4e5 # kg, from HSCT study
 TOGW = TOGM * 9.8 # to N
 qinf = 2.2657e4 # at mach 0.4 sea level
+qinf /= 2.0 # correction to 1/2 * rhoinf * vinf^2
 
 pullup_lift = TOGW * 2.5 # 2.5g pullup
 pushdown_lift = TOGW * -1.0 # -1g pushdown
 
 # NACA 64A012 airfoil with CL  =0.2 and pressure recovery at 80% the chord
 zero_lift_AOA = -1.5
+
+# half area?
+area /= 2.0
 
 pullup_des_CL = pullup_lift / qinf / area
 pushdown_des_CL = pushdown_lift / qinf / area
