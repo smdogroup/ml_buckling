@@ -30,8 +30,10 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
     transfer_settings=transfer_settings,
     init_transfer=False,
 )
-# scale up loads according to trim sizing (from _trim_vehicle.py)
-trim_load_factors = np.array([2.55405546, 3.88574745])
+
+# adjusting from AOA = [5.0, -3.0] for pullup, pushdown to:
+# AOA = [16.0159633 , -7.64973179])
+trim_load_factors = np.array([2.69476358, 4.09982119])
 # scale up loads by this
 body = f2f_model.bodies[0]
 for i, scenario in enumerate(f2f_model.scenarios):

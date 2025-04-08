@@ -1,3 +1,5 @@
 *.png
 *design*.txt
 *.hst
+*.svg
+*.plt

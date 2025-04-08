@@ -4,3 +4,4 @@ _static*
 SNOPT*
 *.txt
 *.hst
+_plots
