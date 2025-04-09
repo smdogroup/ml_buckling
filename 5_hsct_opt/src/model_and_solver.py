@@ -33,7 +33,7 @@ def make_model_and_solver(
 
     if args.useML:
         # use component groups to make gp callback so that one PanelGPs object per TACS component
-        callback = gp_callback_generator(component_groups)
+        callback = gp_callback_generator(component_groups, args.ks)
 
     # make each struct design variable
     for icomp, comp in enumerate(component_groups):
@@ -92,7 +92,7 @@ def make_model_and_solver(
         coupled=False,
     )
     pull_up_ks = (
-        Function.ksfailure(ks_weight=100, safety_factor=1.5)
+        Function.ksfailure(ks_weight=args.ks, safety_factor=1.5)
         .optimize(scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-pullup")
         .register_to(pull_up)
     )
@@ -111,7 +111,7 @@ def make_model_and_solver(
     )
     clift_pd = Function.lift(body=0).register_to(push_down)
     push_down_ks = (
-        Function.ksfailure(ks_weight=args.ksWeight, safety_factor=1.5)
+        Function.ksfailure(ks_weight=args.ks, safety_factor=1.5)
         .optimize(scale=1.0, upper=1.0, objective=False, plot=True, plot_name="ks-pushdown")
         .register_to(push_down)
     )

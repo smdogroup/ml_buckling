@@ -35,7 +35,10 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
 # adjusting from AOA = [5.0, -3.0] for pullup, pushdown to:
 # AOA = [16.0159633 , -7.64973179])
 trim_load_factors = np.array([2.69476358, 4.09982119])
+# made mistake using wrong qinf =    instead of 1.0736e4, so nearly half loads for that
+trim_load_factors *= 1.0736e4 / 2.2657e4
 # scale up loads by this
+
 body = f2f_model.bodies[0]
 for i, scenario in enumerate(f2f_model.scenarios):
     fa = body.get_aero_loads(scenario)
