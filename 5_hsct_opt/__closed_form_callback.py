@@ -99,9 +99,9 @@ def closed_form_callback(
     # significant contribution to the failure function derivatives
     con.setKSWeight(100.0)  # 20.0
     # con.setWriteDVMode(0)
-    con.setFailureModes(
-        includeStiffenerColumnBuckling=False
-    )
+    # con.setFailureModes(
+    #     includeStiffenerColumnBuckling=False
+    # )
     # con.setCPTstiffenerCrippling(True)
 
     con.setStiffenerPitchBounds(0.05, 0.5)
