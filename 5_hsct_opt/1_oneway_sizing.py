@@ -36,6 +36,7 @@ tacs_driver = OnewayStructDriver.prime_loads_from_file(
 # AOA = [16.0159633 , -7.64973179])
 trim_load_factors = np.array([2.69476358, 4.09982119])
 # made mistake using wrong qinf =    instead of 1.0736e4, so nearly half loads for that
+# trim load factor still the same but the loads out of FUN3D were about twice as high due to wrong qinf
 trim_load_factors *= 1.0736e4 / 2.2657e4
 # scale up loads by this
 
