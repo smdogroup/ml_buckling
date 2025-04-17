@@ -98,7 +98,8 @@ for var in f2f_model.get_variables():
 plt.style.use(niceplots.get_style())
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-fig, ax = plt.subplots(2, 1, figsize=(15,10))
+# fig, ax = plt.subplots(2, 1, figsize=(15,10))
+fig, ax = plt.subplots(1, 1, figsize=(7, 10))
 for i, prefix in enumerate(["u", "l"]):
     for j, mydict in enumerate([ML_var_dict, CF_var_dict]):
 
@@ -160,15 +161,15 @@ for i, prefix in enumerate(["LE", "TE"]):
 
         # middle_str = "LE" if prefix == "u" else "lower"
         ML_prefix = "ML" if j == 0 else "CF"
-        ax[1].plot(positions, thicknesses, "--" if j == 1 else "-", color=colors[i], label=f"{ML_prefix}-{prefix}spar")
-ax[1].legend()
-ax[1].set_ylabel("Effective Thickness (mm)", fontweight='bold')
-xtick_positions = list(np.array([0.0, 3.0, 23.0])/23.0)  # The locations where you want the labels
-xtick_labels = ['Root', 'SOB', 'Tip']  # The custom labels
-ax[1].set_xticks(xtick_positions, xtick_labels)
-for label in ax[1].get_yticklabels():
-    label.set_fontweight('bold')
-ax[1].margins(y=0.05)
-ax[1].tick_params(axis='both', labelsize=18)
+        ax[0].plot(positions, thicknesses, "--" if j == 1 else "-", color=colors[i], label=f"{ML_prefix}-{prefix}spar")
+# ax[1].legend()
+# ax[1].set_ylabel("Effective Thickness (mm)", fontweight='bold')
+# xtick_positions = list(np.array([0.0, 3.0, 23.0])/23.0)  # The locations where you want the labels
+# xtick_labels = ['Root', 'SOB', 'Tip']  # The custom labels
+# ax[1].set_xticks(xtick_positions, xtick_labels)
+# for label in ax[1].get_yticklabels():
+#     label.set_fontweight('bold')
+# ax[1].margins(y=0.05)
+# ax[1].tick_params(axis='both', labelsize=18)
 plt.savefig("AOB-thicknesses.png", dpi=400)
 plt.savefig("AOB-thicknesses.svg", dpi=400)
