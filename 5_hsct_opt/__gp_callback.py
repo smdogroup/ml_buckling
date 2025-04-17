@@ -19,7 +19,7 @@ dtype = TACS.dtype
 # ==============================================================================
 # Element callback function
 # ==============================================================================
-def gp_callback_generator(tacs_component_names):
+def gp_callback_generator(tacs_component_names, ksWeight):
     """
     method to build the gp callback at runtime using the tacs component names
     """
@@ -105,7 +105,7 @@ def gp_callback_generator(tacs_component_names):
             stiffenerPlyAngles=np.array([0.0], dtype=dtype),
             stiffenerPlyFracs=np.array([1.0], dtype=dtype),
             panelWidth=0.5,  # choose wrong initial value first to check if it corrects in FUNtoFEM
-            flangeFraction=0.8,
+            flangeFraction=0.8, #0.8,
             panelLengthNum=dvNum,
             stiffenerPitchNum=dvNum + 1,
             panelThickNum=dvNum + 2,
@@ -116,8 +116,11 @@ def gp_callback_generator(tacs_component_names):
         )
         # Set the KS weight really low so that all failure modes make a
         # significant contribution to the failure function derivatives
-        con.setKSWeight(100.0)  # 20.0
+        con.setKSWeight(ksWeight)  # 20.0
         # con.setWriteDVMode(2) # 0 - regular DVs, 1 - nondim params, 2 - failure indices
+        # con.setFailureModes(
+        #     includeStiffenerColumnBuckling=False
+        # )
 
         con.setStiffenerPitchBounds(0.05, 0.5)
         con.setPanelThicknessBounds(0.002, 0.1)

@@ -36,7 +36,8 @@ tacs_model.mesh_aim.set_mesh(  # need a refined-enough mesh for the derivative t
     edge_pt_min=2,
     edge_pt_max=300,
     mesh_elements="Mixed",
-    global_mesh_size=0.006,  # 0.004 was 130k mesh
+    # 0.004 was 130k mesh, 0.006 is 50k elem mesh
+    global_mesh_size=0.003,  
     max_surf_offset=0.01,
     max_dihedral_angle=5,
 ).register_to(

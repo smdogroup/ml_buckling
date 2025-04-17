@@ -49,7 +49,7 @@ def optimize_model(
             "Print frequency": 1000,
             "Summary frequency": 10000000,
             "Major feasibility tolerance": 1e-6,
-            "Major optimality tolerance": 1e-4,
+            "Major optimality tolerance": 1e-3,
             "Verify level": verify_level,
             "Major iterations limit": 15000,
             "Minor iterations limit": 150000000,
