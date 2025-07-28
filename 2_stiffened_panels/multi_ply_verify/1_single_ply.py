@@ -16,16 +16,22 @@ comm = MPI.COMM_WORLD
 
 # main (and single ply)
 # theta = 0.0
-theta = 15.0
+# theta = 5.0
+theta = 30.0
+# theta = 15.0
 # theta = 30.0
 # theta = 10.0
 # theta = 45.0
 # _h_w, _AR = 0.02, 1.0
 # _h_w, _AR = 0.04, 1.0
 # _h_w, _AR = 0.02, 2.0
-_h_w, _AR = 0.027, 1.9
+# _h_w, _AR = 0.02, 1.9
+# _h_w, _AR = 0.027, 1.9
+_h_w, _AR = 0.02, 1.95
+_AR = 0.7
+# _h_w = 0.0
 # hw_mult, AR_mult = 0.85, 1.3
-hw_mult, AR_mult = 0.87, 1.28
+hw_mult, AR_mult = 0.87, 1.37
 
 # strain_mult = 10.0 # if need to adjust the strain to solve it better
 strain_mult = 1.0
@@ -218,6 +224,8 @@ for imode in range(20):
     eigval, eigvec = bucklingProb.getVariables(imode)
     eigvals += [eigval]
     # error = self.bucklingProb.getModalError(imode)
+
+print(f"{stiff_analysis}")
 
 print("\n---------------------")
 print(f"single ply, eigval0 = {eigvals[0]:.3e}")

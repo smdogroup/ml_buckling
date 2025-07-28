@@ -19,15 +19,24 @@ ply_angles_deg = np.array(ply_angles_deg + ply_angles_deg[::-1])
 # ply_angles_deg = np.array([45.0]*4) # so sym laminate
 # ply_fractions = np.array([1.0]*ply_angles_deg.shape[0])
 # ply_fractions /= np.sum(ply_fractions)
-ply_fractions = [1.0, 2.0, 2.0, 1.0]
+# ratio = 2.0
+# ratio = 0.5
+ratio = 2.0
+# ratio = 1.0
+# ratio = 10.0
+# ratio = 18.0
+ply_fractions = [1.0, ratio, ratio, 1.0]
 ply_fractions = ply_fractions + ply_fractions[::-1]
 ply_fractions /= np.sum(ply_fractions)
 
 hw_mult, AR_mult = 1.0, 1.0 # only change the single ply with this
 
 # _h_w, _AR = 0.02, 1.0
-# _h_w, _AR = 0.0255, 2.33
-_h_w, _AR = 0.036, 2.33
+_h_w, _AR = 0.0267, 2.33
+# _h_w, _AR = 0.036, 2.34
+
+# _h_w, _AR = 0.0245, 0.895
+# _h_w, _AR = 0.02, 0.895
 
 # strain_mult = 10.0 # if need to adjust the strain to solve it better
 strain_mult = 1.0
@@ -45,6 +54,7 @@ stiff_AR = 20.0
 # nelems = 2000
 nelems = 1000
 
+# _h_w = 0.0
 # nstiff = 0
 nstiff = 1
 
@@ -221,6 +231,8 @@ for imode in range(20):
     eigval, eigvec = bucklingProb.getVariables(imode)
     eigvals += [eigval]
     # error = self.bucklingProb.getModalError(imode)
+
+print(f"{stiff_analysis}")
 
 print("\n---------------------")
 print(f"multi ply, eigval0 = {eigvals[0]:.3e}")
