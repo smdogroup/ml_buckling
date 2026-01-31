@@ -87,3 +87,100 @@ def eval_GPs(
     ovr_extrap_metric = np.percentile(np.array(extrap_metrics), q=percentile)
 
     return ovr_interp_metric, ovr_extrap_metric
+
+def eval_ann(
+    n_dense:int=128,
+    epochs:int=200,
+    n_trials:int=30,
+    rand_seed:int=None, # None means random
+    train_test_frac:float=0.8,
+    shear_ks_param:float=None,
+    activation:str='relu',
+    axial:bool=True,
+    affine:bool=True,
+    log:bool=True,
+    percentile:float=50.0, # out of 100.0
+    n_rho0:int=20,
+    n_gamma:int=10,
+    n_xi:int=5,
+    can_print:bool=False,
+    metric_func=eval_Rsquared,
+):
+
+    np.random.seed(rand_seed)
+
+    # get only interp data
+    X, Y = get_closed_form_data(
+        axial=axial, include_extrapolation=False, 
+        affine_transform=affine, 
+        log_transform=log,
+        n_rho0=n_rho0, n_gamma=n_gamma, n_xi=n_xi,
+    )
+
+    # compute RMSE for some number of trials
+    interp_metrics = []
+    extrap_metrics = []
+    for trial in range(n_trials):
+
+        # now split into train and test for interpolation zone
+        X_train, Y_train, X_test, Y_test = split_data(X, Y, train_test_split=train_test_frac)
+
+        # print(f"{X_train.shape=}")
+
+        # try making a tensorflow model here
+        model = tf.keras.models.Sequential([
+            tf.keras.layers.Flatten(input_shape=(3,)),
+            tf.keras.layers.Dense(n_dense, activation=activation),
+            tf.keras.layers.Dropout(0.2),
+            tf.keras.layers.Dense(1)
+        ])
+
+        # predictions = model(X_train[:1]).numpy()
+        # print(f"{predictions.shape=}")
+
+        loss_fn = tf.keras.losses.MSE
+
+        # mse = loss_fn(Y_train[:1], predictions).numpy()
+        # print(f"{mse=}")
+
+        # compile and train tf model
+        model.compile(optimizer='adam',
+                    loss=loss_fn,
+                    metrics=['accuracy'])
+
+        model.fit(X_train, Y_train, epochs=epochs)
+        model.evaluate(X_test,  Y_test, verbose=2)
+
+        # compute the interpolation error
+        # ------------------------------
+
+        Y_test_pred = model(X_test).numpy()[:,0]
+
+        interp_metrics += [metric_func(Y_test_pred, Y_test, take_log=not(log))]
+
+        # compute the extrapolation error
+        # -------------------------------
+
+        # get the extrapolation dataset
+        X_extrap, Y_extrap_truth = get_closed_form_data(
+            axial=axial, 
+            include_extrapolation=True,
+            include_interpolation=False, 
+            affine_transform=affine, 
+            shear_ks_param=shear_ks_param,
+            log_transform=log,
+            # no need for nan_interp, nan_extrap inputs yet that's for plotting
+            n_rho0=n_rho0, n_gamma=n_gamma, n_xi=n_xi,
+        )
+
+        Y_extrap_pred = model(X_extrap).numpy()[:,0]
+
+        extrap_metrics += [metric_func(Y_extrap_pred, Y_extrap_truth, take_log=not(log))]
+
+    # print(f"{interp_metrics=}\n{extrap_metrics=}")
+
+    # compute a percentile version of metric
+    ovr_interp_metric = np.percentile(np.array(interp_metrics), q=percentile)
+    ovr_extrap_metric = np.percentile(np.array(extrap_metrics), q=percentile)
+
+    return ovr_interp_metric, ovr_extrap_metric
