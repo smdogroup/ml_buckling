@@ -23,8 +23,9 @@ parser.add_argument("--affine", action=argparse.BooleanOptionalAction, default=F
 parser.add_argument("--log", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable logging (default: False)")
 parser.add_argument("--random", action="store_false", default=True, help="Enable random mode (default: True)")
 parser.add_argument("--kfolds", type=int, default=20, help="number of kfolds")
+parser.add_argument("--dataf", type=float, default=1.0, help='fraction of full dataset size (out of 1000) for doing less trials')
 parser.add_argument("--ks", type=float, default=None, help="shear_ks_param")
-parser.add_argument("--kernel", type=str, default='SE', help="SE, matern-3/2, matern-5/2, RQ, buckling+SE, buckling+RQ")
+parser.add_argument("--kernel", type=str, default='buckling+RQ', help="SE, matern-3/2, matern-5/2, RQ, buckling+SE, buckling+RQ")
 parser.add_argument("--seed", type=int, default=1234, help="Seed for reproducibility (only used if --random is False)")
 args = parser.parse_args()
 
@@ -54,6 +55,13 @@ txt_hdl = open(txt_file, "w")
 
 # kernels list here, setup for hyperparam opt
 # --------------------------------------
+
+
+n_data_mult = args.dataf**(1.0/3.0)
+n_rho = int(20 * n_data_mult)
+n_gamma = int(10 * n_data_mult)
+n_xi = np.max([int(5 * n_data_mult), 3])
+
 
 sigma_n = 1e-2 # just fixed this for now, not included in hyperparameter opt..
 
@@ -113,11 +121,15 @@ X_interp, Y_interp = get_closed_form_data(
     include_extrapolation=False, 
     affine_transform=args.affine, 
     log_transform=args.log,
-    n_rho0=20, n_gamma=10, n_xi=5,
+    n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
+    # n_rho0=20, n_gamma=10, n_xi=5,
 )
 
 # run k-fold cross validation
 # ---------------------------
+
+import time
+start_time = time.time()
 
 theta_opt_dict = kfold_hyperparameter_optimization(
     kernel,
@@ -134,6 +146,9 @@ theta_opt_dict = kfold_hyperparameter_optimization(
         "Summary file": f"{folder_name}/opt/{base_name}_SNOPT_summary.out",
     }
 )
+
+train_time_sec = time.time() - start_time
+print(f"{train_time_sec=:.4e}")
 
 theta_opt = np.array(theta_opt_dict['theta'])
 print(f"{theta_opt=}")
@@ -156,7 +171,8 @@ interp_Rsq, extrap_Rsq = eval_GPs(
     axial=args.axial,
     affine=args.affine,
     log=args.log,
-    n_rho0=20, n_gamma=10, n_xi=5,
+    # n_rho0=20, n_gamma=10, n_xi=5,
+    n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
     metric_func=eval_Rsquared,
     percentile=50.0,
 )
@@ -179,7 +195,8 @@ interp_rmse, extrap_rmse = eval_GPs(
     axial=args.axial,
     affine=args.affine,
     log=args.log,
-    n_rho0=20, n_gamma=10, n_xi=5,
+    # n_rho0=20, n_gamma=10, n_xi=5,
+    n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
     metric_func=eval_rmse,
     percentile=50.0,
 )
@@ -213,7 +230,8 @@ X_plot, Y_plot = get_closed_form_data(
     include_extrapolation=True, 
     affine_transform=args.affine,
     log_transform=args.log,
-    n_rho0=20, n_gamma=10, n_xi=5,
+    # n_rho0=20, n_gamma=10, n_xi=5,
+    n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
 )
 
 # make predictionss on plot data
@@ -233,6 +251,7 @@ plot_GPs(
     axial=args.axial,
     affine=args.affine,
     log=args.log,
+    nx1=n_rho, nx2=n_gamma,
     show=False, # means that it saves file to png/svg
 )
 
@@ -240,3 +259,13 @@ plot_GPs(
 # -------
 
 txt_hdl.close()
+
+
+print(f"R^2 metrics:\n")
+print(f"\t{interp_Rsq=}\n\n")
+print(f"\t{extrap_Rsq=}\n\n")
+print("--------------------------------------------\n\n")
+
+
+
+print(f"{train_time_sec=:.4e}")

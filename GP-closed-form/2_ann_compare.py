@@ -23,7 +23,8 @@ parser.add_argument("--affine", action=argparse.BooleanOptionalAction, default=F
 parser.add_argument("--log", action=argparse.BooleanOptionalAction, default=False, help="Enable or disable logging (default: False)")
 parser.add_argument("--random", action="store_false", default=True, help="Enable random mode (default: True)")
 parser.add_argument("--kfolds", type=int, default=20, help="number of kfolds")
-parser.add_argument("--epochs", type=int, default=200)
+parser.add_argument("--epochs", type=int, default=None)
+parser.add_argument("--dataf", type=float, default=1.0, help='fraction of full dataset size (out of 1000) for doing less trials')
 parser.add_argument("--ks", type=float, default=None, help="shear_ks_param")
 parser.add_argument("--activ", type=str, default='relu', help="relu or tanh")
 
@@ -58,64 +59,79 @@ txt_hdl = open(txt_file, "w")
 # get interpolation dataset
 # -------------------------
 
+n_data_mult = args.dataf**(1.0/3.0)
+n_rho = int(20 * n_data_mult)
+n_gamma = int(10 * n_data_mult)
+n_xi = np.max([int(5 * n_data_mult), 3])
+
+n_data = n_rho * n_gamma * n_xi
+print(f"{n_data_mult=} => {n_data=}")
+
 X_interp, Y_interp = get_closed_form_data(
     axial=args.axial, 
     include_extrapolation=False, 
     affine_transform=args.affine, 
     log_transform=args.log,
-    n_rho0=20, n_gamma=10, n_xi=5,
+    # n_rho0=20, n_gamma=10, n_xi=5,
+    n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
 )
 
-epochs=400 if args.activ == 'tanh' else 100 # for relu
+if args.epochs is None:
+    epochs=400 if args.activ == 'tanh' else 100 # for relu
+else:
+    epochs = args.epochs
 
-# eval GPs metrics - R^2
-# ---------------------------
-interp_Rsq, extrap_Rsq = eval_ann(
-    n_dense=64,
-    epochs=epochs,
-    activation=args.activ,
-    # epochs=10,
-    # n_trials=30,
-    n_trials=5,
-    train_test_frac=0.8,
-    shear_ks_param=None,
-    axial=args.axial,
-    affine=args.affine,
-    log=args.log,
-    n_rho0=20, n_gamma=10, n_xi=5,
-    metric_func=eval_Rsquared,
-    percentile=50.0,
-)
+# # eval GPs metrics - R^2
+# # ---------------------------
+# interp_Rsq, extrap_Rsq = eval_ann(
+#     n_dense=64,
+#     epochs=epochs,
+#     activation=args.activ,
+#     # epochs=10,
+#     # n_trials=30,
+#     n_trials=5,
+#     train_test_frac=0.8,
+#     shear_ks_param=None,
+#     axial=args.axial,
+#     affine=args.affine,
+#     log=args.log,
+#     # n_rho0=20, n_gamma=10, n_xi=5,
+#     n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
+#     metric_func=eval_Rsquared,
+#     percentile=50.0,
+# )
 
-# txt_hdl.write("-------------\n\n")
-txt_hdl.write(f"R^2 metrics:\n")
-txt_hdl.write(f"\t{interp_Rsq=}\n\n")
-txt_hdl.write(f"\t{extrap_Rsq=}\n\n")
-txt_hdl.write("--------------------------------------------\n\n")
+# # txt_hdl.write("-------------\n\n")
+# txt_hdl.write(f"R^2 metrics:\n")
+# txt_hdl.write(f"\t{interp_Rsq=}\n\n")
+# txt_hdl.write(f"\t{extrap_Rsq=}\n\n")
+# txt_hdl.write("--------------------------------------------\n\n")
 
-# eval GPs metrics - RMSE
-# ---------------------------
-interp_rmse, extrap_rmse = eval_ann(
-    n_dense=64,
-    epochs=epochs,
-    # n_trials=30,
-    n_trials=5,
-    activation=args.activ,
-    train_test_frac=0.8,
-    shear_ks_param=None,
-    axial=args.axial,
-    affine=args.affine,
-    log=args.log,
-    n_rho0=20, n_gamma=10, n_xi=5,
-    metric_func=eval_rmse,
-    percentile=50.0,
-)
+# # eval GPs metrics - RMSE
+# # ---------------------------
+# interp_rmse, extrap_rmse = eval_ann(
+#     n_dense=64,
+#     epochs=epochs,
+#     # n_trials=30,
+#     n_trials=5,
+#     activation=args.activ,
+#     train_test_frac=0.8,
+#     shear_ks_param=None,
+#     axial=args.axial,
+#     affine=args.affine,
+#     log=args.log,
+#     # n_rho0=20, n_gamma=10, n_xi=5,
+#     n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
+#     metric_func=eval_rmse,
+#     percentile=50.0,
+# )
 
-# txt_hdl.write("-------------\n\n")
-txt_hdl.write(f"RMSE metrics:\n")
-txt_hdl.write(f"\t{interp_rmse=}\n\n")
-txt_hdl.write(f"\t{extrap_rmse=}\n\n")
-txt_hdl.write("--------------------------------------------\n\n")
+# # txt_hdl.write("-------------\n\n")
+# txt_hdl.write(f"RMSE metrics:\n")
+# txt_hdl.write(f"\t{interp_rmse=}\n\n")
+# txt_hdl.write(f"\t{extrap_rmse=}\n\n")
+# txt_hdl.write("--------------------------------------------\n\n")
+
 
 
 # train the model for plotting
@@ -133,8 +149,14 @@ X_plot, Y_plot = get_closed_form_data(
     include_extrapolation=True, 
     affine_transform=args.affine,
     log_transform=args.log,
-    n_rho0=20, n_gamma=10, n_xi=5,
+    # n_rho0=20, n_gamma=10, n_xi=5,
+    n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
 )
+
+
+import time
+start_time = time.time()
+
 
 # try making a tensorflow model here
 model = tf.keras.models.Sequential([
@@ -152,6 +174,8 @@ loss_fn = tf.keras.losses.MSE
 # mse = loss_fn(Y_train[:1], predictions).numpy()
 # print(f"{mse=}")
 
+
+
 # compile and train tf model
 model.compile(optimizer='adam',
             loss=loss_fn,
@@ -162,6 +186,12 @@ model.evaluate(X_test,  Y_test, verbose=2)
 
 # make predictionss on plot data
 Y_plot_pred = model(X_plot).numpy()
+
+
+train_time_sec = time.time() - start_time
+print(f"{train_time_sec=:.4e}")
+
+exit()
 
 # plot the GP
 # -----------
@@ -175,10 +205,24 @@ plot_GPs(
     axial=args.axial,
     affine=args.affine,
     log=args.log,
+    nx1=n_rho, nx2=n_gamma,
     show=False, # means that it saves file to png/svg
 )
+
+
+print(f"{n_data_mult=} => {n_data=}")
 
 # cleanup
 # -------
 
 txt_hdl.close()
+
+
+
+print(f"R^2 metrics:\n")
+print(f"\t{interp_Rsq=}\n\n")
+print(f"\t{extrap_Rsq=}\n\n")
+print("--------------------------------------------\n\n")
+
+
+print(f"{train_time_sec=:.4e}")

@@ -12,6 +12,7 @@ def plot_GPs(
     affine:bool=True,
     log:bool=True,
     show:bool=False,
+    nx1:int=20, nx2:int=10,
     file_ext:str="svg", # or "png"
     
 ):
@@ -32,7 +33,8 @@ def plot_GPs(
             # affine_shift=th[3] if args.kernel == 5 else None,
             surf_color_map=colors[i],
             var_exclude_ind=2, 
-            nx1=20, nx2=10,
+            # nx1=20, nx2=10,
+            nx1=nx1,nx2=nx2,
             var_exclude_range=[0.3]*2,
             ax=ax, show=False)
 
