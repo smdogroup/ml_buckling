@@ -3,14 +3,15 @@ import tensorflow as tf
 from closed_form_dataset import get_closed_form_data, split_data
 from eval_utils import *
 
-def eval_GPs(
-    kernel,
-    theta,
+def eval_ann(
+    neurons:list=[128],
+    epochs:int=200,
     n_trials:int=30,
-    sigma_n:float=1e-2,
+    dropout:float=0.2,
     rand_seed:int=None, # None means random
     train_test_frac:float=0.8,
     shear_ks_param:float=None,
+    activation:str='relu',
     axial:bool=True,
     affine:bool=True,
     log:bool=True,
@@ -40,24 +41,39 @@ def eval_GPs(
         # now split into train and test for interpolation zone
         X_train, Y_train, X_test, Y_test = split_data(X, Y, train_test_split=train_test_frac)
 
-        # fast way to compute kernel functions, from ml_pde_buckling final proj
-        x_train_L = tf.expand_dims(X_train, axis=1)
-        x_train_R = tf.expand_dims(X_train, axis=0)
+        # print(f"{X_train.shape=}")
 
-        nugget = sigma_n**2 * np.eye(x_train_L.shape[0])
-        K_train = kernel(x_train_L, x_train_R, theta) + nugget
-        # print(f"{K_train.shape=}")
-        # plt.imshow(K_train)
+        # try making a tensorflow model here
+        model = tf.keras.Sequential()
+        model.add(tf.keras.layers.Flatten(input_shape=(3,)))
 
-        # get the training weights
-        alpha_train = np.linalg.solve(K_train, Y_train)
+        # allows multi-layer or arbtitrary num layers
+        for n in neurons:
+            model.add(tf.keras.layers.Dense(n, activation=activation))
+            model.add(tf.keras.layers.Dropout(dropout))
+
+        model.add(tf.keras.layers.Dense(1))
+
+        # predictions = model(X_train[:1]).numpy()
+        # print(f"{predictions.shape=}")
+
+        loss_fn = tf.keras.losses.MSE
+
+        # mse = loss_fn(Y_train[:1], predictions).numpy()
+        # print(f"{mse=}")
+
+        # compile and train tf model
+        model.compile(optimizer='adam',
+                    loss=loss_fn,
+                    metrics=['accuracy'])
+
+        model.fit(X_train, Y_train, epochs=epochs)
+        model.evaluate(X_test,  Y_test, verbose=2)
 
         # compute the interpolation error
         # ------------------------------
 
-        x_test_L = tf.expand_dims(X_test, axis=1)
-        K_cross_test = kernel(x_test_L, x_train_R, theta)
-        Y_test_pred = np.dot(K_cross_test, alpha_train)
+        Y_test_pred = model(X_test).numpy()[:,0]
 
         interp_metrics += [metric_func(Y_test_pred, Y_test, take_log=not(log))]
 
@@ -76,11 +92,11 @@ def eval_GPs(
             n_rho0=n_rho0, n_gamma=n_gamma, n_xi=n_xi,
         )
 
-        x_extrap_L = tf.expand_dims(X_extrap, axis=1)
-        K_cross_extrap = kernel(x_extrap_L, x_train_R, theta)
-        Y_extrap_pred = np.dot(K_cross_extrap, alpha_train)
+        Y_extrap_pred = model(X_extrap).numpy()[:,0]
 
         extrap_metrics += [metric_func(Y_extrap_pred, Y_extrap_truth, take_log=not(log))]
+
+    # print(f"{interp_metrics=}\n{extrap_metrics=}")
 
     # compute a percentile version of metric
     ovr_interp_metric = np.percentile(np.array(interp_metrics), q=percentile)

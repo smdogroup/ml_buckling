@@ -8,7 +8,8 @@ import tensorflow as tf
 
 sys.path.append("src/")
 from closed_form_dataset import get_closed_form_data, split_data
-from eval_GPs import eval_GPs, eval_ann
+from eval_GPs import eval_GPs
+from eval_anns import eval_ann
 from plot_GPs import plot_GPs
 from eval_utils import eval_Rsquared, eval_rmse
 from hyperparam_opt import kfold_hyperparameter_optimization
@@ -81,56 +82,56 @@ if args.epochs is None:
 else:
     epochs = args.epochs
 
-# # eval GPs metrics - R^2
-# # ---------------------------
-# interp_Rsq, extrap_Rsq = eval_ann(
-#     n_dense=64,
-#     epochs=epochs,
-#     activation=args.activ,
-#     # epochs=10,
-#     # n_trials=30,
-#     n_trials=5,
-#     train_test_frac=0.8,
-#     shear_ks_param=None,
-#     axial=args.axial,
-#     affine=args.affine,
-#     log=args.log,
-#     # n_rho0=20, n_gamma=10, n_xi=5,
-#     n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
-#     metric_func=eval_Rsquared,
-#     percentile=50.0,
-# )
+# eval GPs metrics - R^2
+# ---------------------------
+interp_Rsq, extrap_Rsq = eval_ann(
+    neurons=[64], # single layer
+    epochs=epochs,
+    activation=args.activ,
+    # epochs=10,
+    # n_trials=30,
+    n_trials=5,
+    train_test_frac=0.8,
+    shear_ks_param=None,
+    axial=args.axial,
+    affine=args.affine,
+    log=args.log,
+    # n_rho0=20, n_gamma=10, n_xi=5,
+    n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
+    metric_func=eval_Rsquared,
+    percentile=50.0,
+)
 
-# # txt_hdl.write("-------------\n\n")
-# txt_hdl.write(f"R^2 metrics:\n")
-# txt_hdl.write(f"\t{interp_Rsq=}\n\n")
-# txt_hdl.write(f"\t{extrap_Rsq=}\n\n")
-# txt_hdl.write("--------------------------------------------\n\n")
+# txt_hdl.write("-------------\n\n")
+txt_hdl.write(f"R^2 metrics:\n")
+txt_hdl.write(f"\t{interp_Rsq=}\n\n")
+txt_hdl.write(f"\t{extrap_Rsq=}\n\n")
+txt_hdl.write("--------------------------------------------\n\n")
 
-# # eval GPs metrics - RMSE
-# # ---------------------------
-# interp_rmse, extrap_rmse = eval_ann(
-#     n_dense=64,
-#     epochs=epochs,
-#     # n_trials=30,
-#     n_trials=5,
-#     activation=args.activ,
-#     train_test_frac=0.8,
-#     shear_ks_param=None,
-#     axial=args.axial,
-#     affine=args.affine,
-#     log=args.log,
-#     # n_rho0=20, n_gamma=10, n_xi=5,
-#     n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
-#     metric_func=eval_rmse,
-#     percentile=50.0,
-# )
+# eval GPs metrics - RMSE
+# ---------------------------
+interp_rmse, extrap_rmse = eval_ann(
+    neurons=[64],
+    epochs=epochs,
+    # n_trials=30,
+    n_trials=5,
+    activation=args.activ,
+    train_test_frac=0.8,
+    shear_ks_param=None,
+    axial=args.axial,
+    affine=args.affine,
+    log=args.log,
+    # n_rho0=20, n_gamma=10, n_xi=5,
+    n_rho0=n_rho, n_gamma=n_gamma, n_xi=n_xi,
+    metric_func=eval_rmse,
+    percentile=50.0,
+)
 
-# # txt_hdl.write("-------------\n\n")
-# txt_hdl.write(f"RMSE metrics:\n")
-# txt_hdl.write(f"\t{interp_rmse=}\n\n")
-# txt_hdl.write(f"\t{extrap_rmse=}\n\n")
-# txt_hdl.write("--------------------------------------------\n\n")
+# txt_hdl.write("-------------\n\n")
+txt_hdl.write(f"RMSE metrics:\n")
+txt_hdl.write(f"\t{interp_rmse=}\n\n")
+txt_hdl.write(f"\t{extrap_rmse=}\n\n")
+txt_hdl.write("--------------------------------------------\n\n")
 
 
 
@@ -158,7 +159,7 @@ import time
 start_time = time.time()
 
 
-# try making a tensorflow model here
+# try making a tensorflow model here (single layer)
 model = tf.keras.models.Sequential([
     tf.keras.layers.Flatten(input_shape=(3,)),
     tf.keras.layers.Dense(64, activation=args.activ),

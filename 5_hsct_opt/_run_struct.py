@@ -44,7 +44,9 @@ for i, scenario in enumerate(f2f_model.scenarios):
     fa *= trim_load_factors[i]
 tacs_driver._transfer_fixed_aero_loads()
 
-f2f_model.read_design_variables_file(comm, "design/ML-sizing.txt" if args.useML else "design/CF-sizing.txt")
+f2f_model.read_design_variables_file(comm, "design/ML-sizing_design.txt" if args.useML else "design/CF-sizing_design.txt")
+#f2f_model.read_design_variables_file(comm, "design/ML-sizing_design.txt")
+
 
 import time
 start_time = time.time()
